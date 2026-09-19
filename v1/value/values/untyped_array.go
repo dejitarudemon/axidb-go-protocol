@@ -11,25 +11,42 @@ var _ value.V = UntypedArray{}
 
 const UntypedArrayLenFieldSize = 4
 
-type UntypedArray []value.V
+type UntypedArray struct {
+	Elems []value.V
+}
+
+func (ua UntypedArray) realLen() int {
+	realLen := 0
+	for _, elem := range ua.Elems {
+		if elem != nil {
+			realLen += 1
+		}
+	}
+
+	return realLen
+}
 
 func (ua UntypedArray) Encode(buf buffer.Appender) {
-	buf.AppendUint32(uint32(len(ua)))
+	buf.AppendUint32(uint32(ua.realLen()))
 
-	for _, elem := range ua {
-		elem.Type().Encode(buf)
-		elem.Encode(buf)
+	for _, elem := range ua.Elems {
+		if elem != nil {
+			elem.Type().Encode(buf)
+			elem.Encode(buf)
+		}
 	}
 }
 
 func (ua UntypedArray) Size() int {
 	size := 0
 
-	for _, elem := range ua {
-		size += elem.Size() + types.FieldSize
+	for _, elem := range ua.Elems {
+		if elem != nil {
+			size += elem.Size()
+		}
 	}
 
-	return UntypedArrayLenFieldSize + types.FieldSize + size
+	return UntypedArrayLenFieldSize + size + ua.realLen()*types.FieldSize
 }
 
 func (ua UntypedArray) Type() types.Code {
@@ -37,7 +54,7 @@ func (ua UntypedArray) Type() types.Code {
 }
 
 func (ua UntypedArray) IsValid() error {
-	for _, elem := range ua {
+	for _, elem := range ua.Elems {
 		if elem == nil {
 			return errs.NewErrorMalformedValue("expected value, got nil")
 		}

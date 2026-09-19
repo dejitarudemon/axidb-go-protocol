@@ -18,12 +18,25 @@ type TypedArray struct {
 	Elems    []value.V
 }
 
+func (ta TypedArray) realLen() int {
+	realLen := 0
+	for _, elem := range ta.Elems {
+		if elem != nil {
+			realLen += 1
+		}
+	}
+
+	return realLen
+}
+
 func (ta TypedArray) Encode(buf buffer.Appender) {
-	buf.AppendUint32(uint32(len(ta.Elems)))
+	buf.AppendUint32(uint32(ta.realLen()))
 	ta.ElemType.Encode(buf)
 
 	for _, elem := range ta.Elems {
-		elem.Encode(buf)
+		if elem != nil {
+			elem.Encode(buf)
+		}
 	}
 }
 
@@ -31,7 +44,9 @@ func (ta TypedArray) Size() int {
 	size := 0
 
 	for _, elem := range ta.Elems {
-		size += elem.Size()
+		if elem != nil {
+			size += elem.Size()
+		}
 	}
 
 	return TypedArrayLenFieldSize + types.FieldSize + size
