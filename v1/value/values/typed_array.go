@@ -14,15 +14,15 @@ var _ value.V = TypedArray{}
 const TypedArrayLenFieldSize = 4
 
 type TypedArray struct {
-	elemType types.Code
-	elems    []value.V
+	ElemType types.Code
+	Elems    []value.V
 }
 
 func (ta TypedArray) Encode(buf buffer.Appender) {
-	buf.AppendUint32(uint32(len(ta.elems)))
-	ta.elemType.Encode(buf)
+	buf.AppendUint32(uint32(len(ta.Elems)))
+	ta.ElemType.Encode(buf)
 
-	for _, elem := range ta.elems {
+	for _, elem := range ta.Elems {
 		elem.Encode(buf)
 	}
 }
@@ -30,7 +30,7 @@ func (ta TypedArray) Encode(buf buffer.Appender) {
 func (ta TypedArray) Size() int {
 	size := 0
 
-	for _, elem := range ta.elems {
+	for _, elem := range ta.Elems {
 		size += elem.Size()
 	}
 
@@ -42,13 +42,13 @@ func (ta TypedArray) Type() types.Code {
 }
 
 func (ta TypedArray) IsValid() error {
-	for _, elem := range ta.elems {
+	for _, elem := range ta.Elems {
 		if elem == nil {
 			return errs.NewErrorMalformedValue("expected value, got nil")
 		}
-		if elem.Type() != ta.elemType {
+		if elem.Type() != ta.ElemType {
 			return errs.NewErrorMalformedValue(
-				fmt.Sprintf("expected %v type, got %v", ta.elemType, elem.Type()),
+				fmt.Sprintf("expected %v type, got %v", ta.ElemType, elem.Type()),
 			)
 		}
 		if err := elem.IsValid(); err != nil {

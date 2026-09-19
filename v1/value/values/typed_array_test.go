@@ -17,15 +17,15 @@ func TestTypedArray_Size(t *testing.T) {
 	}{
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems:    []value.V{},
+				ElemType: types.Int,
+				Elems:    []value.V{},
 			},
 			5,
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 				},
 			},
@@ -33,8 +33,8 @@ func TestTypedArray_Size(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Int(2),
 				},
@@ -43,15 +43,15 @@ func TestTypedArray_Size(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems:    nil,
+				ElemType: types.Int,
+				Elems:    nil,
 			},
 			5,
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Float(1),
 				},
@@ -60,8 +60,8 @@ func TestTypedArray_Size(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Bytes([]byte{0x01, 0x02, 0x03}),
 				},
@@ -89,15 +89,15 @@ func TestTypedArray_Encode(t *testing.T) {
 	}{
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems:    []value.V{},
+				ElemType: types.Int,
+				Elems:    []value.V{},
 			},
 			[]byte{0x00, 0x00, 0x00, 0x00, 0x03},
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 				},
 			},
@@ -105,8 +105,8 @@ func TestTypedArray_Encode(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Int(2),
 				},
@@ -115,15 +115,15 @@ func TestTypedArray_Encode(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems:    nil,
+				ElemType: types.Int,
+				Elems:    nil,
 			},
 			[]byte{0x00, 0x00, 0x00, 0x00, 0x03},
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Float(1),
 				},
@@ -132,8 +132,8 @@ func TestTypedArray_Encode(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Bytes([]byte{0x01, 0x02, 0x03}),
 				},
@@ -171,15 +171,15 @@ func TestTypedArray_Type(t *testing.T) {
 	}{
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems:    []value.V{},
+				ElemType: types.Int,
+				Elems:    []value.V{},
 			},
 			types.TypedArray,
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 				},
 			},
@@ -187,8 +187,8 @@ func TestTypedArray_Type(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Int(2),
 				},
@@ -197,15 +197,15 @@ func TestTypedArray_Type(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems:    nil,
+				ElemType: types.Int,
+				Elems:    nil,
 			},
 			types.TypedArray,
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Float(1),
 				},
@@ -214,8 +214,8 @@ func TestTypedArray_Type(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Bytes([]byte{0x01, 0x02, 0x03}),
 				},
@@ -245,15 +245,15 @@ func TestTypedArray_IsValid(t *testing.T) {
 	}{
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems:    []value.V{},
+				ElemType: types.Int,
+				Elems:    []value.V{},
 			},
 			false,
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 				},
 			},
@@ -261,8 +261,8 @@ func TestTypedArray_IsValid(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Int(2),
 				},
@@ -271,15 +271,15 @@ func TestTypedArray_IsValid(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems:    nil,
+				ElemType: types.Int,
+				Elems:    nil,
 			},
 			false,
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Float(1),
 				},
@@ -288,8 +288,8 @@ func TestTypedArray_IsValid(t *testing.T) {
 		},
 		{
 			TypedArray{
-				elemType: types.Int,
-				elems: []value.V{
+				ElemType: types.Int,
+				Elems: []value.V{
 					Int(1),
 					Bytes([]byte{0x01, 0x02, 0x03}),
 				},
