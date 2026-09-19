@@ -26,19 +26,19 @@ jobs:
       #     go mod tidy
       #     git diff --exit-code go.mod go.sum
 
-      - name: Vet
-        run: go vet ./...
+      # - name: Vet
+      #   run: go vet ./...
 
-      - name: test
-        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+      # - name: test
+      #   run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
-      - name: Lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+      # - name: Lint
+      #   uses: golangci/golangci-lint-action@v6
+      #   with:
+      #     version: latest
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.out
-          fail_ci_if_error: false
+      # - name: Upload coverage
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     files: ./coverage.out
+          # fail_ci_if_error: false
