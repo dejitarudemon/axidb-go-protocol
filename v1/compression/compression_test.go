@@ -8,16 +8,16 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 )
 
-func TestCompression_Size(t *testing.T) {
+func TestCode_Size(t *testing.T) {
 	tests := []struct {
-		c    Compression
+		c    Code
 		want int
 	}{
 		{None, 1},
 		{Zstd, 1},
 		{Lz4, 1},
-		{Compression(3), 1},
-		{Compression(255), 1},
+		{Code(3), 1},
+		{Code(255), 1},
 	}
 
 	for _, tt := range tests {
@@ -32,9 +32,9 @@ func TestCompression_Size(t *testing.T) {
 	}
 }
 
-func TestCompression_Encode(t *testing.T) {
+func TestCode_Encode(t *testing.T) {
 	tests := []struct {
-		c    Compression
+		c    Code
 		want []byte
 	}{
 		{None, []byte{0x00}},
@@ -64,16 +64,16 @@ func TestCompression_Encode(t *testing.T) {
 	}
 }
 
-func TestCompression_String(t *testing.T) {
+func TestCode_String(t *testing.T) {
 	tests := []struct {
-		c    Compression
+		c    Code
 		want string
 	}{
 		{None, "None"},
 		{Zstd, "Zstd"},
 		{Lz4, "Lz4"},
-		{Compression(3), "Unknown (3)"},
-		{Compression(255), "Unknown (255)"},
+		{Code(3), "Unknown (3)"},
+		{Code(255), "Unknown (255)"},
 	}
 
 	for _, tt := range tests {
@@ -88,16 +88,16 @@ func TestCompression_String(t *testing.T) {
 	}
 }
 
-func TestCompression_IsValid(t *testing.T) {
+func TestCode_IsValid(t *testing.T) {
 	tests := []struct {
-		c       Compression
+		c       Code
 		wantErr bool
 	}{
 		{None, false},
 		{Zstd, false},
 		{Lz4, false},
-		{Compression(3), true},
-		{Compression(255), true},
+		{Code(3), true},
+		{Code(255), true},
 	}
 
 	for _, tt := range tests {
