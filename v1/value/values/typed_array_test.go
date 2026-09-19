@@ -68,6 +68,13 @@ func TestTypedArray_Size(t *testing.T) {
 			},
 			20,
 		},
+		{
+			TypedArray{
+				ElemType: types.Int,
+				Elems:    []value.V{nil},
+			},
+			5,
+		},
 	}
 
 	for _, tt := range tests {
@@ -139,6 +146,13 @@ func TestTypedArray_Encode(t *testing.T) {
 				},
 			},
 			[]byte{0x00, 0x00, 0x00, 0x02, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x03, 0x01, 0x02, 0x03},
+		},
+		{
+			TypedArray{
+				ElemType: types.Int,
+				Elems:    []value.V{nil},
+			},
+			[]byte{0x00, 0x00, 0x00, 0x00, 0x03},
 		},
 	}
 
@@ -222,6 +236,13 @@ func TestTypedArray_Type(t *testing.T) {
 			},
 			types.TypedArray,
 		},
+		{
+			TypedArray{
+				ElemType: types.Int,
+				Elems:    []value.V{nil},
+			},
+			types.TypedArray,
+		},
 	}
 
 	for _, tt := range tests {
@@ -293,6 +314,13 @@ func TestTypedArray_IsValid(t *testing.T) {
 					Int(1),
 					Bytes([]byte{0x01, 0x02, 0x03}),
 				},
+			},
+			true,
+		},
+		{
+			TypedArray{
+				ElemType: types.Int,
+				Elems:    []value.V{nil},
 			},
 			true,
 		},
