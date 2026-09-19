@@ -13,6 +13,10 @@ var _ value.V = JSON{}
 
 const JSONLenFieldSize = 4
 
+/*
+type JSON представляет собой JSON-документ
+из спецификации протокола v1.
+*/
 type JSON []byte
 
 func (j JSON) Encode(buf buffer.Appender) {

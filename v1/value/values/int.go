@@ -10,6 +10,10 @@ var _ value.V = Int(0)
 
 const IntValueFieldSize = 8
 
+/*
+type Int представляет собой целое число
+из спецификации протокола v1.
+*/
 type Int int64
 
 func (i Int) Encode(buf buffer.Appender) {

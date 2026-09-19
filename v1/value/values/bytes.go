@@ -1,3 +1,8 @@
+/*
+protocol values содержит конретные типы, реализующие интерфейс value.V.
+Каждый представленный тип является реализацией типа из спецификации протокола v1.
+*/
+
 package values
 
 import (
@@ -10,6 +15,10 @@ var _ value.V = Bytes([]byte{})
 
 const BytesLenFieldSize = 4
 
+/*
+type Bytes представляет собой байтовую последовательность
+из спецификации протокола v1.
+*/
 type Bytes []byte
 
 func (b Bytes) Encode(buf buffer.Appender) {

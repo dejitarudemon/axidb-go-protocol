@@ -11,6 +11,10 @@ var _ value.V = UntypedArray{}
 
 const UntypedArrayLenFieldSize = 4
 
+/*
+type UntypedArray представляет собой нетипизированную
+последовательность элементов из спецификации протокола v1.
+*/
 type UntypedArray struct {
 	Elems []value.V
 }

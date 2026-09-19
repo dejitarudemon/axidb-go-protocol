@@ -12,6 +12,10 @@ var _ value.V = Float(0)
 
 const FloatValueFieldSize = 8
 
+/*
+type Float представляет собой число с плавающей
+точкой из спецификации протокола v1.
+*/
 type Float float64
 
 func (f Float) Encode(buf buffer.Appender) {

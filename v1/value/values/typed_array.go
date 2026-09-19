@@ -13,6 +13,10 @@ var _ value.V = TypedArray{}
 
 const TypedArrayLenFieldSize = 4
 
+/*
+type TypedArray представляет собой типизированную последовательность
+элементов из спецификации протокола v1.
+*/
 type TypedArray struct {
 	ElemType types.Code
 	Elems    []value.V

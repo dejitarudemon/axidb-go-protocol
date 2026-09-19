@@ -10,6 +10,10 @@ var _ value.V = String("")
 
 const StringLenFieldSize = 4
 
+/*
+type String представляет собой строку
+в формате UTF-8 строки из спецификации протокола v1.
+*/
 type String string
 
 func (s String) Encode(buf buffer.Appender) {
