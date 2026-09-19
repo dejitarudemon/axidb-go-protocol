@@ -1,6 +1,9 @@
 package value
 
-import "github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+import (
+	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+)
 
 /*
 interface V предназначен для объявления требований
@@ -33,5 +36,5 @@ type V interface {
 	/*
 		func Type возвращает код типа данных.
 	*/
-	Type() Code
+	Type() types.Code
 }
