@@ -50,7 +50,7 @@ func (c Compression) Encode(buf buffer.Appender) {
 
 /*
 func String предназначена для вывода человекочитаемого названия
-алгоритма сжатия, представленного конркетным кодом
+алгоритма сжатия, представленного конркетным кодом.
 */
 func (c Compression) String() string {
 	switch c {
@@ -71,7 +71,7 @@ func IsValid предназначена для проверки кода сжа�
  1. Код находится в пределах 0-2.
 
 Возвращаемые ошибки:
- 1. ErrorUnsupportedCompression - код находится вне пределов 0-2
+ 1. ErrorUnsupportedCompression - код находится вне пределов 0-2.
 */
 func (c Compression) IsValid() error {
 	if c > Lz4 {
@@ -82,7 +82,7 @@ func (c Compression) IsValid() error {
 }
 
 /*
-func Size возвращает размер кода сжатия в байтах
+func Size возвращает размер кода сжатия в байтах.
 */
 func (c Compression) Size() int {
 	return CompressionFieldSize

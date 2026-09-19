@@ -6,6 +6,9 @@ var (
 	_ Buffer = (*Mock)(nil)
 )
 
+/*
+struct Mock предназначена только для тестов.
+*/
 type Mock struct {
 	data []byte
 }
