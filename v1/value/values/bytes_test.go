@@ -1,4 +1,4 @@
-package types
+package values
 
 import (
 	"bytes"
@@ -6,23 +6,18 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
 )
 
-func TestCode_Size(t *testing.T) {
+func TestBytes_Size(t *testing.T) {
 	tests := []struct {
-		c    Code
+		c    Bytes
 		want int
 	}{
-		{Bytes, 1},
-		{TypedArray, 1},
-		{UntypedArray, 1},
-		{Int, 1},
-		{Uint, 1},
-		{Float, 1},
-		{String, 1},
-		{JSON, 1},
-		{Code(8), 1},
-		{Code(255), 1},
+		{Bytes([]byte("")), 4},
+		{Bytes([]byte("a")), 5},
+		{Bytes([]byte{}), 4},
+		{Bytes(nil), 4},
 	}
 
 	for _, tt := range tests {
@@ -37,21 +32,15 @@ func TestCode_Size(t *testing.T) {
 	}
 }
 
-func TestCode_Encode(t *testing.T) {
+func TestBytes_Encode(t *testing.T) {
 	tests := []struct {
-		c    Code
+		c    Bytes
 		want []byte
 	}{
-		{Bytes, []byte{0x00}},
-		{TypedArray, []byte{0x01}},
-		{UntypedArray, []byte{0x02}},
-		{Int, []byte{0x03}},
-		{Uint, []byte{0x04}},
-		{Float, []byte{0x05}},
-		{String, []byte{0x06}},
-		{JSON, []byte{0x07}},
-		{Code(8), []byte{0x08}},
-		{Code(255), []byte{0xFF}},
+		{Bytes([]byte("")), []byte{0x00, 0x00, 0x00, 0x00}},
+		{Bytes([]byte{0x0a, 0xff}), []byte{0x00, 0x00, 0x00, 0x02, 0x0a, 0xff}},
+		{Bytes([]byte{}), []byte{0x00, 0x00, 0x00, 0x00}},
+		{Bytes(nil), []byte{0x00, 0x00, 0x00, 0x00}},
 	}
 
 	for _, tt := range tests {
@@ -76,28 +65,24 @@ func TestCode_Encode(t *testing.T) {
 	}
 }
 
-func TestCode_String(t *testing.T) {
+func TestBytes_Type(t *testing.T) {
 	tests := []struct {
-		c    Code
-		want string
+		c    Bytes
+		want types.Code
 	}{
-		{Bytes, "Bytes"},
-		{TypedArray, "Typed Array"},
-		{UntypedArray, "Untyped Array"},
-		{Int, "Int"},
-		{Uint, "Uint"},
-		{Float, "Float"},
-		{String, "String"},
-		{JSON, "JSON"},
-		{Code(8), "Unknown (8)"},
-		{Code(255), "Unknown (255)"},
+		{Bytes([]byte("")), types.Bytes},
+		{Bytes([]byte{0x0a, 0xff}), types.Bytes},
+		{Bytes([]byte{}), types.Bytes},
+		{Bytes(nil), types.Bytes},
 	}
 
 	for _, tt := range tests {
 		t.Run(
 			fmt.Sprintf("%v", tt.c),
 			func(t *testing.T) {
-				if got := tt.c.String(); got != tt.want {
+				got := tt.c.Type()
+
+				if got != tt.c.Type() {
 					t.Errorf("got %v, want %v", got, tt.want)
 				}
 			},
@@ -105,21 +90,15 @@ func TestCode_String(t *testing.T) {
 	}
 }
 
-func TestCode_IsValid(t *testing.T) {
+func TestBytes_IsValid(t *testing.T) {
 	tests := []struct {
-		c       Code
+		c       Bytes
 		wantErr bool
 	}{
-		{Bytes, false},
-		{TypedArray, false},
-		{UntypedArray, false},
-		{Int, false},
-		{Uint, false},
-		{Float, false},
-		{String, false},
-		{JSON, false},
-		{Code(8), true},
-		{Code(255), true},
+		{Bytes([]byte("")), false},
+		{Bytes([]byte{0x0a, 0xff}), false},
+		{Bytes([]byte{}), false},
+		{Bytes(nil), false},
 	}
 
 	for _, tt := range tests {
