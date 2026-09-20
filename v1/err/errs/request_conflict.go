@@ -9,6 +9,8 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
+var _ err.Error = ErrorRequestsConflict{}
+
 type ErrorRequestsConflict struct {
 	got         uint32
 	tracebackID uuid.UUID

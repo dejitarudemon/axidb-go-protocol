@@ -9,6 +9,8 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
+var _ err.Error = ErrorUnsupportedVersion{}
+
 type ErrorUnsupportedVersion struct {
 	got         uint8
 	tracebackID uuid.UUID

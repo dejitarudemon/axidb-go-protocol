@@ -9,6 +9,8 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
+var _ err.Error = ErrorBodyLimitIsExceeded{}
+
 const CurrentBodyLimitFieldSize = 4
 
 type ErrorBodyLimitIsExceeded struct {

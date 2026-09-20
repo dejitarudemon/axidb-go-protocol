@@ -10,6 +10,8 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
+var _ err.Error = ErrorUnsupportedCommand{}
+
 type ErrorUnsupportedCommand struct {
 	got         command.Code
 	tracebackID uuid.UUID

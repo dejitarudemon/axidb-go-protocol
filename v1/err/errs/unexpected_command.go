@@ -10,6 +10,8 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
+var _ err.Error = ErrorUnexpectedCommand{}
+
 type ErrorUnexpectedCommand struct {
 	got         command.Code
 	expected    command.Code

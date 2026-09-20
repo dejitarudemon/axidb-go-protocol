@@ -10,6 +10,8 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
+var _ err.Error = ErrorUnsupportedCompression{}
+
 type ErrorUnsupportedCompression struct {
 	compression compression.Code
 	tracebackID uuid.UUID
