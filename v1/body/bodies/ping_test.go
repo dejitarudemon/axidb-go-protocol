@@ -29,7 +29,7 @@ func TestPing_Size(t *testing.T) {
 	}
 }
 
-func TestPing_Encodt(t *testing.T) {
+func TestPing_Encode(t *testing.T) {
 	tests := []struct {
 		p    Ping
 		want []byte
