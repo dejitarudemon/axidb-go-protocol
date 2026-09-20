@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/google/uuid"
 )
@@ -85,6 +86,49 @@ func TestInternalError_TracebackID(t *testing.T) {
 			fmt.Sprintf("Test TracebackID: %v", tt),
 			func(t *testing.T) {
 				if got := tt.e.TracebackID(); !bytes.Equal(got[:], tt.want[:]) {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
+func TestInternalError_IsValid(t *testing.T) {
+	tests := []struct {
+		e    ErrorInternalError
+		want bool
+	}{
+		{
+			ErrorInternalError{nil, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
+			false,
+		},
+		{
+			ErrorInternalError{errors.New(""), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
+			true,
+		},
+		{
+			ErrorInternalError{errors.New("some-error"), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
+			true,
+		},
+		{
+			ErrorInternalError{},
+			false,
+		},
+		{
+			ErrorInternalError{NewErrorUnsupportedCommand(command.Code(10)), generateNewTracebackID()},
+			false,
+		},
+		{
+			ErrorInternalError{NewErrorUnsupportedCommand(command.Read), generateNewTracebackID()},
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("Test IsValid: %v", tt.e),
+			func(t *testing.T) {
+				if got := tt.e.IsValid(); got != tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},

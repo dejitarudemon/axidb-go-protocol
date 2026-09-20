@@ -91,6 +91,41 @@ func TestNotFound_TracebackID(t *testing.T) {
 	}
 }
 
+func TestNotFound_IsValid(t *testing.T) {
+	tests := []struct {
+		e    ErrorNotFound
+		want bool
+	}{
+		{
+			ErrorNotFound{nil, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
+			false,
+		},
+		{
+			ErrorNotFound{[]byte(""), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
+			false,
+		},
+		{
+			ErrorNotFound{[]byte("key"), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
+			true,
+		},
+		{
+			ErrorNotFound{},
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("Test IsValid: %v", tt),
+			func(t *testing.T) {
+				if got := tt.e.IsValid(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
 func TestNotFound_Encode(t *testing.T) {
 	tests := []struct {
 		e    ErrorNotFound

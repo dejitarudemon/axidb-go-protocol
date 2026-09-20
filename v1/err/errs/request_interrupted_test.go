@@ -92,6 +92,41 @@ func TestRequestInterrupted_TracebackID(t *testing.T) {
 	}
 }
 
+func TestRequestInterrupted_IsValid(t *testing.T) {
+	tests := []struct {
+		e    ErrorRequestInterrupted
+		want bool
+	}{
+		{
+			ErrorRequestInterrupted{0, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
+			true,
+		},
+		{
+			ErrorRequestInterrupted{1, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
+			true,
+		},
+		{
+			ErrorRequestInterrupted{math.MaxUint32, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
+			true,
+		},
+		{
+			ErrorRequestInterrupted{},
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("Test IsValid: %v", tt),
+			func(t *testing.T) {
+				if got := tt.e.IsValid(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
 func TestRequestInterrupted_Encode(t *testing.T) {
 	tests := []struct {
 		e    ErrorRequestInterrupted

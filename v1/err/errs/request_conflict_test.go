@@ -92,6 +92,41 @@ func TestRequestsConflict_TracebackID(t *testing.T) {
 	}
 }
 
+func TestRequestsConflict_IsValid(t *testing.T) {
+	tests := []struct {
+		e    ErrorRequestsConflict
+		want bool
+	}{
+		{
+			ErrorRequestsConflict{0, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
+			true,
+		},
+		{
+			ErrorRequestsConflict{1, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
+			true,
+		},
+		{
+			ErrorRequestsConflict{math.MaxUint32, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
+			true,
+		},
+		{
+			ErrorRequestsConflict{},
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("Test IsValid: %v", tt),
+			func(t *testing.T) {
+				if got := tt.e.IsValid(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
 func TestRequestsConflict_Encode(t *testing.T) {
 	tests := []struct {
 		e    ErrorRequestsConflict

@@ -91,6 +91,41 @@ func TestUnsupportedVersion_TracebackID(t *testing.T) {
 	}
 }
 
+func TestUnsupportedVersion_IsValid(t *testing.T) {
+	tests := []struct {
+		e    ErrorUnsupportedVersion
+		want bool
+	}{
+		{
+			ErrorUnsupportedVersion{0, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
+			true,
+		},
+		{
+			ErrorUnsupportedVersion{1, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
+			true,
+		},
+		{
+			ErrorUnsupportedVersion{255, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
+			true,
+		},
+		{
+			ErrorUnsupportedVersion{},
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("Test IsValid: %v", tt),
+			func(t *testing.T) {
+				if got := tt.e.IsValid(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
 func TestUnsupportedVersion_Encode(t *testing.T) {
 	tests := []struct {
 		e    ErrorUnsupportedVersion

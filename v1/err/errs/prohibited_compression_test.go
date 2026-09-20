@@ -117,6 +117,77 @@ func TestProhibitedCompression_TracebackID(t *testing.T) {
 	}
 }
 
+func TestProhibitedCompression_IsValid(t *testing.T) {
+	tests := []struct {
+		e    ErrorProhibitedCompression
+		want bool
+	}{
+		{
+			ErrorProhibitedCompression{compression.None, command.Handshake, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
+			false,
+		},
+		{
+			ErrorProhibitedCompression{compression.Lz4, command.Read, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
+			false,
+		},
+		{
+			ErrorProhibitedCompression{compression.Zstd, command.Write, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
+			false,
+		},
+		{
+			ErrorProhibitedCompression{compression.Code(4), command.Delete, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04})},
+			false,
+		},
+		{
+			ErrorProhibitedCompression{compression.None, command.Code(4), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05})},
+			false,
+		},
+		{
+			ErrorProhibitedCompression{compression.Code(5), command.Code(5), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06})},
+			false,
+		},
+		{
+			ErrorProhibitedCompression{compression.Code(255), command.Code(255), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07})},
+			false,
+		},
+		{
+			ErrorProhibitedCompression{},
+			false,
+		},
+		{
+			ErrorProhibitedCompression{compression.Lz4, command.Handshake, generateNewTracebackID()},
+			true,
+		},
+		{
+			ErrorProhibitedCompression{compression.Zstd, command.Ping, generateNewTracebackID()},
+			true,
+		},
+		{
+			ErrorProhibitedCompression{compression.None, command.Handshake, generateNewTracebackID()},
+			false,
+		},
+		{
+			ErrorProhibitedCompression{compression.Code(255), command.Handshake, generateNewTracebackID()},
+			false,
+		},
+		{
+			ErrorProhibitedCompression{},
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("Test IsValid: %v", tt.e),
+			func(t *testing.T) {
+				if got := tt.e.IsValid(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
 func TestProhibitedCompression_Encode(t *testing.T) {
 	tests := []struct {
 		e    ErrorProhibitedCompression
