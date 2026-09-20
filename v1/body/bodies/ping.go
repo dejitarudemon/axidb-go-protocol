@@ -20,6 +20,6 @@ func (p Ping) Command() command.Code {
 	return command.Ping
 }
 
-func (p Ping) IsValid() bool {
-	return true
+func (p Ping) IsValid() error {
+	return nil
 }

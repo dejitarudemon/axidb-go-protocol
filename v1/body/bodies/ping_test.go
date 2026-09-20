@@ -88,7 +88,7 @@ func TestPing_IsValid(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestPing_IsValid %v", tt.p),
 			func(t *testing.T) {
-				if got := tt.p.IsValid(); got != tt.want {
+				if got := tt.p.IsValid(); got == nil == tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},
