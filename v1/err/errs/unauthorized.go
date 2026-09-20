@@ -42,3 +42,7 @@ func (e ErrorUnauthorized) Encode(buf buffer.Appender) {
 func (e ErrorUnauthorized) Error() string {
 	return fmt.Sprintf("%v %v: from %v", e.tracebackID, e.Code(), e.source)
 }
+
+func (e ErrorUnauthorized) IsValid() bool {
+	return true
+}

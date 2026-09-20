@@ -43,3 +43,7 @@ func (e ErrorUnsupportedVersion) Encode(buf buffer.Appender) {
 func (e ErrorUnsupportedVersion) Error() string {
 	return fmt.Sprintf("%v %v: %v,", e.tracebackID, e.Code(), e.got)
 }
+
+func (e ErrorUnsupportedVersion) IsValid() bool {
+	return true
+}

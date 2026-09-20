@@ -43,4 +43,10 @@ type Error interface {
 		func Code возвращает код ошибки.
 	*/
 	Code() Code
+
+	/*
+		func IsValid возвращает валидность настоящей ошибки
+		согласно спецификациям протокола v1.
+	*/
+	IsValid() bool
 }

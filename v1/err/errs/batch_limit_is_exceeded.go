@@ -48,3 +48,7 @@ func (e ErrorBatchLimitIsExceeded) Encode(buf buffer.Appender) {
 func (e ErrorBatchLimitIsExceeded) Error() string {
 	return fmt.Sprintf("%v %v: got %v requests but limit is %v bytes,", e.tracebackID, e.Code(), e.got, e.limit)
 }
+
+func (e ErrorBatchLimitIsExceeded) IsValid() bool {
+	return e.got > e.limit
+}

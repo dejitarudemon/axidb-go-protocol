@@ -48,3 +48,7 @@ func (e ErrorBodyLimitIsExceeded) Encode(buf buffer.Appender) {
 func (e ErrorBodyLimitIsExceeded) Error() string {
 	return fmt.Sprintf("%v %v: got %v bytes but limit is %v bytes,", e.tracebackID, e.Code(), e.got, e.limit)
 }
+
+func (e ErrorBodyLimitIsExceeded) IsValid() bool {
+	return e.got > e.limit
+}

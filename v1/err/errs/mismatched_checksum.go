@@ -45,3 +45,7 @@ func (e ErrorMismatchedChecksum) Encode(buf buffer.Appender) {
 func (e ErrorMismatchedChecksum) Error() string {
 	return fmt.Sprintf("%v %v: got %08X, expected %08X,", e.tracebackID, e.Code(), e.got, e.expected)
 }
+
+func (e ErrorMismatchedChecksum) IsValid() bool {
+	return e.expected != e.got
+}

@@ -51,3 +51,7 @@ func (e ErrorRestrictedRequest) Encode(buf buffer.Appender) {
 func (e ErrorRestrictedRequest) Error() string {
 	return fmt.Sprintf("%v %v: someone (id %s) from %s has tried %v (key: %q) via request id %v", e.tracebackID, e.Code(), e.id, e.source, e.command, e.key, e.requestID)
 }
+
+func (e ErrorRestrictedRequest) IsValid() bool {
+	return true
+}

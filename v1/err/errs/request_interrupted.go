@@ -43,3 +43,7 @@ func (e ErrorRequestInterrupted) Encode(buf buffer.Appender) {
 func (e ErrorRequestInterrupted) Error() string {
 	return fmt.Sprintf("%v %v: id %v,", e.tracebackID, e.Code(), e.interrupted)
 }
+
+func (e ErrorRequestInterrupted) IsValid() bool {
+	return true
+}

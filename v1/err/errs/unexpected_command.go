@@ -47,3 +47,7 @@ func (e ErrorUnexpectedCommand) Encode(buf buffer.Appender) {
 func (e ErrorUnexpectedCommand) Error() string {
 	return fmt.Sprintf("%v %v: got %v, expected %v", e.tracebackID, e.Code(), e.got, e.expected)
 }
+
+func (e ErrorUnexpectedCommand) IsValid() bool {
+	return e.expected.IsValid() && e.got.IsValid() && e.expected != e.got
+}

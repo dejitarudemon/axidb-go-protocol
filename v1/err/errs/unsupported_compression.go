@@ -44,3 +44,7 @@ func (e ErrorUnsupportedCompression) Encode(buf buffer.Appender) {
 func (e ErrorUnsupportedCompression) Error() string {
 	return fmt.Sprintf("%v %v: %v", e.tracebackID, e.Code(), e.compression)
 }
+
+func (e ErrorUnsupportedCompression) IsValid() bool {
+	return true
+}

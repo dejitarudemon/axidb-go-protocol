@@ -40,3 +40,7 @@ func (e ErrorNoHello) Encode(buf buffer.Appender) {
 func (e ErrorNoHello) Error() string {
 	return fmt.Sprintf("%v %v", e.tracebackID, e.Code())
 }
+
+func (e ErrorNoHello) IsValid() bool {
+	return true
+}

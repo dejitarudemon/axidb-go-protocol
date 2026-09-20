@@ -43,3 +43,7 @@ func (e ErrorNotFound) Encode(buf buffer.Appender) {
 func (e ErrorNotFound) Error() string {
 	return fmt.Sprintf("%v %v: %q,", e.tracebackID, e.Code(), e.key)
 }
+
+func (e ErrorNotFound) IsValid() bool {
+	return len(e.key) > 0
+}

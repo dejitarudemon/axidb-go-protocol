@@ -47,3 +47,20 @@ func (e ErrorProhibitedCompression) Encode(buf buffer.Appender) {
 func (e ErrorProhibitedCompression) Error() string {
 	return fmt.Sprintf("%v %v: %v compression for %v command", e.tracebackID, e.Code(), e.compression, e.command)
 }
+
+func (e ErrorProhibitedCompression) IsValid() bool {
+	if !e.command.IsValid() || !e.compression.IsValid() {
+		return false
+	}
+
+	if e.compression == compression.None {
+		return false
+	}
+
+	switch e.command {
+	case command.Handshake, command.Ping:
+		return true
+	}
+
+	return false
+}

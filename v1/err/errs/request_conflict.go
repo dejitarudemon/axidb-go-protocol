@@ -43,3 +43,7 @@ func (e ErrorRequestsConflict) Encode(buf buffer.Appender) {
 func (e ErrorRequestsConflict) Error() string {
 	return fmt.Sprintf("%v %v: id %v,", e.tracebackID, e.Code(), e.got)
 }
+
+func (e ErrorRequestsConflict) IsValid() bool {
+	return true
+}

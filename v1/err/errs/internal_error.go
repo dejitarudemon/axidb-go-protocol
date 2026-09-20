@@ -47,3 +47,9 @@ func (e ErrorInternalError) Error() string {
 func (e ErrorInternalError) Unwrap() error {
 	return e.err
 }
+
+func (e ErrorInternalError) IsValid() bool {
+	_, ok := e.err.(err.Error)
+
+	return !ok && e.err != nil
+}

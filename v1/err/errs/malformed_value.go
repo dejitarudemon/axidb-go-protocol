@@ -43,3 +43,7 @@ func (e ErrorMalformedValue) Encode(buf buffer.Appender) {
 func (e ErrorMalformedValue) Error() string {
 	return fmt.Sprintf("%v %v: %v", e.tracebackID, e.Code(), e.msg)
 }
+
+func (e ErrorMalformedValue) IsValid() bool {
+	return true
+}

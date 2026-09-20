@@ -44,3 +44,8 @@ func (e ErrorUnsupportedCommand) Encode(buf buffer.Appender) {
 func (e ErrorUnsupportedCommand) Error() string {
 	return fmt.Sprintf("%v %v: %v,", e.tracebackID, e.Code(), e.got)
 }
+
+func (e ErrorUnsupportedCommand) IsValid() bool {
+	// Реализующий протокол обязан реализовывать официальные команды.
+	return !e.got.IsValid()
+}
