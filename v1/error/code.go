@@ -109,3 +109,7 @@ func (c Code) String() string {
 
 	return fmt.Sprintf("Unknown (%d)", c)
 }
+
+func (c Code) Size() int {
+	return FieldSize
+}
