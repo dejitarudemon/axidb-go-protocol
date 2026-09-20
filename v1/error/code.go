@@ -104,7 +104,7 @@ func (c Code) String() string {
 	case RestrictedRequest:
 		return "Restricted Request"
 	case UnknownErrorCode:
-		return "Unkown Error Code"
+		return "Unknown Error Code"
 	}
 
 	return fmt.Sprintf("Unknown (%d)", c)
