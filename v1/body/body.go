@@ -32,5 +32,5 @@ type Body interface {
 	/*
 		IsValid возвращает валидность тела.
 	*/
-	IsValid() bool
+	IsValid() error
 }
