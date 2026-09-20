@@ -72,7 +72,7 @@ func (c Code) String() string {
 	case NoHello:
 		return "No Hello"
 	case UnexpectedCommand:
-		return "UnexpectedCommand"
+		return "Unexpected Command"
 	case UnsupportedCommand:
 		return "Unsupported Command"
 	case RequestsConflict:
