@@ -83,7 +83,7 @@ func IsValid предназначена для проверки кода ком�
  1. Код находится в пределах 0-6.
 */
 func (c Code) IsValid() bool {
-	return c < Ping
+	return c <= Ping
 }
 
 /*
