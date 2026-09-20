@@ -110,6 +110,17 @@ func (c Code) String() string {
 	return fmt.Sprintf("Unknown (%d)", c)
 }
 
+/*
+func Size возвращает размер кода ошибок в байтах.
+*/
 func (c Code) Size() int {
 	return FieldSize
+}
+
+/*
+func IsValid возвращает true, если код ошибки валиден.
+В противном случае false.
+*/
+func (c Code) IsValid() bool {
+	return c <= UnknownErrorCode
 }
