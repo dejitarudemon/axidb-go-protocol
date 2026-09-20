@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/error/errs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 )
 
 /*
