@@ -6,15 +6,16 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
 type ErrorUnsupportedCommand struct {
-	got         uint8
+	got         command.Code
 	tracebackID uuid.UUID
 }
 
-func NewErrorUnsupportedCommand(got uint8) ErrorUnsupportedCommand {
+func NewErrorUnsupportedCommand(got command.Code) ErrorUnsupportedCommand {
 	return ErrorUnsupportedCommand{
 		got:         got,
 		tracebackID: generateNewTracebackID(),
