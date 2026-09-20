@@ -1,3 +1,12 @@
+/*
+package err предназначен для представления кодов
+ошибок (Error Code) согласно спецификации протокола v1.
+
+Использование:
+
+	с = Code(1)
+*/
+
 package err
 
 import (
@@ -6,10 +15,22 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 )
 
-const CodeFieldSize = 2
+/*
+FieldSize представляет размер в байтах,
+отведенный для хранения кода команды в сообщении.
+*/
+const FieldSize = 2
 
+/*
+type Code предназначен для хранения
+кода ошибки, его валидации и кодирования в сообщение.
+*/
 type Code uint16
 
+/*
+Константы, представляющие ошибки,
+используемые в спецификации протокола v1.
+*/
 const (
 	NoHello Code = iota
 	UnexpectedCommand
@@ -31,10 +52,21 @@ const (
 	UnknownErrorCode
 )
 
+/*
+func Encode предназначена для кодирования кода ошибки
+в сообщении.
+
+Принимааемые параметры:
+  - buf buffer.Appender - буфер для хранения закодированного значения.
+*/
 func (c Code) Encode(buf buffer.Appender) {
 	buf.AppendUint16(uint16(c))
 }
 
+/*
+func String предназначена для вывода человекочитаемого названия
+ошибки, представленного конкретным кодом.
+*/
 func (c Code) String() string {
 	switch c {
 	case NoHello:
@@ -75,5 +107,5 @@ func (c Code) String() string {
 		return "Unkown Error Code"
 	}
 
-	return fmt.Sprintf("Unkown (%d)", c)
+	return fmt.Sprintf("Unknown (%d)", c)
 }
