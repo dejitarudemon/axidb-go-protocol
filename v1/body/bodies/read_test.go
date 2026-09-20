@@ -90,17 +90,17 @@ func TestRead_IsValid(t *testing.T) {
 		r    Read
 		want bool
 	}{
-		{Read{}, false},
-		{Read{[]byte{0x00}}, true},
-		{Read{[]byte("ab")}, true},
-		{Read{[]byte("фи")}, true},
+		{Read{}, true},
+		{Read{[]byte{0x00}}, false},
+		{Read{[]byte("ab")}, false},
+		{Read{[]byte("фи")}, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(
 			fmt.Sprintf("TestRead_IsValid %v", tt.r),
 			func(t *testing.T) {
-				if got := tt.r.IsValid(); got != tt.want {
+				if got := tt.r.IsValid(); got == nil == tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},
