@@ -25,7 +25,7 @@ func (e ErrorMalformedValue) TracebackID() uuid.UUID {
 }
 
 func (e ErrorMalformedValue) Size() int {
-	return err.CodeFieldSize + err.TracebackIDFieldSize + len(e.msg)
+	return err.FieldSize + err.TracebackIDFieldSize + len(e.msg)
 }
 
 func (e ErrorMalformedValue) Code() err.Code {

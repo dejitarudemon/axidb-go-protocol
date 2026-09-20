@@ -25,7 +25,7 @@ func (e ErrorUnsupportedCompression) TracebackID() uuid.UUID {
 }
 
 func (e ErrorUnsupportedCompression) Size() int {
-	return err.CodeFieldSize + err.TracebackIDFieldSize
+	return err.FieldSize + err.TracebackIDFieldSize
 }
 
 func (e ErrorUnsupportedCompression) Code() err.Code {

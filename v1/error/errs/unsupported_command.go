@@ -25,7 +25,7 @@ func (e ErrorUnsupportedCommand) TracebackID() uuid.UUID {
 }
 
 func (e ErrorUnsupportedCommand) Size() int {
-	return err.CodeFieldSize + err.TracebackIDFieldSize
+	return err.FieldSize + err.TracebackIDFieldSize
 }
 
 func (e ErrorUnsupportedCommand) Code() err.Code {
