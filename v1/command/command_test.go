@@ -104,26 +104,26 @@ func TestCode_String(t *testing.T) {
 
 func TestCode_IsValid(t *testing.T) {
 	tests := []struct {
-		c       Code
-		wantErr bool
+		c    Code
+		want bool
 	}{
-		{Handshake, false},
-		{Answer, false},
-		{Read, false},
-		{Write, false},
-		{Delete, false},
-		{Batch, false},
-		{Ping, false},
-		{Code(7), true},
-		{Code(255), true},
+		{Handshake, true},
+		{Answer, true},
+		{Read, true},
+		{Write, true},
+		{Delete, true},
+		{Batch, true},
+		{Ping, true},
+		{Code(7), false},
+		{Code(255), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(
 			fmt.Sprintf("%v", tt.c),
 			func(t *testing.T) {
-				if got := tt.c.IsValid(); got == nil == tt.wantErr {
-					t.Errorf("got %v, want %v", got, tt.wantErr)
+				if got := tt.c.IsValid(); got != tt.want {
+					t.Errorf("got %v, want %v", got, tt.want)
 				}
 			},
 		)

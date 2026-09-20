@@ -13,7 +13,6 @@ import (
 	"fmt"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 )
 
 /*
@@ -82,16 +81,9 @@ func (c Code) String() string {
 func IsValid предназначена для проверки кода команды.
 Проверки:
  1. Код находится в пределах 0-6.
-
-Возвращаемые ошибки:
- 1. ErrorUnsupportedCommand - код находится вне пределов 0-6.
 */
-func (c Code) IsValid() error {
-	if c > Ping {
-		return errs.NewErrorUnsupportedCommand(uint8(c))
-	}
-
-	return nil
+func (c Code) IsValid() bool {
+	return c < Ping
 }
 
 /*
