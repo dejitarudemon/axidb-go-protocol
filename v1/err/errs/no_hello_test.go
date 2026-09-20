@@ -83,6 +83,37 @@ func TestNoHello_TracebackID(t *testing.T) {
 	}
 }
 
+func TestNoHello_IsValid(t *testing.T) {
+	tests := []struct {
+		e    ErrorNoHello
+		want bool
+	}{
+		{
+			ErrorNoHello{uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
+			true,
+		},
+		{
+			ErrorNoHello{uuid.UUID([16]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF})},
+			true,
+		},
+		{
+			ErrorNoHello{},
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("Test IsValid: %v", tt),
+			func(t *testing.T) {
+				if got := tt.e.IsValid(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
 func TestNoHello_Encode(t *testing.T) {
 	tests := []struct {
 		e    ErrorNoHello
