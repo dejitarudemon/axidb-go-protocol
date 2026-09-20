@@ -33,6 +33,7 @@ type Code uint16
 */
 const (
 	NoHello Code = iota
+	UnsupportedVersion
 	UnexpectedCommand
 	UnsupportedCommand
 	RequestsConflict
@@ -71,6 +72,8 @@ func (c Code) String() string {
 	switch c {
 	case NoHello:
 		return "No Hello"
+	case UnsupportedVersion:
+		return "Unsupported Version"
 	case UnexpectedCommand:
 		return "Unexpected Command"
 	case UnsupportedCommand:
