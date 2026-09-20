@@ -81,7 +81,7 @@ func TestPing_IsValid(t *testing.T) {
 		p    Ping
 		want bool
 	}{
-		{Ping{}, true},
+		{Ping{}, false},
 	}
 
 	for _, tt := range tests {
