@@ -12,7 +12,6 @@ import (
 	"fmt"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 )
 
 /*
@@ -69,16 +68,9 @@ func (c Code) String() string {
 func IsValid предназначена для проверки кода сжатия.
 Проверки:
  1. Код находится в пределах 0-2.
-
-Возвращаемые ошибки:
- 1. ErrorUnsupportedCode - код находится вне пределов 0-2.
 */
-func (c Code) IsValid() error {
-	if c > Lz4 {
-		return errs.NewErrorUnsupportedCompression(uint8(c))
-	}
-
-	return nil
+func (c Code) IsValid() bool {
+	return c <= Lz4
 }
 
 /*
