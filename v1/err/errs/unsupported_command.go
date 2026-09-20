@@ -5,7 +5,7 @@ import (
 	"uuid"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	err "github.com/dejitarudemon/axidb-go-protocol/v1/error"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
 type ErrorUnsupportedCommand struct {
