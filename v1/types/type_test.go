@@ -1,4 +1,4 @@
-package command
+package types
 
 import (
 	"bytes"
@@ -13,13 +13,14 @@ func TestCode_Size(t *testing.T) {
 		c    Code
 		want int
 	}{
-		{Handshake, 1},
-		{Answer, 1},
-		{Read, 1},
-		{Write, 1},
-		{Delete, 1},
-		{Batch, 1},
-		{Ping, 1},
+		{Bytes, 1},
+		{TypedArray, 1},
+		{UntypedArray, 1},
+		{Int, 1},
+		{Uint, 1},
+		{Float, 1},
+		{String, 1},
+		{JSON, 1},
 		{Code(7), 1},
 		{Code(255), 1},
 	}
@@ -41,14 +42,15 @@ func TestCode_Encode(t *testing.T) {
 		c    Code
 		want []byte
 	}{
-		{Handshake, []byte{0x00}},
-		{Answer, []byte{0x01}},
-		{Read, []byte{0x02}},
-		{Write, []byte{0x03}},
-		{Delete, []byte{0x04}},
-		{Batch, []byte{0x05}},
-		{Ping, []byte{0x06}},
-		{Code(7), []byte{0x07}},
+		{Bytes, []byte{0x00}},
+		{TypedArray, []byte{0x01}},
+		{UntypedArray, []byte{0x02}},
+		{Int, []byte{0x03}},
+		{Uint, []byte{0x04}},
+		{Float, []byte{0x05}},
+		{String, []byte{0x06}},
+		{JSON, []byte{0x07}},
+		{Code(8), []byte{0x08}},
 		{Code(255), []byte{0xFF}},
 	}
 
@@ -79,14 +81,15 @@ func TestCode_String(t *testing.T) {
 		c    Code
 		want string
 	}{
-		{Handshake, "Handshake"},
-		{Answer, "Answer"},
-		{Read, "Read"},
-		{Write, "Write"},
-		{Delete, "Delete"},
-		{Batch, "Batch"},
-		{Ping, "Ping"},
-		{Code(7), "Unknown (7)"},
+		{Bytes, "Bytes"},
+		{TypedArray, "Typed Array"},
+		{UntypedArray, "Untyped Array"},
+		{Int, "Int"},
+		{Uint, "Uint"},
+		{Float, "Float"},
+		{String, "String"},
+		{JSON, "JSON"},
+		{Code(8), "Unknown (8)"},
 		{Code(255), "Unknown (255)"},
 	}
 
@@ -107,14 +110,15 @@ func TestCode_IsValid(t *testing.T) {
 		c    Code
 		want bool
 	}{
-		{Handshake, true},
-		{Answer, true},
-		{Read, true},
-		{Write, true},
-		{Delete, true},
-		{Batch, true},
-		{Ping, true},
-		{Code(7), false},
+		{Bytes, true},
+		{TypedArray, true},
+		{UntypedArray, true},
+		{Int, true},
+		{Uint, true},
+		{Float, true},
+		{String, true},
+		{JSON, true},
+		{Code(8), false},
 		{Code(255), false},
 	}
 

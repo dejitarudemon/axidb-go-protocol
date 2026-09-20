@@ -93,18 +93,18 @@ func TestCode_IsValid(t *testing.T) {
 		c       Code
 		wantErr bool
 	}{
-		{None, false},
-		{Zstd, false},
-		{Lz4, false},
-		{Code(3), true},
-		{Code(255), true},
+		{None, true},
+		{Zstd, true},
+		{Lz4, true},
+		{Code(3), false},
+		{Code(255), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(
 			fmt.Sprintf("%v", tt.c),
 			func(t *testing.T) {
-				if got := tt.c.IsValid(); got == nil == tt.wantErr {
+				if got := tt.c.IsValid(); got != tt.wantErr {
 					t.Errorf("got %v, want %v", got, tt.wantErr)
 				}
 			},

@@ -2,11 +2,13 @@ package errs
 
 import (
 	"fmt"
-	"uuid"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	err "github.com/dejitarudemon/axidb-go-protocol/v1/error"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/google/uuid"
 )
+
+var _ err.Error = ErrorMalformedValue{}
 
 type ErrorMalformedValue struct {
 	msg         string
@@ -25,7 +27,7 @@ func (e ErrorMalformedValue) TracebackID() uuid.UUID {
 }
 
 func (e ErrorMalformedValue) Size() int {
-	return err.CodeFieldSize + err.TracebackIDFieldSize + len(e.msg)
+	return err.FieldSize + err.TracebackIDFieldSize + len(e.msg)
 }
 
 func (e ErrorMalformedValue) Code() err.Code {
@@ -40,4 +42,8 @@ func (e ErrorMalformedValue) Encode(buf buffer.Appender) {
 
 func (e ErrorMalformedValue) Error() string {
 	return fmt.Sprintf("%v %v: %v", e.tracebackID, e.Code(), e.msg)
+}
+
+func (e ErrorMalformedValue) IsValid() bool {
+	return true
 }

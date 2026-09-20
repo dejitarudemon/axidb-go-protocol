@@ -2,18 +2,22 @@ package errs
 
 import (
 	"fmt"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	err "github.com/dejitarudemon/axidb-go-protocol/v1/error"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
+var _ err.Error = ErrorUnsupportedCommand{}
+
 type ErrorUnsupportedCommand struct {
-	got         uint8
+	got         command.Code
 	tracebackID uuid.UUID
 }
 
-func NewErrorUnsupportedCommand(got uint8) ErrorUnsupportedCommand {
+func NewErrorUnsupportedCommand(got command.Code) ErrorUnsupportedCommand {
 	return ErrorUnsupportedCommand{
 		got:         got,
 		tracebackID: generateNewTracebackID(),
@@ -25,7 +29,7 @@ func (e ErrorUnsupportedCommand) TracebackID() uuid.UUID {
 }
 
 func (e ErrorUnsupportedCommand) Size() int {
-	return err.CodeFieldSize + err.TracebackIDFieldSize
+	return err.FieldSize + err.TracebackIDFieldSize
 }
 
 func (e ErrorUnsupportedCommand) Code() err.Code {
@@ -39,4 +43,9 @@ func (e ErrorUnsupportedCommand) Encode(buf buffer.Appender) {
 
 func (e ErrorUnsupportedCommand) Error() string {
 	return fmt.Sprintf("%v %v: %v,", e.tracebackID, e.Code(), e.got)
+}
+
+func (e ErrorUnsupportedCommand) IsValid() bool {
+	// Реализующий протокол обязан реализовывать официальные команды.
+	return !e.got.IsValid()
 }
