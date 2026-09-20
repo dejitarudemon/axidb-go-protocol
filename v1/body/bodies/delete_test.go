@@ -90,17 +90,17 @@ func TestDelete_IsValid(t *testing.T) {
 		d    Delete
 		want bool
 	}{
-		{Delete{}, false},
-		{Delete{[]byte{0x00}}, true},
-		{Delete{[]byte("ab")}, true},
-		{Delete{[]byte("фи")}, true},
+		{Delete{}, true},
+		{Delete{[]byte{0x00}}, false},
+		{Delete{[]byte("ab")}, false},
+		{Delete{[]byte("фи")}, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(
 			fmt.Sprintf("TestDelete_IsValid %v", tt.d),
 			func(t *testing.T) {
-				if got := tt.d.IsValid(); got != tt.want {
+				if got := tt.d.IsValid(); got == nil == tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},
