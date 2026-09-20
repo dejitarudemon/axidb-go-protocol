@@ -6,15 +6,16 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/compression"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
 type ErrorUnsupportedCompression struct {
-	compression uint8
+	compression compression.Code
 	tracebackID uuid.UUID
 }
 
-func NewErrorUnsupportedCompression(compression uint8) ErrorUnsupportedCompression {
+func NewErrorUnsupportedCompression(compression compression.Code) ErrorUnsupportedCompression {
 	return ErrorUnsupportedCompression{
 		compression: compression,
 		tracebackID: generateNewTracebackID(),
