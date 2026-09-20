@@ -2,7 +2,8 @@ package errs
 
 import (
 	"fmt"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"

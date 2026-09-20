@@ -2,11 +2,13 @@ package errs
 
 import (
 	"fmt"
-	"uuid"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/google/uuid"
 )
+
+var _ err.Error = ErrorMalformedValue{}
 
 type ErrorMalformedValue struct {
 	msg         string
