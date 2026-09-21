@@ -90,5 +90,5 @@ func (c Command) IsValid() bool {
 func Size возвращает размер кода команды в байтах.
 */
 func (c Command) Size() int {
-	return FieldSize
+	return CommandFieldSize
 }
