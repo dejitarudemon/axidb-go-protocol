@@ -5,14 +5,14 @@ import (
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/google/uuid"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorMalformedValue{}
 
 type ErrorMalformedValue struct {
 	msg         string
-	tracebackID uuid.UUID
+	tracebackID fields.TracebackID
 }
 
 func NewErrorMalformedValue(msg string) ErrorMalformedValue {
@@ -22,14 +22,14 @@ func NewErrorMalformedValue(msg string) ErrorMalformedValue {
 	}
 }
 
-func NewErrorMalformedValueWithTracebackID(msg string, tracebackID uuid.UUID) ErrorMalformedValue {
+func NewErrorMalformedValueWithTracebackID(msg string, tracebackID fields.TracebackID) ErrorMalformedValue {
 	return ErrorMalformedValue{
 		msg:         msg,
 		tracebackID: tracebackID,
 	}
 }
 
-func (e ErrorMalformedValue) TracebackID() uuid.UUID {
+func (e ErrorMalformedValue) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -43,7 +43,7 @@ func (e ErrorMalformedValue) Code() err.Code {
 
 func (e ErrorMalformedValue) Encode(buf buffer.Appender) {
 	e.Code().Encode(buf)
-	buf.Append(e.tracebackID[:])
+	e.tracebackID.Encode(buf)
 	buf.Append([]byte(e.msg))
 }
 

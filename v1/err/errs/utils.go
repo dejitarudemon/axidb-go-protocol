@@ -1,7 +1,10 @@
 package errs
 
-import "github.com/google/uuid"
+import (
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	"github.com/google/uuid"
+)
 
-func generateNewTracebackID() uuid.UUID {
-	return uuid.New()
+func generateNewTracebackID() fields.TracebackID {
+	return fields.TracebackID(uuid.New())
 }

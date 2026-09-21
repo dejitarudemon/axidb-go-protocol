@@ -3,8 +3,6 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
@@ -15,7 +13,7 @@ var _ err.ProtocolError = ErrorProhibitedCompression{}
 type ErrorProhibitedCompression struct {
 	compression fields.Compression
 	command     fields.Command
-	tracebackID uuid.UUID
+	tracebackID fields.TracebackID
 }
 
 func NewErrorProhibitedCompression(compression fields.Compression, command fields.Command) ErrorProhibitedCompression {
@@ -26,7 +24,7 @@ func NewErrorProhibitedCompression(compression fields.Compression, command field
 	}
 }
 
-func NewErrorProhibitedCompressionWithTracebackID(compression fields.Compression, command fields.Command, tracebackID uuid.UUID) ErrorProhibitedCompression {
+func NewErrorProhibitedCompressionWithTracebackID(compression fields.Compression, command fields.Command, tracebackID fields.TracebackID) ErrorProhibitedCompression {
 	return ErrorProhibitedCompression{
 		compression: compression,
 		command:     command,
@@ -34,7 +32,7 @@ func NewErrorProhibitedCompressionWithTracebackID(compression fields.Compression
 	}
 }
 
-func (e ErrorProhibitedCompression) TracebackID() uuid.UUID {
+func (e ErrorProhibitedCompression) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -48,7 +46,7 @@ func (e ErrorProhibitedCompression) Code() err.Code {
 
 func (e ErrorProhibitedCompression) Encode(buf buffer.Appender) {
 	e.Code().Encode(buf)
-	buf.Append(e.tracebackID[:])
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorProhibitedCompression) Error() string {

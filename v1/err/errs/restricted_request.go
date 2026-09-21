@@ -6,7 +6,6 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/google/uuid"
 )
 
 var _ err.ProtocolError = ErrorRestrictedRequest{}
@@ -17,7 +16,7 @@ type ErrorRestrictedRequest struct {
 	key         []byte
 	command     fields.Command
 	requestID   fields.RequestID
-	tracebackID uuid.UUID
+	tracebackID fields.TracebackID
 }
 
 func NewErrorRestrictedRequest(id, source, key []byte, command fields.Command, requestID fields.RequestID) ErrorRestrictedRequest {
@@ -31,7 +30,7 @@ func NewErrorRestrictedRequest(id, source, key []byte, command fields.Command, r
 	}
 }
 
-func NewErrorRestrictedRequestWithTracebackID(id, source, key []byte, command fields.Command, requestID fields.RequestID, tracebackID uuid.UUID) ErrorRestrictedRequest {
+func NewErrorRestrictedRequestWithTracebackID(id, source, key []byte, command fields.Command, requestID fields.RequestID, tracebackID fields.TracebackID) ErrorRestrictedRequest {
 	return ErrorRestrictedRequest{
 		id:          id,
 		source:      source,
@@ -42,7 +41,7 @@ func NewErrorRestrictedRequestWithTracebackID(id, source, key []byte, command fi
 	}
 }
 
-func (e ErrorRestrictedRequest) TracebackID() uuid.UUID {
+func (e ErrorRestrictedRequest) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -56,7 +55,7 @@ func (e ErrorRestrictedRequest) Code() err.Code {
 
 func (e ErrorRestrictedRequest) Encode(buf buffer.Appender) {
 	e.Code().Encode(buf)
-	buf.Append(e.tracebackID[:])
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorRestrictedRequest) Error() string {

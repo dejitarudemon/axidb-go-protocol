@@ -3,8 +3,6 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
@@ -14,7 +12,7 @@ var _ err.ProtocolError = ErrorUnsupportedCompression{}
 
 type ErrorUnsupportedCompression struct {
 	compression fields.Compression
-	tracebackID uuid.UUID
+	tracebackID fields.TracebackID
 }
 
 func NewErrorUnsupportedCompression(compression fields.Compression) ErrorUnsupportedCompression {
@@ -24,14 +22,14 @@ func NewErrorUnsupportedCompression(compression fields.Compression) ErrorUnsuppo
 	}
 }
 
-func NewErrorUnsupportedCompressionWithTracebackID(compression fields.Compression, tracebackID uuid.UUID) ErrorUnsupportedCompression {
+func NewErrorUnsupportedCompressionWithTracebackID(compression fields.Compression, tracebackID fields.TracebackID) ErrorUnsupportedCompression {
 	return ErrorUnsupportedCompression{
 		compression: compression,
 		tracebackID: tracebackID,
 	}
 }
 
-func (e ErrorUnsupportedCompression) TracebackID() uuid.UUID {
+func (e ErrorUnsupportedCompression) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -45,7 +43,7 @@ func (e ErrorUnsupportedCompression) Code() err.Code {
 
 func (e ErrorUnsupportedCompression) Encode(buf buffer.Appender) {
 	e.Code().Encode(buf)
-	buf.Append(e.tracebackID[:])
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorUnsupportedCompression) Error() string {

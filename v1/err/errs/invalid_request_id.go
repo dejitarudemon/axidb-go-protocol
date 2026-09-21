@@ -3,8 +3,6 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
@@ -15,7 +13,7 @@ var _ err.ProtocolError = ErrorInvalidRequestID{}
 type ErrorInvalidRequestID struct {
 	command     fields.Command
 	requestID   fields.RequestID
-	tracebackID uuid.UUID
+	tracebackID fields.TracebackID
 }
 
 func NewErrorInvalidRequestID(command fields.Command, requestID fields.RequestID) ErrorInvalidRequestID {
@@ -26,7 +24,7 @@ func NewErrorInvalidRequestID(command fields.Command, requestID fields.RequestID
 	}
 }
 
-func NewErrorInvalidRequestIDWithTracebackID(command fields.Command, requestID fields.RequestID, tracebackID uuid.UUID) ErrorInvalidRequestID {
+func NewErrorInvalidRequestIDWithTracebackID(command fields.Command, requestID fields.RequestID, tracebackID fields.TracebackID) ErrorInvalidRequestID {
 	return ErrorInvalidRequestID{
 		command:     command,
 		requestID:   requestID,
@@ -34,7 +32,7 @@ func NewErrorInvalidRequestIDWithTracebackID(command fields.Command, requestID f
 	}
 }
 
-func (e ErrorInvalidRequestID) TracebackID() uuid.UUID {
+func (e ErrorInvalidRequestID) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -48,7 +46,7 @@ func (e ErrorInvalidRequestID) Code() err.Code {
 
 func (e ErrorInvalidRequestID) Encode(buf buffer.Appender) {
 	e.Code().Encode(buf)
-	buf.Append(e.tracebackID[:])
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorInvalidRequestID) Error() string {

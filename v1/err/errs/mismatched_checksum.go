@@ -3,10 +3,9 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorMismatchedChecksum{}
@@ -14,7 +13,7 @@ var _ err.ProtocolError = ErrorMismatchedChecksum{}
 type ErrorMismatchedChecksum struct {
 	got         uint32
 	expected    uint32
-	tracebackID uuid.UUID
+	tracebackID fields.TracebackID
 }
 
 func NewErrorMismatchedChecksum(got, expected uint32) ErrorMismatchedChecksum {
@@ -25,7 +24,7 @@ func NewErrorMismatchedChecksum(got, expected uint32) ErrorMismatchedChecksum {
 	}
 }
 
-func NewErrorMismatchedChecksumWithTracebackID(got, expected uint32, tracebackID uuid.UUID) ErrorMismatchedChecksum {
+func NewErrorMismatchedChecksumWithTracebackID(got, expected uint32, tracebackID fields.TracebackID) ErrorMismatchedChecksum {
 	return ErrorMismatchedChecksum{
 		got:         got,
 		expected:    expected,
@@ -33,7 +32,7 @@ func NewErrorMismatchedChecksumWithTracebackID(got, expected uint32, tracebackID
 	}
 }
 
-func (e ErrorMismatchedChecksum) TracebackID() uuid.UUID {
+func (e ErrorMismatchedChecksum) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -47,7 +46,7 @@ func (e ErrorMismatchedChecksum) Code() err.Code {
 
 func (e ErrorMismatchedChecksum) Encode(buf buffer.Appender) {
 	e.Code().Encode(buf)
-	buf.Append(e.tracebackID[:])
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorMismatchedChecksum) Error() string {

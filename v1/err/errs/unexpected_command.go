@@ -3,8 +3,6 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
@@ -15,7 +13,7 @@ var _ err.ProtocolError = ErrorUnexpectedCommand{}
 type ErrorUnexpectedCommand struct {
 	got         fields.Command
 	expected    fields.Command
-	tracebackID uuid.UUID
+	tracebackID fields.TracebackID
 }
 
 func NewErrorUnexpectedCommand(got, expected fields.Command) ErrorUnexpectedCommand {
@@ -26,7 +24,7 @@ func NewErrorUnexpectedCommand(got, expected fields.Command) ErrorUnexpectedComm
 	}
 }
 
-func NewErrorUnexpectedCommandWithTracebackID(got, expected fields.Command, tracebackID uuid.UUID) ErrorUnexpectedCommand {
+func NewErrorUnexpectedCommandWithTracebackID(got, expected fields.Command, tracebackID fields.TracebackID) ErrorUnexpectedCommand {
 	return ErrorUnexpectedCommand{
 		got:         got,
 		expected:    expected,
@@ -34,7 +32,7 @@ func NewErrorUnexpectedCommandWithTracebackID(got, expected fields.Command, trac
 	}
 }
 
-func (e ErrorUnexpectedCommand) TracebackID() uuid.UUID {
+func (e ErrorUnexpectedCommand) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -48,7 +46,7 @@ func (e ErrorUnexpectedCommand) Code() err.Code {
 
 func (e ErrorUnexpectedCommand) Encode(buf buffer.Appender) {
 	e.Code().Encode(buf)
-	buf.Append(e.tracebackID[:])
+	e.tracebackID.Encode(buf)
 	e.expected.Encode(buf)
 }
 

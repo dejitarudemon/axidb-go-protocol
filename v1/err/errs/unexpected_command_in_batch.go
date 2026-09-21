@@ -3,8 +3,6 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
@@ -17,7 +15,7 @@ const RequestNumberFieldSize = 4
 type ErrorUnexpectedCommandInBatch struct {
 	command       fields.Command
 	requestNumber fields.RequestNumber
-	tracebackID   uuid.UUID
+	tracebackID   fields.TracebackID
 }
 
 func NewErrorUnexpectedCommandInBatch(command fields.Command, requestNumber fields.RequestNumber) ErrorUnexpectedCommandInBatch {
@@ -28,7 +26,7 @@ func NewErrorUnexpectedCommandInBatch(command fields.Command, requestNumber fiel
 	}
 }
 
-func NewErrorUnexpectedCommandInBatchWithTracebackID(command fields.Command, requestNumber fields.RequestNumber, tracebackID uuid.UUID) ErrorUnexpectedCommandInBatch {
+func NewErrorUnexpectedCommandInBatchWithTracebackID(command fields.Command, requestNumber fields.RequestNumber, tracebackID fields.TracebackID) ErrorUnexpectedCommandInBatch {
 	return ErrorUnexpectedCommandInBatch{
 		command:       command,
 		requestNumber: requestNumber,
@@ -36,7 +34,7 @@ func NewErrorUnexpectedCommandInBatchWithTracebackID(command fields.Command, req
 	}
 }
 
-func (e ErrorUnexpectedCommandInBatch) TracebackID() uuid.UUID {
+func (e ErrorUnexpectedCommandInBatch) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -50,7 +48,7 @@ func (e ErrorUnexpectedCommandInBatch) Code() err.Code {
 
 func (e ErrorUnexpectedCommandInBatch) Encode(buf buffer.Appender) {
 	e.Code().Encode(buf)
-	buf.Append(e.tracebackID[:])
+	e.tracebackID.Encode(buf)
 	e.requestNumber.Encode(buf)
 }
 

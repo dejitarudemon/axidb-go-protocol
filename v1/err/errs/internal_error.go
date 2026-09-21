@@ -3,17 +3,16 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorInternalError{}
 
 type ErrorInternalError struct {
 	err         error
-	tracebackID uuid.UUID
+	tracebackID fields.TracebackID
 }
 
 func NewErrorInternalError(err error) ErrorInternalError {
@@ -23,14 +22,14 @@ func NewErrorInternalError(err error) ErrorInternalError {
 	}
 }
 
-func NewErrorInternalErrorWithTracebackID(err error, tracebackID uuid.UUID) ErrorInternalError {
+func NewErrorInternalErrorWithTracebackID(err error, tracebackID fields.TracebackID) ErrorInternalError {
 	return ErrorInternalError{
 		err:         err,
 		tracebackID: tracebackID,
 	}
 }
 
-func (e ErrorInternalError) TracebackID() uuid.UUID {
+func (e ErrorInternalError) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -44,7 +43,7 @@ func (e ErrorInternalError) Code() err.Code {
 
 func (e ErrorInternalError) Encode(buf buffer.Appender) {
 	e.Code().Encode(buf)
-	buf.Append(e.tracebackID[:])
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorInternalError) Error() string {
