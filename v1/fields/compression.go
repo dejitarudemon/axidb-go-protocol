@@ -1,11 +1,3 @@
-/*
-package compression предназначен для представления кодов
-сжатия (Compression) согласно спецификации протокола v1.
-
-Использование:
-
-	с = Compression(1)
-*/
 package fields
 
 import (
