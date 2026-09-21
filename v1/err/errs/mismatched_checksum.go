@@ -46,7 +46,7 @@ func (e ErrorMismatchedChecksum) Code() err.Code {
 }
 
 func (e ErrorMismatchedChecksum) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
+	e.Code().Encode(buf)
 	buf.Append(e.tracebackID[:])
 }
 

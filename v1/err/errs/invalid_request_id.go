@@ -14,11 +14,11 @@ var _ err.ProtocolError = ErrorInvalidRequestID{}
 
 type ErrorInvalidRequestID struct {
 	command     fields.Command
-	requestID   uint32
+	requestID   fields.RequestID
 	tracebackID uuid.UUID
 }
 
-func NewErrorInvalidRequestID(command fields.Command, requestID uint32) ErrorInvalidRequestID {
+func NewErrorInvalidRequestID(command fields.Command, requestID fields.RequestID) ErrorInvalidRequestID {
 	return ErrorInvalidRequestID{
 		command:     command,
 		requestID:   requestID,
@@ -26,7 +26,7 @@ func NewErrorInvalidRequestID(command fields.Command, requestID uint32) ErrorInv
 	}
 }
 
-func NewErrorInvalidRequestIDWithTracebackID(command fields.Command, requestID uint32, tracebackID uuid.UUID) ErrorInvalidRequestID {
+func NewErrorInvalidRequestIDWithTracebackID(command fields.Command, requestID fields.RequestID, tracebackID uuid.UUID) ErrorInvalidRequestID {
 	return ErrorInvalidRequestID{
 		command:     command,
 		requestID:   requestID,
@@ -47,7 +47,7 @@ func (e ErrorInvalidRequestID) Code() err.Code {
 }
 
 func (e ErrorInvalidRequestID) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
+	e.Code().Encode(buf)
 	buf.Append(e.tracebackID[:])
 }
 

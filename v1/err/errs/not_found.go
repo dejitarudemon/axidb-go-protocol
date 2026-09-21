@@ -43,7 +43,7 @@ func (e ErrorNotFound) Code() err.Code {
 }
 
 func (e ErrorNotFound) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
+	e.Code().Encode(buf)
 	buf.Append(e.tracebackID[:])
 }
 

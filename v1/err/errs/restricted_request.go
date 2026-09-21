@@ -16,11 +16,11 @@ type ErrorRestrictedRequest struct {
 	source      []byte
 	key         []byte
 	command     fields.Command
-	requestID   uint32
+	requestID   fields.RequestID
 	tracebackID uuid.UUID
 }
 
-func NewErrorRestrictedRequest(id, source, key []byte, command fields.Command, requestID uint32) ErrorRestrictedRequest {
+func NewErrorRestrictedRequest(id, source, key []byte, command fields.Command, requestID fields.RequestID) ErrorRestrictedRequest {
 	return ErrorRestrictedRequest{
 		id:          id,
 		source:      source,
@@ -31,7 +31,7 @@ func NewErrorRestrictedRequest(id, source, key []byte, command fields.Command, r
 	}
 }
 
-func NewErrorRestrictedRequestWithTracebackID(id, source, key []byte, command fields.Command, requestID uint32, tracebackID uuid.UUID) ErrorRestrictedRequest {
+func NewErrorRestrictedRequestWithTracebackID(id, source, key []byte, command fields.Command, requestID fields.RequestID, tracebackID uuid.UUID) ErrorRestrictedRequest {
 	return ErrorRestrictedRequest{
 		id:          id,
 		source:      source,
@@ -55,7 +55,7 @@ func (e ErrorRestrictedRequest) Code() err.Code {
 }
 
 func (e ErrorRestrictedRequest) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
+	e.Code().Encode(buf)
 	buf.Append(e.tracebackID[:])
 }
 

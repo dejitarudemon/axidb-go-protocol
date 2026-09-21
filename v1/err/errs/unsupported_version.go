@@ -7,23 +7,24 @@ import (
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorUnsupportedVersion{}
 
 type ErrorUnsupportedVersion struct {
-	got         uint8
+	got         fields.Version
 	tracebackID uuid.UUID
 }
 
-func NewErrorUnsupportedVersion(got uint8) ErrorUnsupportedVersion {
+func NewErrorUnsupportedVersion(got fields.Version) ErrorUnsupportedVersion {
 	return ErrorUnsupportedVersion{
 		got:         got,
 		tracebackID: generateNewTracebackID(),
 	}
 }
 
-func NewErrorUnsupportedVersionWithTracebackID(got uint8, tracebackID uuid.UUID) ErrorUnsupportedVersion {
+func NewErrorUnsupportedVersionWithTracebackID(got fields.Version, tracebackID uuid.UUID) ErrorUnsupportedVersion {
 	return ErrorUnsupportedVersion{
 		got:         got,
 		tracebackID: tracebackID,
@@ -43,7 +44,7 @@ func (e ErrorUnsupportedVersion) Code() err.Code {
 }
 
 func (e ErrorUnsupportedVersion) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
+	e.Code().Encode(buf)
 	buf.Append(e.tracebackID[:])
 }
 

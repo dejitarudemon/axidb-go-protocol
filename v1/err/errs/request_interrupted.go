@@ -7,23 +7,24 @@ import (
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorRequestInterrupted{}
 
 type ErrorRequestInterrupted struct {
-	interrupted uint32
+	interrupted fields.RequestID
 	tracebackID uuid.UUID
 }
 
-func NewErrorRequestInterrupted(interrupted uint32) ErrorRequestInterrupted {
+func NewErrorRequestInterrupted(interrupted fields.RequestID) ErrorRequestInterrupted {
 	return ErrorRequestInterrupted{
 		interrupted: interrupted,
 		tracebackID: generateNewTracebackID(),
 	}
 }
 
-func NewErrorRequestInterruptedWithTracebackID(interrupted uint32, tracebackID uuid.UUID) ErrorRequestInterrupted {
+func NewErrorRequestInterruptedWithTracebackID(interrupted fields.RequestID, tracebackID uuid.UUID) ErrorRequestInterrupted {
 	return ErrorRequestInterrupted{
 		interrupted: interrupted,
 		tracebackID: tracebackID,
@@ -43,7 +44,7 @@ func (e ErrorRequestInterrupted) Code() err.Code {
 }
 
 func (e ErrorRequestInterrupted) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
+	e.Code().Encode(buf)
 	buf.Append(e.tracebackID[:])
 }
 

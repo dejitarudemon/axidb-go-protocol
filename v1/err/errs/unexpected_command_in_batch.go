@@ -16,11 +16,11 @@ const RequestNumberFieldSize = 4
 
 type ErrorUnexpectedCommandInBatch struct {
 	command       fields.Command
-	requestNumber uint32
+	requestNumber fields.RequestNumber
 	tracebackID   uuid.UUID
 }
 
-func NewErrorUnexpectedCommandInBatch(command fields.Command, requestNumber uint32) ErrorUnexpectedCommandInBatch {
+func NewErrorUnexpectedCommandInBatch(command fields.Command, requestNumber fields.RequestNumber) ErrorUnexpectedCommandInBatch {
 	return ErrorUnexpectedCommandInBatch{
 		command:       command,
 		requestNumber: requestNumber,
@@ -28,7 +28,7 @@ func NewErrorUnexpectedCommandInBatch(command fields.Command, requestNumber uint
 	}
 }
 
-func NewErrorUnexpectedCommandInBatchWithTracebackID(command fields.Command, requestNumber uint32, tracebackID uuid.UUID) ErrorUnexpectedCommandInBatch {
+func NewErrorUnexpectedCommandInBatchWithTracebackID(command fields.Command, requestNumber fields.RequestNumber, tracebackID uuid.UUID) ErrorUnexpectedCommandInBatch {
 	return ErrorUnexpectedCommandInBatch{
 		command:       command,
 		requestNumber: requestNumber,
@@ -49,9 +49,9 @@ func (e ErrorUnexpectedCommandInBatch) Code() err.Code {
 }
 
 func (e ErrorUnexpectedCommandInBatch) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
+	e.Code().Encode(buf)
 	buf.Append(e.tracebackID[:])
-	buf.AppendUint32(e.requestNumber)
+	e.requestNumber.Encode(buf)
 }
 
 func (e ErrorUnexpectedCommandInBatch) Error() string {

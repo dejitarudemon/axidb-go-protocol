@@ -7,23 +7,24 @@ import (
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorRequestsConflict{}
 
 type ErrorRequestsConflict struct {
-	got         uint32
+	got         fields.RequestID
 	tracebackID uuid.UUID
 }
 
-func NewErrorRequestsConflict(got uint32) ErrorRequestsConflict {
+func NewErrorRequestsConflict(got fields.RequestID) ErrorRequestsConflict {
 	return ErrorRequestsConflict{
 		got:         got,
 		tracebackID: generateNewTracebackID(),
 	}
 }
 
-func NewErrorRequestsConflictWithTracebackID(got uint32, tracebackID uuid.UUID) ErrorRequestsConflict {
+func NewErrorRequestsConflictWithTracebackID(got fields.RequestID, tracebackID uuid.UUID) ErrorRequestsConflict {
 	return ErrorRequestsConflict{
 		got:         got,
 		tracebackID: tracebackID,
@@ -43,7 +44,7 @@ func (e ErrorRequestsConflict) Code() err.Code {
 }
 
 func (e ErrorRequestsConflict) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
+	e.Code().Encode(buf)
 	buf.Append(e.tracebackID[:])
 }
 
