@@ -11,12 +11,12 @@ import (
 var _ err.ProtocolError = ErrorMismatchedChecksum{}
 
 type ErrorMismatchedChecksum struct {
-	got         uint32
-	expected    uint32
+	got         fields.Checksum
+	expected    fields.Checksum
 	tracebackID fields.TracebackID
 }
 
-func NewErrorMismatchedChecksum(got, expected uint32) ErrorMismatchedChecksum {
+func NewErrorMismatchedChecksum(got, expected fields.Checksum) ErrorMismatchedChecksum {
 	return ErrorMismatchedChecksum{
 		got:         got,
 		expected:    expected,
@@ -24,7 +24,7 @@ func NewErrorMismatchedChecksum(got, expected uint32) ErrorMismatchedChecksum {
 	}
 }
 
-func NewErrorMismatchedChecksumWithTracebackID(got, expected uint32, tracebackID fields.TracebackID) ErrorMismatchedChecksum {
+func NewErrorMismatchedChecksumWithTracebackID(got, expected fields.Checksum, tracebackID fields.TracebackID) ErrorMismatchedChecksum {
 	return ErrorMismatchedChecksum{
 		got:         got,
 		expected:    expected,
