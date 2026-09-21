@@ -14,7 +14,7 @@ type ErrorNoHello struct {
 	tracebackID uuid.UUID
 }
 
-func NewErrorNoHello(msg string) ErrorNoHello {
+func NewErrorNoHello() ErrorNoHello {
 	return ErrorNoHello{
 		tracebackID: generateNewTracebackID(),
 	}
