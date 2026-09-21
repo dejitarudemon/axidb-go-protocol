@@ -99,19 +99,19 @@ func TestRequestsConflict_IsValid(t *testing.T) {
 	}{
 		{
 			ErrorRequestsConflict{0, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			true,
+			false,
 		},
 		{
 			ErrorRequestsConflict{1, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			true,
+			false,
 		},
 		{
 			ErrorRequestsConflict{math.MaxUint32, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			true,
+			false,
 		},
 		{
 			ErrorRequestsConflict{},
-			true,
+			false,
 		},
 	}
 
@@ -119,7 +119,7 @@ func TestRequestsConflict_IsValid(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("Test IsValid: %v", tt),
 			func(t *testing.T) {
-				if got := tt.e.IsValid(); got != tt.want {
+				if got := tt.e.IsValid(); got == nil == tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},

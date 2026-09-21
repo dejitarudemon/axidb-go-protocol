@@ -98,19 +98,19 @@ func TestMalformedValue_IsValid(t *testing.T) {
 	}{
 		{
 			ErrorMalformedValue{"", uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			true,
+			false,
 		},
 		{
 			ErrorMalformedValue{"a", uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			true,
+			false,
 		},
 		{
 			ErrorMalformedValue{"ф", uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			true,
+			false,
 		},
 		{
 			ErrorMalformedValue{},
-			true,
+			false,
 		},
 	}
 
@@ -118,7 +118,7 @@ func TestMalformedValue_IsValid(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("Test IsValid: %v", tt),
 			func(t *testing.T) {
-				if got := tt.e.IsValid(); got != tt.want {
+				if got := tt.e.IsValid(); got == nil == tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},

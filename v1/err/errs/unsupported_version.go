@@ -9,7 +9,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorUnsupportedVersion{}
+var _ err.ProtocolError = ErrorUnsupportedVersion{}
 
 type ErrorUnsupportedVersion struct {
 	got         uint8
@@ -44,6 +44,6 @@ func (e ErrorUnsupportedVersion) Error() string {
 	return fmt.Sprintf("%v %v: %v,", e.tracebackID, e.Code(), e.got)
 }
 
-func (e ErrorUnsupportedVersion) IsValid() bool {
-	return true
+func (e ErrorUnsupportedVersion) IsValid() error {
+	return nil
 }

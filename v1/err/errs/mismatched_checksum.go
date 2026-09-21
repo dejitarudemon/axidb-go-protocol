@@ -9,7 +9,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorMismatchedChecksum{}
+var _ err.ProtocolError = ErrorMismatchedChecksum{}
 
 type ErrorMismatchedChecksum struct {
 	got         uint32
@@ -46,6 +46,15 @@ func (e ErrorMismatchedChecksum) Error() string {
 	return fmt.Sprintf("%v %v: got %08X, expected %08X,", e.tracebackID, e.Code(), e.got, e.expected)
 }
 
-func (e ErrorMismatchedChecksum) IsValid() bool {
-	return e.expected != e.got
+func (e ErrorMismatchedChecksum) IsValid() error {
+	if e.expected == e.got {
+		return err.NewValidationError(
+			"checksums are equal",
+			"error", "ErrorMismatchedChecksum",
+			"expected", e.expected,
+			"got", e.got,
+			"tracebackID", e.tracebackID,
+		)
+	}
+	return nil
 }

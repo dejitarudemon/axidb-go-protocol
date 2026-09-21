@@ -124,47 +124,47 @@ func TestProhibitedCompression_IsValid(t *testing.T) {
 	}{
 		{
 			ErrorProhibitedCompression{compression.None, command.Handshake, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			false,
+			true,
 		},
 		{
 			ErrorProhibitedCompression{compression.Lz4, command.Read, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			false,
+			true,
 		},
 		{
 			ErrorProhibitedCompression{compression.Zstd, command.Write, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			false,
+			true,
 		},
 		{
 			ErrorProhibitedCompression{compression.Code(4), command.Delete, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04})},
-			false,
+			true,
 		},
 		{
 			ErrorProhibitedCompression{compression.None, command.Code(4), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05})},
-			false,
+			true,
 		},
 		{
 			ErrorProhibitedCompression{compression.Code(5), command.Code(5), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06})},
-			false,
+			true,
 		},
 		{
 			ErrorProhibitedCompression{compression.Code(255), command.Code(255), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07})},
-			false,
+			true,
 		},
 		{
 			ErrorProhibitedCompression{},
-			false,
+			true,
 		},
 		{
 			ErrorProhibitedCompression{compression.Lz4, command.Handshake, generateNewTracebackID()},
-			true,
+			false,
 		},
 		{
 			ErrorProhibitedCompression{compression.Zstd, command.Ping, generateNewTracebackID()},
-			true,
+			false,
 		},
 		{
 			ErrorProhibitedCompression{compression.None, command.Handshake, generateNewTracebackID()},
-			false,
+			true,
 		},
 		{
 			ErrorProhibitedCompression{compression.Code(255), command.Handshake, generateNewTracebackID()},
@@ -172,7 +172,7 @@ func TestProhibitedCompression_IsValid(t *testing.T) {
 		},
 		{
 			ErrorProhibitedCompression{},
-			false,
+			true,
 		},
 	}
 
@@ -180,7 +180,7 @@ func TestProhibitedCompression_IsValid(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("Test IsValid: %v", tt.e),
 			func(t *testing.T) {
-				if got := tt.e.IsValid(); got != tt.want {
+				if got := tt.e.IsValid(); got == nil == tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},

@@ -10,7 +10,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorInvalidRequestID{}
+var _ err.ProtocolError = ErrorInvalidRequestID{}
 
 type ErrorInvalidRequestID struct {
 	command     command.Code
@@ -47,17 +47,17 @@ func (e ErrorInvalidRequestID) Error() string {
 	return fmt.Sprintf("%v %v: invalid %v command for request id %v,", e.tracebackID, e.Code(), e.command, e.requestID)
 }
 
-func (e ErrorInvalidRequestID) IsValid() bool {
-	if !e.command.IsValid() {
-		return false
+// не проверяем команду, т.к. может быть кастомная
+func (e ErrorInvalidRequestID) IsValid() error {
+	if e.command == command.Handshake && e.requestID == 0 || e.command != command.Answer && e.requestID != 0 {
+		return err.NewValidationError(
+			"the request id is valid for the command",
+			"error", "ErrorInvalidRequestID",
+			"command", e.command,
+			"requestID", e.requestID,
+			"tracebackID", e.tracebackID,
+		)
 	}
 
-	switch e.command {
-	case command.Answer:
-		return true
-	case command.Handshake:
-		return e.requestID == 0
-	}
-
-	return e.requestID != 0
+	return nil
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorUnexpectedCommandInBatch{}
+var _ err.ProtocolError = ErrorUnexpectedCommandInBatch{}
 
 const RequestNumberFieldSize = 4
 
@@ -50,15 +50,12 @@ func (e ErrorUnexpectedCommandInBatch) Error() string {
 	return fmt.Sprintf("%v %v: got %v command for request id %v", e.tracebackID, e.Code(), e.command, e.requestNumber)
 }
 
-func (e ErrorUnexpectedCommandInBatch) IsValid() bool {
-	if !e.command.IsValid() {
-		return true
-	}
-
+// не проверяем команду на валидность, т.к. может быть кастомная
+func (e ErrorUnexpectedCommandInBatch) IsValid() error {
 	switch e.command {
 	case command.Read, command.Write, command.Delete:
-		return false
+		return NewErrorMalformedValue(fmt.Sprintf("%v command is avaliable for batch", e.command))
 	}
 
-	return true
+	return nil
 }

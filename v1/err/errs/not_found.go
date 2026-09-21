@@ -9,7 +9,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorNotFound{}
+var _ err.ProtocolError = ErrorNotFound{}
 
 type ErrorNotFound struct {
 	key         []byte
@@ -44,6 +44,9 @@ func (e ErrorNotFound) Error() string {
 	return fmt.Sprintf("%v %v: %q,", e.tracebackID, e.Code(), e.key)
 }
 
-func (e ErrorNotFound) IsValid() bool {
-	return len(e.key) > 0
+func (e ErrorNotFound) IsValid() error {
+	if len(e.key) == 0 {
+		return NewErrorMalformedValue("key is empty and it's prohibited. what did you expect")
+	}
+	return nil
 }

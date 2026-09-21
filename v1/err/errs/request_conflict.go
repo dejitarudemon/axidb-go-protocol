@@ -9,7 +9,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorRequestsConflict{}
+var _ err.ProtocolError = ErrorRequestsConflict{}
 
 type ErrorRequestsConflict struct {
 	got         uint32
@@ -44,6 +44,6 @@ func (e ErrorRequestsConflict) Error() string {
 	return fmt.Sprintf("%v %v: id %v,", e.tracebackID, e.Code(), e.got)
 }
 
-func (e ErrorRequestsConflict) IsValid() bool {
-	return true
+func (e ErrorRequestsConflict) IsValid() error {
+	return nil
 }

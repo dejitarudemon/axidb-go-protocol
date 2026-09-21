@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var _ err.Error = ErrorUnauthorized{}
+var _ err.ProtocolError = ErrorUnauthorized{}
 
 type ErrorUnauthorized struct {
 	source      []byte
@@ -43,6 +43,6 @@ func (e ErrorUnauthorized) Error() string {
 	return fmt.Sprintf("%v %v: from %v", e.tracebackID, e.Code(), e.source)
 }
 
-func (e ErrorUnauthorized) IsValid() bool {
-	return true
+func (e ErrorUnauthorized) IsValid() error {
+	return nil
 }
