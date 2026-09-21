@@ -8,19 +8,19 @@ import (
 )
 
 type Result struct {
-	Number uint32
+	Number fields.RequestNumber
 	Body   body.Body
 }
 
 func (r Result) Size() int {
 	if r.Body == nil {
-		return RequestNumberFieldSize + RequestNumberFieldSize
+		return RequestsLenFieldSize + fields.RequestNumberFieldSize
 	}
-	return RequestsLenFieldSize + RequestNumberFieldSize + r.Body.Size()
+	return RequestsLenFieldSize + fields.RequestNumberFieldSize + r.Body.Size()
 }
 
 func (r Result) Encode(buf buffer.Appender) {
-	buf.AppendUint32(r.Number)
+	r.Number.Encode(buf)
 
 	if r.Body != nil {
 		buf.AppendUint32(uint32(r.Body.Size()))
@@ -89,7 +89,7 @@ func (b BatchAnswer) IsValid() error {
 			"target", b.Command(),
 		)
 	}
-	used := make(map[uint32]int, len(b))
+	used := make(map[fields.RequestNumber]int, len(b))
 
 	for i, r := range b {
 		if err := r.IsValid(); err != nil {

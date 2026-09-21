@@ -29,8 +29,8 @@ func (w Write) Size() int {
 }
 
 func (w Write) Encode(buf buffer.Appender) {
-	buf.AppendUint32(uint32(len(w.Key)))
-	buf.Append(w.Key)
+	buf.AppendUint32(uint32(w.Key.Size()))
+	w.Key.Encode(buf)
 
 	if w.Value != nil {
 		w.Value.Type().Encode(buf)

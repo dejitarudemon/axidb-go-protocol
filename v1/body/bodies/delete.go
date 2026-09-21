@@ -9,16 +9,14 @@ import (
 
 var _ body.Body = Delete{}
 
-type Delete struct {
-	Key []byte
-}
+type Delete fields.Key
 
 func (d Delete) Size() int {
-	return len(d.Key)
+	return len(d)
 }
 
 func (d Delete) Encode(buf buffer.Appender) {
-	buf.Append(d.Key)
+	buf.Append(d)
 }
 
 func (d Delete) Command() fields.Command {
@@ -26,7 +24,7 @@ func (d Delete) Command() fields.Command {
 }
 
 func (d Delete) IsValid() error {
-	if len(d.Key) == 0 {
+	if len(d) == 0 {
 		return err.NewValidationError(
 			"empty key",
 			"target", d.Command(),

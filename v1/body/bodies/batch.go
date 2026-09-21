@@ -8,25 +8,24 @@ import (
 )
 
 const (
-	FlagsFieldSize         = 1
-	RequestNumberFieldSize = 4
-	RequestsLenFieldSize   = 4
+	FlagsFieldSize       = 1
+	RequestsLenFieldSize = 4
 )
 
 type Request struct {
-	Number uint32
+	Number fields.RequestNumber
 	Body   body.Body
 }
 
 func (r Request) Size() int {
 	if r.Body == nil {
-		return RequestNumberFieldSize + fields.CommandFieldSize + RequestNumberFieldSize
+		return fields.RequestNumberFieldSize + fields.CommandFieldSize + fields.RequestNumberFieldSize
 	}
-	return RequestNumberFieldSize + fields.CommandFieldSize + RequestNumberFieldSize + r.Body.Size()
+	return fields.RequestNumberFieldSize + fields.CommandFieldSize + fields.RequestNumberFieldSize + r.Body.Size()
 }
 
 func (r Request) Encode(buf buffer.Appender) {
-	buf.AppendUint32(r.Number)
+	r.Number.Encode(buf)
 
 	if r.Body != nil {
 		r.Body.Command().Encode(buf)
@@ -122,7 +121,7 @@ func (b Batch) IsValid() error {
 			"target", b.Command(),
 		)
 	}
-	used := make(map[uint32]int, len(b.Requests))
+	used := make(map[fields.RequestNumber]int, len(b.Requests))
 
 	for i, r := range b.Requests {
 		if err := r.IsValid(); err != nil {
