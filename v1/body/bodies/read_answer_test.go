@@ -7,7 +7,6 @@ import (
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
@@ -23,11 +22,10 @@ func TestReadAnswer_Size(t *testing.T) {
 		{
 			ReadAnswer{
 				values.UntypedArray{
-					Elems: []value.V{
-						values.Int(1),
-						values.String("hello world"),
-						values.Float(2.1),
-					},
+
+					values.Int(1),
+					values.String("hello world"),
+					values.Float(2.1),
 				},
 			}, 40,
 		},
@@ -57,11 +55,10 @@ func TestReadAnswer_Encode(t *testing.T) {
 		{
 			ReadAnswer{
 				values.UntypedArray{
-					Elems: []value.V{
-						values.Int(1),
-						values.String("hello world"),
-						values.Float(2.1),
-					},
+
+					values.Int(1),
+					values.String("hello world"),
+					values.Float(2.1),
 				},
 			},
 			[]byte{
@@ -108,11 +105,10 @@ func TestReadAnswer_Command(t *testing.T) {
 		{
 			ReadAnswer{
 				values.UntypedArray{
-					Elems: []value.V{
-						values.Int(1),
-						values.String("hello world"),
-						values.Float(2.1),
-					},
+
+					values.Int(1),
+					values.String("hello world"),
+					values.Float(2.1),
 				},
 			}, fields.Answer,
 		},
@@ -142,11 +138,10 @@ func TestReadAnswer_IsValid(t *testing.T) {
 		{
 			ReadAnswer{
 				values.UntypedArray{
-					Elems: []value.V{
-						values.Int(1),
-						values.String("hello world"),
-						values.Float(2.1),
-					},
+
+					values.Int(1),
+					values.String("hello world"),
+					values.Float(2.1),
 				},
 			}, false,
 		},
