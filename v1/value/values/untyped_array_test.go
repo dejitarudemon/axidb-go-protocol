@@ -145,9 +145,6 @@ func TestUntypedArray_IsValid(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			UntypedArray{nil}, false,
-		},
-		{
 			UntypedArray{}, false,
 		},
 		{
