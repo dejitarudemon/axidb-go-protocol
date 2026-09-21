@@ -30,7 +30,7 @@ func NewErrorInvalidRequestIDWithTracebackID(command command.Code, requestID uin
 	return ErrorInvalidRequestID{
 		command:     command,
 		requestID:   requestID,
-		tracebackID: generateNewTracebackID(),
+		tracebackID: tracebackID,
 	}
 }
 
@@ -57,7 +57,24 @@ func (e ErrorInvalidRequestID) Error() string {
 
 // не проверяем команду, т.к. может быть кастомная
 func (e ErrorInvalidRequestID) IsValid() error {
-	if e.command == command.Handshake && e.requestID == 0 || e.command != command.Answer && e.requestID != 0 {
+	if e.command == command.Answer {
+		return nil
+	}
+
+	if e.command == command.Handshake {
+		if e.requestID == 0 {
+			return err.NewValidationError(
+				"the request id is valid for the  command",
+				"error", "ErrorInvalidRequestID",
+				"command", e.command,
+				"requestID", e.requestID,
+				"tracebackID", e.tracebackID,
+			)
+		}
+		return nil
+	}
+
+	if e.requestID != 0 {
 		return err.NewValidationError(
 			"the request id is valid for the command",
 			"error", "ErrorInvalidRequestID",
