@@ -13,12 +13,12 @@ var _ err.ProtocolError = ErrorBatchLimitIsExceeded{}
 const CurrentBatchLimitFieldSize = 4
 
 type ErrorBatchLimitIsExceeded struct {
-	got         uint32
-	limit       uint32
+	got         fields.BatchLimit
+	limit       fields.BatchLimit
 	tracebackID fields.TracebackID
 }
 
-func NewErrorBatchLimitIsExceeded(got, limit uint32) ErrorBatchLimitIsExceeded {
+func NewErrorBatchLimitIsExceeded(got, limit fields.BatchLimit) ErrorBatchLimitIsExceeded {
 	return ErrorBatchLimitIsExceeded{
 		got:         got,
 		limit:       limit,
@@ -26,7 +26,7 @@ func NewErrorBatchLimitIsExceeded(got, limit uint32) ErrorBatchLimitIsExceeded {
 	}
 }
 
-func NewErrorBatchLimitIsExceededWithTracebackID(got, limit uint32, tracebackID fields.TracebackID) ErrorBatchLimitIsExceeded {
+func NewErrorBatchLimitIsExceededWithTracebackID(got, limit fields.BatchLimit, tracebackID fields.TracebackID) ErrorBatchLimitIsExceeded {
 	return ErrorBatchLimitIsExceeded{
 		got:         got,
 		limit:       limit,
@@ -49,7 +49,7 @@ func (e ErrorBatchLimitIsExceeded) Code() err.Code {
 func (e ErrorBatchLimitIsExceeded) Encode(buf buffer.Appender) {
 	e.Code().Encode(buf)
 	e.tracebackID.Encode(buf)
-	buf.AppendUint32(e.limit)
+	e.limit.Encode(buf)
 }
 
 func (e ErrorBatchLimitIsExceeded) Error() string {
