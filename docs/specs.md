@@ -1092,14 +1092,14 @@ Hex-версия:
 | 00 0A 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 ```
 
-что соответствует сообщению с ошибкой ([Not Found](#not-found)) и пустым Traceback. 
+что соответствует сообщению с ошибкой ([Not Found](#not-found)) и Traceback. 
 
 Пример Answer-запроса с Request ID = 1:
 
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 01 00 00 00 00 13 00 00 0A 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 FA E9 9D 20
+0A DB 01 01 00 00 00 01 00 00 00 00 13 00 00 0A 1E A7 B3 FC 3E 92 4D 58 AF F0 1D 32 51 24 73 5A A8 84 82 17
 
 Расшифровка:
 	Version: 1
@@ -1109,9 +1109,9 @@ Hex-версия:
 	Result: NOT OK
 	Error: 
 		Not Found
-		Traceback ID: -
+		Traceback ID: 1ea7b3fc-3e92-4d58-aff0-1d325124735a
 		Details: -
-	CheckSum: FA E9 9D 20
+	CheckSum: A8 84 82 17
 ```
 
 3. Неправильный запрос или внутренняя ошибка.
