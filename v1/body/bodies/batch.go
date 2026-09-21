@@ -5,7 +5,6 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 )
 
 const (
@@ -41,7 +40,11 @@ func (r Request) Encode(buf buffer.Appender) {
 
 func (r Request) IsValid() error {
 	if r.Body == nil {
-		return errs.NewErrorMalformedValue("expected request's Body, but got nil")
+		return err.NewValidationError(
+			"nil Body request",
+			"target", "BatchRequest",
+			"number", r.Number,
+		)
 	}
 
 	if err := r.Body.IsValid(); err != nil {
@@ -53,7 +56,12 @@ func (r Request) IsValid() error {
 		return nil
 	}
 
-	return errs.NewErrorUnexpectedCommandInBatch(r.Body.Command(), r.Number)
+	return err.NewValidationError(
+		"unexpected command in batch",
+		"target", "BatchRequest",
+		"number", r.Number,
+		"command", r.Body.Command(),
+	)
 }
 
 var _ body.Body = Batch{}
