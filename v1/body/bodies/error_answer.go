@@ -16,12 +16,17 @@ type ErrorAnswer struct {
 }
 
 func (e ErrorAnswer) Size() int {
-	return ResultFieldSize + e.Size()
+	if e.Err == nil {
+		return ResultFieldSize
+	}
+	return ResultFieldSize + e.Err.Size()
 }
 
 func (e ErrorAnswer) Encode(buf buffer.Appender) {
 	buf.Append(ResultNotOK)
-	e.Err.Encode(buf)
+	if e.Err != nil {
+		e.Err.Encode(buf)
+	}
 }
 
 func (e ErrorAnswer) Command() command.Code {
@@ -29,5 +34,11 @@ func (e ErrorAnswer) Command() command.Code {
 }
 
 func (e ErrorAnswer) IsValid() error {
-	return e.IsValid()
+	if e.Err == nil {
+		return err.NewValidationError(
+			"expected ProtocolError, but got nil",
+			"target", e.Command(),
+		)
+	}
+	return e.Err.IsValid()
 }
