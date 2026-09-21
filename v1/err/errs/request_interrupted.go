@@ -23,6 +23,13 @@ func NewErrorRequestInterrupted(interrupted uint32) ErrorRequestInterrupted {
 	}
 }
 
+func NewErrorRequestInterruptedWithTracebackID(interrupted uint32, tracebackID uuid.UUID) ErrorRequestInterrupted {
+	return ErrorRequestInterrupted{
+		interrupted: interrupted,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorRequestInterrupted) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

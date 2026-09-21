@@ -26,6 +26,14 @@ func NewErrorUnexpectedCommand(got, expected command.Code) ErrorUnexpectedComman
 	}
 }
 
+func NewErrorUnexpectedCommandWithTracebackID(got, expected command.Code, tracebackID uuid.UUID) ErrorUnexpectedCommand {
+	return ErrorUnexpectedCommand{
+		got:         got,
+		expected:    expected,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorUnexpectedCommand) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

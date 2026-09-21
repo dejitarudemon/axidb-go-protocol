@@ -24,6 +24,13 @@ func NewErrorUnsupportedCommand(got command.Code) ErrorUnsupportedCommand {
 	}
 }
 
+func NewErrorUnsupportedCommandWithTracebackID(got command.Code, tracebackID uuid.UUID) ErrorUnsupportedCommand {
+	return ErrorUnsupportedCommand{
+		got:         got,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorUnsupportedCommand) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

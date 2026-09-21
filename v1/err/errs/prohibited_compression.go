@@ -27,6 +27,14 @@ func NewErrorProhibitedCompression(compression compression.Code, command command
 	}
 }
 
+func NewErrorProhibitedCompressionWithTracebackID(compression compression.Code, command command.Code, tracebackID uuid.UUID) ErrorProhibitedCompression {
+	return ErrorProhibitedCompression{
+		compression: compression,
+		command:     command,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorProhibitedCompression) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

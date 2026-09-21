@@ -23,6 +23,13 @@ func NewErrorNotFound(key []byte) ErrorNotFound {
 	}
 }
 
+func NewErrorNotFoundWithTracebackID(key []byte, tracebackID uuid.UUID) ErrorNotFound {
+	return ErrorNotFound{
+		key:         key,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorNotFound) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

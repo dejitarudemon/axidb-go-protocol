@@ -22,6 +22,13 @@ func NewErrorMalformedValue(msg string) ErrorMalformedValue {
 	}
 }
 
+func NewErrorMalformedValueWithTracebackID(msg string, tracebackID uuid.UUID) ErrorMalformedValue {
+	return ErrorMalformedValue{
+		msg:         msg,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorMalformedValue) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

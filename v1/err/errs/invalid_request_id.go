@@ -26,6 +26,14 @@ func NewErrorInvalidRequestID(command command.Code, requestID uint32) ErrorInval
 	}
 }
 
+func NewErrorInvalidRequestIDWithTracebackID(command command.Code, requestID uint32, tracebackID uuid.UUID) ErrorInvalidRequestID {
+	return ErrorInvalidRequestID{
+		command:     command,
+		requestID:   requestID,
+		tracebackID: generateNewTracebackID(),
+	}
+}
+
 func (e ErrorInvalidRequestID) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

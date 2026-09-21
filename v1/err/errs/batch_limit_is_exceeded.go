@@ -27,6 +27,14 @@ func NewErrorBatchLimitIsExceeded(got, limit uint32) ErrorBatchLimitIsExceeded {
 	}
 }
 
+func NewErrorBatchLimitIsExceededWithTracebackID(got, limit uint32, tracebackID uuid.UUID) ErrorBatchLimitIsExceeded {
+	return ErrorBatchLimitIsExceeded{
+		got:         got,
+		limit:       limit,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorBatchLimitIsExceeded) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

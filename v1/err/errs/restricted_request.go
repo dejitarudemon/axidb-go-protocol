@@ -31,6 +31,17 @@ func NewErrorRestrictedRequest(id, source, key []byte, command command.Code, req
 	}
 }
 
+func NewErrorRestrictedRequestWithTracebackID(id, source, key []byte, command command.Code, requestID uint32, tracebackID uuid.UUID) ErrorRestrictedRequest {
+	return ErrorRestrictedRequest{
+		id:          id,
+		source:      source,
+		key:         key,
+		command:     command,
+		requestID:   requestID,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorRestrictedRequest) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

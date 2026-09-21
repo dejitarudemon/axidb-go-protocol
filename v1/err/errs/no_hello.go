@@ -20,6 +20,12 @@ func NewErrorNoHello() ErrorNoHello {
 	}
 }
 
+func NewErrorNoHelloWithTracebackID(tracebackID uuid.UUID) ErrorNoHello {
+	return ErrorNoHello{
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorNoHello) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

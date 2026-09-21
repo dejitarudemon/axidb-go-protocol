@@ -22,6 +22,13 @@ func NewErrorUnauthorized(source []byte) ErrorUnauthorized {
 	}
 }
 
+func NewErrorUnauthorizedWithTracebackID(source []byte, tracebackID uuid.UUID) ErrorUnauthorized {
+	return ErrorUnauthorized{
+		source:      source,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorUnauthorized) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

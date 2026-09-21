@@ -23,6 +23,13 @@ func NewErrorRequestsConflict(got uint32) ErrorRequestsConflict {
 	}
 }
 
+func NewErrorRequestsConflictWithTracebackID(got uint32, tracebackID uuid.UUID) ErrorRequestsConflict {
+	return ErrorRequestsConflict{
+		got:         got,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorRequestsConflict) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

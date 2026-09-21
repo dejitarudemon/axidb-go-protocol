@@ -25,6 +25,14 @@ func NewErrorMismatchedChecksum(got, expected uint32) ErrorMismatchedChecksum {
 	}
 }
 
+func NewErrorMismatchedChecksumWithTracebackID(got, expected uint32, tracebackID uuid.UUID) ErrorMismatchedChecksum {
+	return ErrorMismatchedChecksum{
+		got:         got,
+		expected:    expected,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorMismatchedChecksum) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

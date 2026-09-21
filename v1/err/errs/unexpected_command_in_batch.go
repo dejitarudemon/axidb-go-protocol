@@ -28,6 +28,14 @@ func NewErrorUnexpectedCommandInBatch(command command.Code, requestNumber uint32
 	}
 }
 
+func NewErrorUnexpectedCommandInBatchWithTracebackID(command command.Code, requestNumber uint32, tracebackID uuid.UUID) ErrorUnexpectedCommandInBatch {
+	return ErrorUnexpectedCommandInBatch{
+		command:       command,
+		requestNumber: requestNumber,
+		tracebackID:   tracebackID,
+	}
+}
+
 func (e ErrorUnexpectedCommandInBatch) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

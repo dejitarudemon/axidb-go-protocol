@@ -27,6 +27,14 @@ func NewErrorBodyLimitIsExceeded(got, limit uint32) ErrorBodyLimitIsExceeded {
 	}
 }
 
+func NewErrorBodyLimitIsExceededWithTracebackID(got, limit uint32, tracebackID uuid.UUID) ErrorBodyLimitIsExceeded {
+	return ErrorBodyLimitIsExceeded{
+		got:         got,
+		limit:       limit,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorBodyLimitIsExceeded) TracebackID() uuid.UUID {
 	return e.tracebackID
 }

@@ -23,6 +23,13 @@ func NewErrorInternalError(err error) ErrorInternalError {
 	}
 }
 
+func NewErrorInternalErrorWithTracebackID(err error, tracebackID uuid.UUID) ErrorInternalError {
+	return ErrorInternalError{
+		err:         err,
+		tracebackID: tracebackID,
+	}
+}
+
 func (e ErrorInternalError) TracebackID() uuid.UUID {
 	return e.tracebackID
 }
