@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorUnexpectedCommandInBatch{}
@@ -15,12 +15,12 @@ var _ err.ProtocolError = ErrorUnexpectedCommandInBatch{}
 const RequestNumberFieldSize = 4
 
 type ErrorUnexpectedCommandInBatch struct {
-	command       command.Code
+	command       fields.Command
 	requestNumber uint32
 	tracebackID   uuid.UUID
 }
 
-func NewErrorUnexpectedCommandInBatch(command command.Code, requestNumber uint32) ErrorUnexpectedCommandInBatch {
+func NewErrorUnexpectedCommandInBatch(command fields.Command, requestNumber uint32) ErrorUnexpectedCommandInBatch {
 	return ErrorUnexpectedCommandInBatch{
 		command:       command,
 		requestNumber: requestNumber,
@@ -28,7 +28,7 @@ func NewErrorUnexpectedCommandInBatch(command command.Code, requestNumber uint32
 	}
 }
 
-func NewErrorUnexpectedCommandInBatchWithTracebackID(command command.Code, requestNumber uint32, tracebackID uuid.UUID) ErrorUnexpectedCommandInBatch {
+func NewErrorUnexpectedCommandInBatchWithTracebackID(command fields.Command, requestNumber uint32, tracebackID uuid.UUID) ErrorUnexpectedCommandInBatch {
 	return ErrorUnexpectedCommandInBatch{
 		command:       command,
 		requestNumber: requestNumber,
@@ -61,7 +61,7 @@ func (e ErrorUnexpectedCommandInBatch) Error() string {
 // не проверяем команду на валидность, т.к. может быть кастомная
 func (e ErrorUnexpectedCommandInBatch) IsValid() error {
 	switch e.command {
-	case command.Read, command.Write, command.Delete:
+	case fields.Read, fields.Write, fields.Delete:
 		return err.NewValidationError(
 			"command is allowed for a batch",
 			"error", "ErrorUnexpectedCommandInBatch",

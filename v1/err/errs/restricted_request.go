@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/google/uuid"
 )
 
@@ -15,12 +15,12 @@ type ErrorRestrictedRequest struct {
 	id          []byte
 	source      []byte
 	key         []byte
-	command     command.Code
+	command     fields.Command
 	requestID   uint32
 	tracebackID uuid.UUID
 }
 
-func NewErrorRestrictedRequest(id, source, key []byte, command command.Code, requestID uint32) ErrorRestrictedRequest {
+func NewErrorRestrictedRequest(id, source, key []byte, command fields.Command, requestID uint32) ErrorRestrictedRequest {
 	return ErrorRestrictedRequest{
 		id:          id,
 		source:      source,
@@ -31,7 +31,7 @@ func NewErrorRestrictedRequest(id, source, key []byte, command command.Code, req
 	}
 }
 
-func NewErrorRestrictedRequestWithTracebackID(id, source, key []byte, command command.Code, requestID uint32, tracebackID uuid.UUID) ErrorRestrictedRequest {
+func NewErrorRestrictedRequestWithTracebackID(id, source, key []byte, command fields.Command, requestID uint32, tracebackID uuid.UUID) ErrorRestrictedRequest {
 	return ErrorRestrictedRequest{
 		id:          id,
 		source:      source,

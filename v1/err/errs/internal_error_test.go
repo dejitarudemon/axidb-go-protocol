@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/google/uuid"
 )
 
@@ -35,7 +35,7 @@ func TestInternalError_Size(t *testing.T) {
 	}
 }
 
-func TestInternalError_Code(t *testing.T) {
+func TestInternalError_Command(t *testing.T) {
 	tests := []struct {
 		e    ErrorInternalError
 		want err.Code
@@ -48,7 +48,7 @@ func TestInternalError_Code(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(
-			fmt.Sprintf("Test Code: %v", tt),
+			fmt.Sprintf("Test Command: %v", tt),
 			func(t *testing.T) {
 				if got := tt.e.Code(); got != tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
@@ -115,11 +115,11 @@ func TestInternalError_IsValid(t *testing.T) {
 			true,
 		},
 		{
-			ErrorInternalError{NewErrorUnsupportedCommand(command.Code(10)), generateNewTracebackID()},
+			ErrorInternalError{NewErrorUnsupportedCommand(fields.Command(10)), generateNewTracebackID()},
 			true,
 		},
 		{
-			ErrorInternalError{NewErrorUnsupportedCommand(command.Read), generateNewTracebackID()},
+			ErrorInternalError{NewErrorUnsupportedCommand(fields.Read), generateNewTracebackID()},
 			true,
 		},
 	}

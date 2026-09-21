@@ -6,19 +6,19 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorUnexpectedCommand{}
 
 type ErrorUnexpectedCommand struct {
-	got         command.Code
-	expected    command.Code
+	got         fields.Command
+	expected    fields.Command
 	tracebackID uuid.UUID
 }
 
-func NewErrorUnexpectedCommand(got, expected command.Code) ErrorUnexpectedCommand {
+func NewErrorUnexpectedCommand(got, expected fields.Command) ErrorUnexpectedCommand {
 	return ErrorUnexpectedCommand{
 		got:         got,
 		expected:    expected,
@@ -26,7 +26,7 @@ func NewErrorUnexpectedCommand(got, expected command.Code) ErrorUnexpectedComman
 	}
 }
 
-func NewErrorUnexpectedCommandWithTracebackID(got, expected command.Code, tracebackID uuid.UUID) ErrorUnexpectedCommand {
+func NewErrorUnexpectedCommandWithTracebackID(got, expected fields.Command, tracebackID uuid.UUID) ErrorUnexpectedCommand {
 	return ErrorUnexpectedCommand{
 		got:         got,
 		expected:    expected,
@@ -39,7 +39,7 @@ func (e ErrorUnexpectedCommand) TracebackID() uuid.UUID {
 }
 
 func (e ErrorUnexpectedCommand) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize + command.FieldSize
+	return err.FieldSize + err.TracebackIDFieldSize + fields.CommandFieldSize
 }
 
 func (e ErrorUnexpectedCommand) Code() err.Code {

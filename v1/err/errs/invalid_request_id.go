@@ -6,19 +6,19 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorInvalidRequestID{}
 
 type ErrorInvalidRequestID struct {
-	command     command.Code
+	command     fields.Command
 	requestID   uint32
 	tracebackID uuid.UUID
 }
 
-func NewErrorInvalidRequestID(command command.Code, requestID uint32) ErrorInvalidRequestID {
+func NewErrorInvalidRequestID(command fields.Command, requestID uint32) ErrorInvalidRequestID {
 	return ErrorInvalidRequestID{
 		command:     command,
 		requestID:   requestID,
@@ -26,7 +26,7 @@ func NewErrorInvalidRequestID(command command.Code, requestID uint32) ErrorInval
 	}
 }
 
-func NewErrorInvalidRequestIDWithTracebackID(command command.Code, requestID uint32, tracebackID uuid.UUID) ErrorInvalidRequestID {
+func NewErrorInvalidRequestIDWithTracebackID(command fields.Command, requestID uint32, tracebackID uuid.UUID) ErrorInvalidRequestID {
 	return ErrorInvalidRequestID{
 		command:     command,
 		requestID:   requestID,
@@ -57,11 +57,11 @@ func (e ErrorInvalidRequestID) Error() string {
 
 // не проверяем команду, т.к. может быть кастомная
 func (e ErrorInvalidRequestID) IsValid() error {
-	if e.command == command.Answer {
+	if e.command == fields.Answer {
 		return nil
 	}
 
-	if e.command == command.Handshake {
+	if e.command == fields.Handshake {
 		if e.requestID == 0 {
 			return err.NewValidationError(
 				"the request id is valid for the  command",
