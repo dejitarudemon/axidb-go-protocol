@@ -33,21 +33,24 @@ jobs:
       - name: test
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
-      - name: Generate HTML coverage
-        run: go tool cover -html=coverage.out -o coverage.html
+      - name: Get coverage percentage
+        id: coverage
+        run: |
+          pct=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
+          echo "pct=$pct" >> $GITHUB_OUTPUT
 
-      - name: Upload coverage HTML
-        uses: actions/upload-artifact@v4
+      - name: Update coverage badge
+        if: github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.7.0
         with:
-          name: coverage-html
-          path: coverage.html
-          retention-days: 7
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.out
-          fail_ci_if_error: false
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: d4908af19df5c45057d630931ab6b8a7
+          filename: coverage.json
+          label: coverage
+          message: ${{ steps.coverage.outputs.pct }}%
+          valColorRange: ${{ steps.coverage.outputs.pct }}
+          minColorRange: 50
+          maxColorRange: 90
 
       - name: Lint
         uses: golangci/golangci-lint-action@v9.3.0
