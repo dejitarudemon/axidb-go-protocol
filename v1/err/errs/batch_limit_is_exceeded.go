@@ -9,7 +9,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorBatchLimitIsExceeded{}
+var _ err.ProtocolError = ErrorBatchLimitIsExceeded{}
 
 const CurrentBatchLimitFieldSize = 4
 
@@ -24,6 +24,14 @@ func NewErrorBatchLimitIsExceeded(got, limit uint32) ErrorBatchLimitIsExceeded {
 		got:         got,
 		limit:       limit,
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorBatchLimitIsExceededWithTracebackID(got, limit uint32, tracebackID uuid.UUID) ErrorBatchLimitIsExceeded {
+	return ErrorBatchLimitIsExceeded{
+		got:         got,
+		limit:       limit,
+		tracebackID: tracebackID,
 	}
 }
 
@@ -46,9 +54,18 @@ func (e ErrorBatchLimitIsExceeded) Encode(buf buffer.Appender) {
 }
 
 func (e ErrorBatchLimitIsExceeded) Error() string {
-	return fmt.Sprintf("%v %v: got %v requests but limit is %v bytes,", e.tracebackID, e.Code(), e.got, e.limit)
+	return fmt.Sprintf("%v %v: got %v requests but limit is %v requests", e.tracebackID, e.Code(), e.got, e.limit)
 }
 
-func (e ErrorBatchLimitIsExceeded) IsValid() bool {
-	return e.got > e.limit
+func (e ErrorBatchLimitIsExceeded) IsValid() error {
+	if e.got <= e.limit {
+		return err.NewValidationError(
+			"got is not greater than limit",
+			"error", "ErrorBatchLimitIsExceeded",
+			"got", e.got,
+			"limit", e.limit,
+			"tracebackID", e.tracebackID,
+		)
+	}
+	return nil
 }

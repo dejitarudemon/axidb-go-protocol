@@ -2,7 +2,7 @@ package values
 
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
@@ -58,9 +58,12 @@ func (ua UntypedArray) Type() types.Code {
 }
 
 func (ua UntypedArray) IsValid() error {
-	for _, elem := range ua.Elems {
+	for i, elem := range ua.Elems {
 		if elem == nil {
-			return errs.NewErrorMalformedValue("expected value, got nil")
+			return err.NewValidationError(
+				"nil elem in UntypedArray",
+				"index", i,
+			)
 		}
 
 		if err := elem.IsValid(); err != nil {

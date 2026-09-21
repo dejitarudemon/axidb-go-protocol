@@ -10,7 +10,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorUnexpectedCommandInBatch{}
+var _ err.ProtocolError = ErrorUnexpectedCommandInBatch{}
 
 const RequestNumberFieldSize = 4
 
@@ -25,6 +25,14 @@ func NewErrorUnexpectedCommandInBatch(command command.Code, requestNumber uint32
 		command:       command,
 		requestNumber: requestNumber,
 		tracebackID:   generateNewTracebackID(),
+	}
+}
+
+func NewErrorUnexpectedCommandInBatchWithTracebackID(command command.Code, requestNumber uint32, tracebackID uuid.UUID) ErrorUnexpectedCommandInBatch {
+	return ErrorUnexpectedCommandInBatch{
+		command:       command,
+		requestNumber: requestNumber,
+		tracebackID:   tracebackID,
 	}
 }
 
@@ -50,15 +58,17 @@ func (e ErrorUnexpectedCommandInBatch) Error() string {
 	return fmt.Sprintf("%v %v: got %v command for request id %v", e.tracebackID, e.Code(), e.command, e.requestNumber)
 }
 
-func (e ErrorUnexpectedCommandInBatch) IsValid() bool {
-	if !e.command.IsValid() {
-		return true
-	}
-
+// не проверяем команду на валидность, т.к. может быть кастомная
+func (e ErrorUnexpectedCommandInBatch) IsValid() error {
 	switch e.command {
 	case command.Read, command.Write, command.Delete:
-		return false
+		return err.NewValidationError(
+			"command is allowed for a batch",
+			"error", "ErrorUnexpectedCommandInBatch",
+			"command", e.command,
+			"tracebackID", e.tracebackID,
+		)
 	}
 
-	return true
+	return nil
 }

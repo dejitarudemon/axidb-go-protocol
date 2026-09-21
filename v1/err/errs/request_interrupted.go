@@ -9,7 +9,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorRequestInterrupted{}
+var _ err.ProtocolError = ErrorRequestInterrupted{}
 
 type ErrorRequestInterrupted struct {
 	interrupted uint32
@@ -20,6 +20,13 @@ func NewErrorRequestInterrupted(interrupted uint32) ErrorRequestInterrupted {
 	return ErrorRequestInterrupted{
 		interrupted: interrupted,
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorRequestInterruptedWithTracebackID(interrupted uint32, tracebackID uuid.UUID) ErrorRequestInterrupted {
+	return ErrorRequestInterrupted{
+		interrupted: interrupted,
+		tracebackID: tracebackID,
 	}
 }
 
@@ -44,6 +51,6 @@ func (e ErrorRequestInterrupted) Error() string {
 	return fmt.Sprintf("%v %v: id %v,", e.tracebackID, e.Code(), e.interrupted)
 }
 
-func (e ErrorRequestInterrupted) IsValid() bool {
-	return true
+func (e ErrorRequestInterrupted) IsValid() error {
+	return nil
 }

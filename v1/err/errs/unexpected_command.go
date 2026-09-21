@@ -10,7 +10,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorUnexpectedCommand{}
+var _ err.ProtocolError = ErrorUnexpectedCommand{}
 
 type ErrorUnexpectedCommand struct {
 	got         command.Code
@@ -23,6 +23,14 @@ func NewErrorUnexpectedCommand(got, expected command.Code) ErrorUnexpectedComman
 		got:         got,
 		expected:    expected,
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorUnexpectedCommandWithTracebackID(got, expected command.Code, tracebackID uuid.UUID) ErrorUnexpectedCommand {
+	return ErrorUnexpectedCommand{
+		got:         got,
+		expected:    expected,
+		tracebackID: tracebackID,
 	}
 }
 
@@ -48,6 +56,15 @@ func (e ErrorUnexpectedCommand) Error() string {
 	return fmt.Sprintf("%v %v: got %v, expected %v", e.tracebackID, e.Code(), e.got, e.expected)
 }
 
-func (e ErrorUnexpectedCommand) IsValid() bool {
-	return e.expected.IsValid() && e.got.IsValid() && e.expected != e.got
+func (e ErrorUnexpectedCommand) IsValid() error {
+	if e.expected == e.got {
+		return err.NewValidationError(
+			"commands are equal",
+			"error", "ErrorUnexpectedCommand",
+			"expected", e.expected,
+			"got", e.got,
+			"tracebackID", e.tracebackID,
+		)
+	}
+	return nil
 }

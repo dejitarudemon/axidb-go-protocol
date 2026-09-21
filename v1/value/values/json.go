@@ -2,16 +2,20 @@ package values
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
 var _ value.V = JSON{}
 
-const JSONLenFieldSize = 4
+const (
+	JSONLenFieldSize       = 4
+	FirstSymbolsToShowJSON = 32
+)
 
 /*
 type JSON представляет собой JSON-документ
@@ -34,9 +38,18 @@ func (j JSON) Type() types.Code {
 
 func (j JSON) IsValid() error {
 	if ok := json.Valid(j); !ok {
-		return errs.NewErrorMalformedValue(
+		if len(j) <= FirstSymbolsToShowJSON {
+			return err.NewValidationError(
+				"invalid JSON format",
+				"value", j,
+			)
+		}
+
+		return err.NewValidationError(
 			"invalid JSON format",
+			"value", fmt.Sprintf("%q ... and %v symbols", j[:FirstSymbolsToShowJSON], len(j)-FirstSymbolsToShowJSON),
 		)
+
 	}
 
 	return nil

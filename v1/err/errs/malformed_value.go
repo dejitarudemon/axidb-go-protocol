@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var _ err.Error = ErrorMalformedValue{}
+var _ err.ProtocolError = ErrorMalformedValue{}
 
 type ErrorMalformedValue struct {
 	msg         string
@@ -19,6 +19,13 @@ func NewErrorMalformedValue(msg string) ErrorMalformedValue {
 	return ErrorMalformedValue{
 		msg:         msg,
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorMalformedValueWithTracebackID(msg string, tracebackID uuid.UUID) ErrorMalformedValue {
+	return ErrorMalformedValue{
+		msg:         msg,
+		tracebackID: tracebackID,
 	}
 }
 
@@ -44,6 +51,6 @@ func (e ErrorMalformedValue) Error() string {
 	return fmt.Sprintf("%v %v: %v", e.tracebackID, e.Code(), e.msg)
 }
 
-func (e ErrorMalformedValue) IsValid() bool {
-	return true
+func (e ErrorMalformedValue) IsValid() error {
+	return nil
 }

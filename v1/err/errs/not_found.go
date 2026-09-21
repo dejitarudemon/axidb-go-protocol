@@ -9,7 +9,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorNotFound{}
+var _ err.ProtocolError = ErrorNotFound{}
 
 type ErrorNotFound struct {
 	key         []byte
@@ -20,6 +20,13 @@ func NewErrorNotFound(key []byte) ErrorNotFound {
 	return ErrorNotFound{
 		key:         key,
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorNotFoundWithTracebackID(key []byte, tracebackID uuid.UUID) ErrorNotFound {
+	return ErrorNotFound{
+		key:         key,
+		tracebackID: tracebackID,
 	}
 }
 
@@ -44,6 +51,13 @@ func (e ErrorNotFound) Error() string {
 	return fmt.Sprintf("%v %v: %q,", e.tracebackID, e.Code(), e.key)
 }
 
-func (e ErrorNotFound) IsValid() bool {
-	return len(e.key) > 0
+func (e ErrorNotFound) IsValid() error {
+	if len(e.key) == 0 {
+		return err.NewValidationError(
+			"key is empty",
+			"error", "ErrorNotFound",
+			"tracebackID", e.tracebackID,
+		)
+	}
+	return nil
 }

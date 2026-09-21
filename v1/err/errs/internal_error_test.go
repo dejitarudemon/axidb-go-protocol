@@ -100,27 +100,27 @@ func TestInternalError_IsValid(t *testing.T) {
 	}{
 		{
 			ErrorInternalError{nil, uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			false,
+			true,
 		},
 		{
 			ErrorInternalError{errors.New(""), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			true,
+			false,
 		},
 		{
 			ErrorInternalError{errors.New("some-error"), uuid.UUID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			true,
+			false,
 		},
 		{
 			ErrorInternalError{},
-			false,
+			true,
 		},
 		{
 			ErrorInternalError{NewErrorUnsupportedCommand(command.Code(10)), generateNewTracebackID()},
-			false,
+			true,
 		},
 		{
 			ErrorInternalError{NewErrorUnsupportedCommand(command.Read), generateNewTracebackID()},
-			false,
+			true,
 		},
 	}
 
@@ -128,7 +128,7 @@ func TestInternalError_IsValid(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("Test IsValid: %v", tt.e),
 			func(t *testing.T) {
-				if got := tt.e.IsValid(); got != tt.want {
+				if got := tt.e.IsValid(); got == nil == tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},

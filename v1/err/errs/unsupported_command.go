@@ -10,7 +10,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorUnsupportedCommand{}
+var _ err.ProtocolError = ErrorUnsupportedCommand{}
 
 type ErrorUnsupportedCommand struct {
 	got         command.Code
@@ -21,6 +21,13 @@ func NewErrorUnsupportedCommand(got command.Code) ErrorUnsupportedCommand {
 	return ErrorUnsupportedCommand{
 		got:         got,
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorUnsupportedCommandWithTracebackID(got command.Code, tracebackID uuid.UUID) ErrorUnsupportedCommand {
+	return ErrorUnsupportedCommand{
+		got:         got,
+		tracebackID: tracebackID,
 	}
 }
 
@@ -45,7 +52,15 @@ func (e ErrorUnsupportedCommand) Error() string {
 	return fmt.Sprintf("%v %v: %v,", e.tracebackID, e.Code(), e.got)
 }
 
-func (e ErrorUnsupportedCommand) IsValid() bool {
+func (e ErrorUnsupportedCommand) IsValid() error {
 	// Реализующий протокол обязан реализовывать официальные команды.
-	return !e.got.IsValid()
+	if e.got.IsValid() {
+		return err.NewValidationError(
+			"command must be supported",
+			"error", "ErrorUnsupportedCommand",
+			"got", e.got,
+			"tracebackID", e.tracebackID,
+		)
+	}
+	return nil
 }

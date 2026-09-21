@@ -10,7 +10,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorUnsupportedCompression{}
+var _ err.ProtocolError = ErrorUnsupportedCompression{}
 
 type ErrorUnsupportedCompression struct {
 	compression compression.Code
@@ -21,6 +21,13 @@ func NewErrorUnsupportedCompression(compression compression.Code) ErrorUnsupport
 	return ErrorUnsupportedCompression{
 		compression: compression,
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorUnsupportedCompressionWithTracebackID(compression compression.Code, tracebackID uuid.UUID) ErrorUnsupportedCompression {
+	return ErrorUnsupportedCompression{
+		compression: compression,
+		tracebackID: tracebackID,
 	}
 }
 
@@ -45,6 +52,14 @@ func (e ErrorUnsupportedCompression) Error() string {
 	return fmt.Sprintf("%v %v: %v", e.tracebackID, e.Code(), e.compression)
 }
 
-func (e ErrorUnsupportedCompression) IsValid() bool {
-	return true
+func (e ErrorUnsupportedCompression) IsValid() error {
+	if e.compression == compression.None {
+		return err.NewValidationError(
+			"unsupported no compression",
+			"error", "ErrorUnsupportedCompression",
+			"tracebackID", e.tracebackID,
+		)
+	}
+
+	return nil
 }

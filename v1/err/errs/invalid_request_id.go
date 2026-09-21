@@ -10,7 +10,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorInvalidRequestID{}
+var _ err.ProtocolError = ErrorInvalidRequestID{}
 
 type ErrorInvalidRequestID struct {
 	command     command.Code
@@ -23,6 +23,14 @@ func NewErrorInvalidRequestID(command command.Code, requestID uint32) ErrorInval
 		command:     command,
 		requestID:   requestID,
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorInvalidRequestIDWithTracebackID(command command.Code, requestID uint32, tracebackID uuid.UUID) ErrorInvalidRequestID {
+	return ErrorInvalidRequestID{
+		command:     command,
+		requestID:   requestID,
+		tracebackID: tracebackID,
 	}
 }
 
@@ -47,17 +55,34 @@ func (e ErrorInvalidRequestID) Error() string {
 	return fmt.Sprintf("%v %v: invalid %v command for request id %v,", e.tracebackID, e.Code(), e.command, e.requestID)
 }
 
-func (e ErrorInvalidRequestID) IsValid() bool {
-	if !e.command.IsValid() {
-		return false
+// не проверяем команду, т.к. может быть кастомная
+func (e ErrorInvalidRequestID) IsValid() error {
+	if e.command == command.Answer {
+		return nil
 	}
 
-	switch e.command {
-	case command.Answer:
-		return true
-	case command.Handshake:
-		return e.requestID == 0
+	if e.command == command.Handshake {
+		if e.requestID == 0 {
+			return err.NewValidationError(
+				"the request id is valid for the  command",
+				"error", "ErrorInvalidRequestID",
+				"command", e.command,
+				"requestID", e.requestID,
+				"tracebackID", e.tracebackID,
+			)
+		}
+		return nil
 	}
 
-	return e.requestID != 0
+	if e.requestID != 0 {
+		return err.NewValidationError(
+			"the request id is valid for the command",
+			"error", "ErrorInvalidRequestID",
+			"command", e.command,
+			"requestID", e.requestID,
+			"tracebackID", e.tracebackID,
+		)
+	}
+
+	return nil
 }

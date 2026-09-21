@@ -9,7 +9,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorInternalError{}
+var _ err.ProtocolError = ErrorInternalError{}
 
 type ErrorInternalError struct {
 	err         error
@@ -20,6 +20,13 @@ func NewErrorInternalError(err error) ErrorInternalError {
 	return ErrorInternalError{
 		err:         err,
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorInternalErrorWithTracebackID(err error, tracebackID uuid.UUID) ErrorInternalError {
+	return ErrorInternalError{
+		err:         err,
+		tracebackID: tracebackID,
 	}
 }
 
@@ -48,8 +55,22 @@ func (e ErrorInternalError) Unwrap() error {
 	return e.err
 }
 
-func (e ErrorInternalError) IsValid() bool {
-	_, ok := e.err.(err.Error)
+func (e ErrorInternalError) IsValid() error {
+	if e.err == nil {
+		return err.NewValidationError(
+			"source error is nil",
+			"error", "ErrorInternalError",
+			"tracebackID", e.tracebackID,
+		)
+	}
+	if er, ok := e.err.(err.ProtocolError); ok {
+		return err.NewValidationError(
+			"source error is ProtocolError",
+			"error", "ErrorInternalError",
+			"source", er,
+			"tracebackID", e.tracebackID,
+		)
+	}
 
-	return !ok && e.err != nil
+	return nil
 }

@@ -8,15 +8,21 @@ import (
 	"github.com/google/uuid"
 )
 
-var _ err.Error = ErrorNoHello{}
+var _ err.ProtocolError = ErrorNoHello{}
 
 type ErrorNoHello struct {
 	tracebackID uuid.UUID
 }
 
-func NewErrorNoHello(msg string) ErrorNoHello {
+func NewErrorNoHello() ErrorNoHello {
 	return ErrorNoHello{
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorNoHelloWithTracebackID(tracebackID uuid.UUID) ErrorNoHello {
+	return ErrorNoHello{
+		tracebackID: tracebackID,
 	}
 }
 
@@ -41,6 +47,6 @@ func (e ErrorNoHello) Error() string {
 	return fmt.Sprintf("%v %v", e.tracebackID, e.Code())
 }
 
-func (e ErrorNoHello) IsValid() bool {
-	return true
+func (e ErrorNoHello) IsValid() error {
+	return nil
 }

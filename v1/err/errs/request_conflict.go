@@ -9,7 +9,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorRequestsConflict{}
+var _ err.ProtocolError = ErrorRequestsConflict{}
 
 type ErrorRequestsConflict struct {
 	got         uint32
@@ -20,6 +20,13 @@ func NewErrorRequestsConflict(got uint32) ErrorRequestsConflict {
 	return ErrorRequestsConflict{
 		got:         got,
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorRequestsConflictWithTracebackID(got uint32, tracebackID uuid.UUID) ErrorRequestsConflict {
+	return ErrorRequestsConflict{
+		got:         got,
+		tracebackID: tracebackID,
 	}
 }
 
@@ -44,6 +51,6 @@ func (e ErrorRequestsConflict) Error() string {
 	return fmt.Sprintf("%v %v: id %v,", e.tracebackID, e.Code(), e.got)
 }
 
-func (e ErrorRequestsConflict) IsValid() bool {
-	return true
+func (e ErrorRequestsConflict) IsValid() error {
+	return nil
 }

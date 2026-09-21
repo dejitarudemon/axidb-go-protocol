@@ -11,7 +11,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
-var _ err.Error = ErrorProhibitedCompression{}
+var _ err.ProtocolError = ErrorProhibitedCompression{}
 
 type ErrorProhibitedCompression struct {
 	compression compression.Code
@@ -24,6 +24,14 @@ func NewErrorProhibitedCompression(compression compression.Code, command command
 		compression: compression,
 		command:     command,
 		tracebackID: generateNewTracebackID(),
+	}
+}
+
+func NewErrorProhibitedCompressionWithTracebackID(compression compression.Code, command command.Code, tracebackID uuid.UUID) ErrorProhibitedCompression {
+	return ErrorProhibitedCompression{
+		compression: compression,
+		command:     command,
+		tracebackID: tracebackID,
 	}
 }
 
@@ -48,19 +56,27 @@ func (e ErrorProhibitedCompression) Error() string {
 	return fmt.Sprintf("%v %v: %v compression for %v command", e.tracebackID, e.Code(), e.compression, e.command)
 }
 
-func (e ErrorProhibitedCompression) IsValid() bool {
-	if !e.command.IsValid() || !e.compression.IsValid() {
-		return false
-	}
-
+// не проверяем команду и сжатие, т.к. могут быть кастомные.
+func (e ErrorProhibitedCompression) IsValid() error {
 	if e.compression == compression.None {
-		return false
+		return err.NewValidationError(
+			"no compression",
+			"error", "ErrorProhibitedCompression",
+			"tracebackID", e.tracebackID,
+		)
 	}
 
+	// некоторые ответы дб без сжатия.
 	switch e.command {
-	case command.Handshake, command.Ping:
-		return true
+	case command.Handshake, command.Ping, command.Answer:
+		return nil
 	}
 
-	return false
+	return err.NewValidationError(
+		"compression is allowed for command",
+		"error", "ErrorProhibitedCompression",
+		"compression", e.compression,
+		"command", e.command,
+		"tracebackID", e.tracebackID,
+	)
 }
