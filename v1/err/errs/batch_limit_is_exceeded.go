@@ -52,7 +52,7 @@ func (e ErrorBatchLimitIsExceeded) Error() string {
 func (e ErrorBatchLimitIsExceeded) IsValid() error {
 	if e.got <= e.limit {
 		return err.NewValidationError(
-			"limit is greater than got",
+			"got is not greater than limit",
 			"error", "ErrorBatchLimitIsExceeded",
 			"got", e.got,
 			"limit", e.limit,

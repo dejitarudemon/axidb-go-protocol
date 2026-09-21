@@ -52,7 +52,7 @@ func (e ErrorBodyLimitIsExceeded) Error() string {
 func (e ErrorBodyLimitIsExceeded) IsValid() error {
 	if e.got <= e.limit {
 		return err.NewValidationError(
-			"limit is greater than got",
+			"got is not greater than limit",
 			"error", "ErrorBodyLimitIsExceeded",
 			"got", e.got,
 			"limit", e.limit,
