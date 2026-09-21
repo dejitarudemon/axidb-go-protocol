@@ -1,10 +1,8 @@
 package values
 
 import (
-	"fmt"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
@@ -61,13 +59,19 @@ func (ta TypedArray) Type() types.Code {
 }
 
 func (ta TypedArray) IsValid() error {
-	for _, elem := range ta.Elems {
+	for i, elem := range ta.Elems {
 		if elem == nil {
-			return errs.NewErrorMalformedValue("expected value, got nil")
+			return err.NewValidationError(
+				"nil elem in TypedArray",
+				"index", i,
+			)
 		}
 		if elem.Type() != ta.ElemType {
-			return errs.NewErrorMalformedValue(
-				fmt.Sprintf("expected %v type, got %v", ta.ElemType, elem.Type()),
+			return err.NewValidationError(
+				"wrong elem's type in TypedArray",
+				"expected", ta.ElemType,
+				"got", elem.Type(),
+				"index", i,
 			)
 		}
 		if err := elem.IsValid(); err != nil {
