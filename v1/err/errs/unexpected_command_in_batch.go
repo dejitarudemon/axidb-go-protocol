@@ -54,7 +54,12 @@ func (e ErrorUnexpectedCommandInBatch) Error() string {
 func (e ErrorUnexpectedCommandInBatch) IsValid() error {
 	switch e.command {
 	case command.Read, command.Write, command.Delete:
-		return NewErrorMalformedValue(fmt.Sprintf("%v command is avaliable for batch", e.command))
+		return err.NewValidationError(
+			"command is allowed for a batch",
+			"error", "ErrorUnexpectedCommandInBatch",
+			"command", e.command,
+			"tracebackID", e.tracebackID,
+		)
 	}
 
 	return nil

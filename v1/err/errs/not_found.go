@@ -46,7 +46,11 @@ func (e ErrorNotFound) Error() string {
 
 func (e ErrorNotFound) IsValid() error {
 	if len(e.key) == 0 {
-		return NewErrorMalformedValue("key is empty and it's prohibited. what did you expect")
+		return err.NewValidationError(
+			"key is empty",
+			"error", "ErrorNotFound",
+			"tracebackID", e.tracebackID,
+		)
 	}
 	return nil
 }

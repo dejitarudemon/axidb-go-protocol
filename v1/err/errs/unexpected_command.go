@@ -50,7 +50,13 @@ func (e ErrorUnexpectedCommand) Error() string {
 
 func (e ErrorUnexpectedCommand) IsValid() error {
 	if e.expected == e.got {
-		return NewErrorMalformedValue(fmt.Sprintf("%v and %v are equal", e.expected, e.got))
+		return err.NewValidationError(
+			"commands are equal",
+			"error", "ErrorUnexpectedCommand",
+			"expected", e.expected,
+			"got", e.got,
+			"tracebackID", e.tracebackID,
+		)
 	}
 	return nil
 }

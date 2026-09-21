@@ -48,7 +48,12 @@ func (e ErrorUnsupportedCommand) Error() string {
 func (e ErrorUnsupportedCommand) IsValid() error {
 	// Реализующий протокол обязан реализовывать официальные команды.
 	if e.got.IsValid() {
-		return NewErrorMalformedValue(fmt.Sprintf("%v must be supported", e.got))
+		return err.NewValidationError(
+			"command must be supported",
+			"error", "ErrorUnsupportedCommand",
+			"got", e.got,
+			"tracebackID", e.tracebackID,
+		)
 	}
 	return nil
 }
