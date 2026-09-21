@@ -26,7 +26,7 @@ func NewErrorUnsupportedVersion(got uint8) ErrorUnsupportedVersion {
 func NewErrorUnsupportedVersionWithTracebackID(got uint8, tracebackID uuid.UUID) ErrorUnsupportedVersion {
 	return ErrorUnsupportedVersion{
 		got:         got,
-		tracebackID: generateNewTracebackID(),
+		tracebackID: tracebackID,
 	}
 }
 

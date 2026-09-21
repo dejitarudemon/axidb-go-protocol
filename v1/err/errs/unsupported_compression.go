@@ -27,7 +27,7 @@ func NewErrorUnsupportedCompression(compression compression.Code) ErrorUnsupport
 func NewErrorUnsupportedCompressionWithTracebackID(compression compression.Code, tracebackID uuid.UUID) ErrorUnsupportedCompression {
 	return ErrorUnsupportedCompression{
 		compression: compression,
-		tracebackID: generateNewTracebackID(),
+		tracebackID: tracebackID,
 	}
 }
 
