@@ -6,7 +6,7 @@ package compression предназначен для представления �
 
 	с = Code(1)
 */
-package compression
+package fields
 
 import (
 	"fmt"
