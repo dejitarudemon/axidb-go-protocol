@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch: 
 
 jobs:
   test:
@@ -32,13 +33,26 @@ jobs:
       - name: test
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
+      - name: Get coverage percentage
+        id: coverage
+        run: |
+          pct=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
+          echo "pct=$pct" >> $GITHUB_OUTPUT
+
+      - name: Update coverage badge
+        if: github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: d4908af19df5c45057d630931ab6b8a7
+          filename: coverage.json
+          label: coverage
+          message: ${{ steps.coverage.outputs.pct }}%
+          valColorRange: ${{ steps.coverage.outputs.pct }}
+          minColorRange: 50
+          maxColorRange: 90
+
       - name: Lint
         uses: golangci/golangci-lint-action@v9.3.0
         with:
           version: latest
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.out
-          fail_ci_if_error: false
