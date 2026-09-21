@@ -57,14 +57,12 @@ func (r Result) IsValid() error {
 
 var _ body.Body = BatchAnswer{}
 
-type BatchAnswer struct {
-	Results []Result
-}
+type BatchAnswer []Result
 
 func (b BatchAnswer) Size() int {
 	size := RequestsLenFieldSize + ResultFieldSize
 
-	for _, r := range b.Results {
+	for _, r := range b {
 		size += r.Size()
 	}
 
@@ -73,9 +71,9 @@ func (b BatchAnswer) Size() int {
 
 func (b BatchAnswer) Encode(buf buffer.Appender) {
 	buf.Append(ResultOK)
-	buf.AppendUint32(uint32(len(b.Results)))
+	buf.AppendUint32(uint32(len(b)))
 
-	for _, r := range b.Results {
+	for _, r := range b {
 		r.Encode(buf)
 	}
 }
@@ -85,15 +83,15 @@ func (b BatchAnswer) Command() fields.Command {
 }
 
 func (b BatchAnswer) IsValid() error {
-	if len(b.Results) == 0 {
+	if len(b) == 0 {
 		return err.NewValidationError(
 			"no results",
 			"target", b.Command(),
 		)
 	}
-	used := make(map[uint32]int, len(b.Results))
+	used := make(map[uint32]int, len(b))
 
-	for i, r := range b.Results {
+	for i, r := range b {
 		if err := r.IsValid(); err != nil {
 			return err
 		}
