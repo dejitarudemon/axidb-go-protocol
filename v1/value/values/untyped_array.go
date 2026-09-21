@@ -15,13 +15,11 @@ const UntypedArrayLenFieldSize = 4
 type UntypedArray представляет собой нетипизированную
 последовательность элементов из спецификации протокола v1.
 */
-type UntypedArray struct {
-	Elems []value.V
-}
+type UntypedArray []value.V
 
 func (ua UntypedArray) realLen() int {
 	realLen := 0
-	for _, elem := range ua.Elems {
+	for _, elem := range ua {
 		if elem != nil {
 			realLen += 1
 		}
@@ -33,7 +31,7 @@ func (ua UntypedArray) realLen() int {
 func (ua UntypedArray) Encode(buf buffer.Appender) {
 	buf.AppendUint32(uint32(ua.realLen()))
 
-	for _, elem := range ua.Elems {
+	for _, elem := range ua {
 		if elem != nil {
 			elem.Type().Encode(buf)
 			elem.Encode(buf)
@@ -44,7 +42,7 @@ func (ua UntypedArray) Encode(buf buffer.Appender) {
 func (ua UntypedArray) Size() int {
 	size := 0
 
-	for _, elem := range ua.Elems {
+	for _, elem := range ua {
 		if elem != nil {
 			size += elem.Size()
 		}
@@ -58,7 +56,7 @@ func (ua UntypedArray) Type() types.Code {
 }
 
 func (ua UntypedArray) IsValid() error {
-	for i, elem := range ua.Elems {
+	for i, elem := range ua {
 		if elem == nil {
 			return err.NewValidationError(
 				"nil elem in UntypedArray",
