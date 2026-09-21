@@ -46,5 +46,13 @@ func (e ErrorUnsupportedCompression) Error() string {
 }
 
 func (e ErrorUnsupportedCompression) IsValid() error {
+	if e.compression == compression.None {
+		return err.NewValidationError(
+			"unsupported no compression",
+			"error", "ErrorUnsupportedCompression",
+			"tracebackID", e.tracebackID,
+		)
+	}
+
 	return nil
 }
