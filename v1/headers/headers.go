@@ -2,8 +2,7 @@ package headers
 
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compression"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 const (
@@ -12,14 +11,14 @@ const (
 )
 
 type Headers struct {
-	Command     command.Code
+	Command     fields.Command
 	RequestID   uint32
-	Compression compression.Code
+	Compression fields.Compression
 	BodyLen     uint32
 }
 
 func (h Headers) Size() int {
-	return command.FieldSize + RequestIDFieldSize + compression.FieldSize + BodyLenFieldSize
+	return fields.CommandFieldSize + RequestIDFieldSize + fields.CompressionFieldSize + BodyLenFieldSize
 }
 
 func (h Headers) IsValid() error {

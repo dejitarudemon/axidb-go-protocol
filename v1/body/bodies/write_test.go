@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
@@ -88,14 +88,14 @@ func TestWrite_Encode(t *testing.T) {
 func TestWrite_Command(t *testing.T) {
 	tests := []struct {
 		w    Write
-		want command.Code
+		want fields.Command
 	}{
-		{Write{}, command.Write},
-		{Write{Key: []byte{0x00}}, command.Write},
-		{Write{Value: nil}, command.Write},
-		{Write{[]byte{0x00, 0x01}, values.Int(1)}, command.Write},
-		{Write{[]byte{0x00}, values.Bytes{}}, command.Write},
-		{Write{[]byte{0x0A, 0x0B}, values.Bytes([]byte{0x01, 0x01, 0x02, 0x03})}, command.Write},
+		{Write{}, fields.Write},
+		{Write{Key: []byte{0x00}}, fields.Write},
+		{Write{Value: nil}, fields.Write},
+		{Write{[]byte{0x00, 0x01}, values.Int(1)}, fields.Write},
+		{Write{[]byte{0x00}, values.Bytes{}}, fields.Write},
+		{Write{[]byte{0x0A, 0x0B}, values.Bytes([]byte{0x01, 0x01, 0x02, 0x03})}, fields.Write},
 	}
 
 	for _, tt := range tests {

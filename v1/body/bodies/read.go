@@ -3,8 +3,8 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ body.Body = Read{}
@@ -21,8 +21,8 @@ func (r Read) Encode(buf buffer.Appender) {
 	buf.Append(r.Key)
 }
 
-func (r Read) Command() command.Code {
-	return command.Read
+func (r Read) Command() fields.Command {
+	return fields.Read
 }
 
 func (r Read) IsValid() error {

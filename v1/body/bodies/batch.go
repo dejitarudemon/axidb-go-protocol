@@ -3,8 +3,8 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 const (
@@ -20,9 +20,9 @@ type Request struct {
 
 func (r Request) Size() int {
 	if r.Body == nil {
-		return RequestNumberFieldSize + command.FieldSize + RequestNumberFieldSize
+		return RequestNumberFieldSize + fields.CommandFieldSize + RequestNumberFieldSize
 	}
-	return RequestNumberFieldSize + command.FieldSize + RequestNumberFieldSize + r.Body.Size()
+	return RequestNumberFieldSize + fields.CommandFieldSize + RequestNumberFieldSize + r.Body.Size()
 }
 
 func (r Request) Encode(buf buffer.Appender) {
@@ -33,7 +33,7 @@ func (r Request) Encode(buf buffer.Appender) {
 		buf.AppendUint32(uint32(r.Body.Size()))
 		r.Body.Encode(buf)
 	} else {
-		command.Code(0).Encode(buf)
+		fields.Command(0).Encode(buf)
 		buf.AppendUint32(0)
 	}
 }
@@ -52,15 +52,15 @@ func (r Request) IsValid() error {
 	}
 
 	switch r.Body.Command() {
-	case command.Read, command.Write, command.Delete:
+	case fields.Read, fields.Write, fields.Delete:
 		return nil
 	}
 
 	return err.NewValidationError(
-		"unexpected command in batch",
+		"unexpected fields in batch",
 		"target", "BatchRequest",
 		"number", r.Number,
-		"command", r.Body.Command(),
+		"fields", r.Body.Command(),
 	)
 }
 
@@ -111,8 +111,8 @@ func (b Batch) Encode(buf buffer.Appender) {
 	}
 }
 
-func (b Batch) Command() command.Code {
-	return command.Batch
+func (b Batch) Command() fields.Command {
+	return fields.Batch
 }
 
 func (b Batch) IsValid() error {

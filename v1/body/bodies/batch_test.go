@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compression"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
@@ -22,7 +21,7 @@ func TestBatchReques_Size(t *testing.T) {
 		{Request{2, Read{[]byte("key")}}, 12},
 		{Request{3, Delete{[]byte("another-key")}}, 20},
 		{Request{4, Write{[]byte("key"), nil}}, 16},
-		{Request{5, Handshake{"user", [32]byte{}, []compression.Code{compression.None, compression.Lz4}}}, 52},
+		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.Lz4}}}, 52},
 		{Request{6, Ping{}}, 9},
 		{Request{7, Batch{}}, 14},
 	}
@@ -50,7 +49,7 @@ func TestRequest_Encode(t *testing.T) {
 		{Request{2, Read{[]byte("key")}}, []byte{0x00, 0x00, 0x00, 0x02, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79}},
 		{Request{3, Delete{[]byte("another-key")}}, []byte{0x00, 0x00, 0x00, 0x03, 0x04, 0x00, 0x00, 0x00, 0x0B, 0x61, 0x6E, 0x6F, 0x74, 0x68, 0x65, 0x72, 0x2D, 0x6B, 0x65, 0x79}},
 		{Request{4, Write{[]byte("key"), nil}}, []byte{0x00, 0x00, 0x00, 0x04, 0x03, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79}},
-		{Request{5, Handshake{"user", [32]byte{}, []compression.Code{compression.None, compression.Lz4}}}, []byte{
+		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.Lz4}}}, []byte{
 			0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x2B, 0x00, 0x00, 0x00, 0x04, 0x75, 0x73, 0x65,
 			0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -91,7 +90,7 @@ func TestRequest_IsValid(t *testing.T) {
 		{Request{2, Read{[]byte("key")}}, false},
 		{Request{3, Delete{[]byte("another-key")}}, false},
 		{Request{4, Write{[]byte("key"), nil}}, true},
-		{Request{5, Handshake{"user", [32]byte{}, []compression.Code{compression.None, compression.Lz4}}}, true},
+		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.Lz4}}}, true},
 		{Request{6, Ping{}}, true},
 		{Request{7, Batch{}}, true},
 		{Request{8, Write{[]byte("key"), values.Int(1)}}, false},
@@ -210,31 +209,31 @@ func TestBatch_Encode(t *testing.T) {
 func TestBatch_Command(t *testing.T) {
 	tests := []struct {
 		b    Batch
-		want command.Code
+		want fields.Command
 	}{
-		{Batch{}, command.Batch},
-		{Batch{false, false, false, []Request{}}, command.Batch},
-		{Batch{true, false, false, []Request{}}, command.Batch},
-		{Batch{false, true, false, []Request{}}, command.Batch},
-		{Batch{false, false, true, []Request{}}, command.Batch},
-		{Batch{false, false, true, []Request{{}}}, command.Batch},
-		{Batch{false, false, true, []Request{{0, nil}}}, command.Batch},
-		{Batch{false, false, true, []Request{{0, nil}}}, command.Batch},
-		{Batch{false, false, true, []Request{{0, Read{}}}}, command.Batch},
-		{Batch{false, false, true, []Request{{0, Read{[]byte("key")}}}}, command.Batch},
+		{Batch{}, fields.Batch},
+		{Batch{false, false, false, []Request{}}, fields.Batch},
+		{Batch{true, false, false, []Request{}}, fields.Batch},
+		{Batch{false, true, false, []Request{}}, fields.Batch},
+		{Batch{false, false, true, []Request{}}, fields.Batch},
+		{Batch{false, false, true, []Request{{}}}, fields.Batch},
+		{Batch{false, false, true, []Request{{0, nil}}}, fields.Batch},
+		{Batch{false, false, true, []Request{{0, nil}}}, fields.Batch},
+		{Batch{false, false, true, []Request{{0, Read{}}}}, fields.Batch},
+		{Batch{false, false, true, []Request{{0, Read{[]byte("key")}}}}, fields.Batch},
 		{Batch{false, false, true, []Request{
 			{0, Read{[]byte("key")}},
 			{0, Read{[]byte("yek")}},
-		}}, command.Batch},
+		}}, fields.Batch},
 		{Batch{false, false, true, []Request{
 			{0, Read{[]byte("key")}},
 			{1, Read{[]byte("yek")}},
-		}}, command.Batch},
+		}}, fields.Batch},
 		{Batch{false, false, true, []Request{
 			{0, Read{[]byte("key")}},
 			{1, Read{[]byte("yek")}},
 			{2, Ping{}},
-		}}, command.Batch},
+		}}, fields.Batch},
 	}
 
 	for _, tt := range tests {

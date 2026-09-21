@@ -6,7 +6,7 @@ package body
 
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 type Body interface {
@@ -27,7 +27,7 @@ type Body interface {
 	/*
 		Command возвращает код команды, к которому относится тело сообщения.
 	*/
-	Command() command.Code
+	Command() fields.Command
 
 	/*
 		IsValid возвращает валидность тела.

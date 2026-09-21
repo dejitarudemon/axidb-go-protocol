@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 func TestRead_Size(t *testing.T) {
@@ -65,12 +65,12 @@ func TestRead_Encode(t *testing.T) {
 func TestRead_Command(t *testing.T) {
 	tests := []struct {
 		r    Read
-		want command.Code
+		want fields.Command
 	}{
-		{Read{}, command.Read},
-		{Read{[]byte{0x00}}, command.Read},
-		{Read{[]byte("ab")}, command.Read},
-		{Read{[]byte("фи")}, command.Read},
+		{Read{}, fields.Read},
+		{Read{[]byte{0x00}}, fields.Read},
+		{Read{[]byte("ab")}, fields.Read},
+		{Read{[]byte("фи")}, fields.Read},
 	}
 
 	for _, tt := range tests {

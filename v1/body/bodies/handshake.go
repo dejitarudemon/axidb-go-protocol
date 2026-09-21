@@ -3,9 +3,8 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compression"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 const (
@@ -18,10 +17,10 @@ var _ body.Body = Handshake{}
 type Handshake struct {
 	Login        string
 	Hash         [32]byte
-	Compressions []compression.Code
+	Compressions []fields.Compression
 }
 
-func NewHandshake(login string, hash [32]byte, compressions []compression.Code) Handshake {
+func NewHandshake(login string, hash [32]byte, compressions []fields.Compression) Handshake {
 	return Handshake{
 		Login:        login,
 		Hash:         hash,
@@ -29,9 +28,9 @@ func NewHandshake(login string, hash [32]byte, compressions []compression.Code) 
 	}
 }
 
-func filter(compressions []compression.Code) []compression.Code {
-	filtered := make([]compression.Code, 0, len(compressions))
-	used := make(map[compression.Code]struct{}, len(compressions))
+func filter(compressions []fields.Compression) []fields.Compression {
+	filtered := make([]fields.Compression, 0, len(compressions))
+	used := make(map[fields.Compression]struct{}, len(compressions))
 
 	for _, compression := range compressions {
 		if _, ok := used[compression]; !ok {
@@ -46,7 +45,7 @@ func filter(compressions []compression.Code) []compression.Code {
 func (h Handshake) Size() int {
 	size := min(len(h.Compressions), MaxCompressionsPerOneHandshake)
 
-	return LoginLenFieldSize + cap(h.Hash) + len(h.Login) + compression.FieldSize + size*compression.FieldSize
+	return LoginLenFieldSize + cap(h.Hash) + len(h.Login) + fields.CompressionFieldSize + size*fields.CompressionFieldSize
 }
 
 func (h Handshake) Encode(buf buffer.Appender) {
@@ -55,24 +54,24 @@ func (h Handshake) Encode(buf buffer.Appender) {
 	buf.Append(h.Hash[:])
 	buf.AppendUint8(uint8(min(len(h.Compressions), MaxCompressionsPerOneHandshake)))
 
-	for i, compression := range h.Compressions {
+	for i, fields := range h.Compressions {
 		if i > MaxCompressionsPerOneHandshake {
 			break
 		}
 
-		compression.Encode(buf)
+		fields.Encode(buf)
 	}
 }
 
-func (h Handshake) Command() command.Code {
-	return command.Handshake
+func (h Handshake) Command() fields.Command {
+	return fields.Handshake
 }
 
 // Не проверяем Compression на валидность, т.к. по спеке могут быть кастомные алгоритмы.
 func (h Handshake) IsValid() error {
 	if len(h.Compressions) > MaxCompressionsPerOneHandshake {
 		return err.NewValidationError(
-			"too many compressions",
+			"too many fieldss",
 			"compressions", len(h.Compressions),
 			"target", h.Command(),
 		)

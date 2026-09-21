@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 func TestDelete_Size(t *testing.T) {
@@ -65,12 +65,12 @@ func TestDelete_Encode(t *testing.T) {
 func TestDelete_Command(t *testing.T) {
 	tests := []struct {
 		d    Delete
-		want command.Code
+		want fields.Command
 	}{
-		{Delete{}, command.Delete},
-		{Delete{[]byte{0x00}}, command.Delete},
-		{Delete{[]byte("ab")}, command.Delete},
-		{Delete{[]byte("фи")}, command.Delete},
+		{Delete{}, fields.Delete},
+		{Delete{[]byte{0x00}}, fields.Delete},
+		{Delete{[]byte("ab")}, fields.Delete},
+		{Delete{[]byte("фи")}, fields.Delete},
 	}
 
 	for _, tt := range tests {

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
@@ -251,30 +251,30 @@ func TestBatchAnswer_Encode(t *testing.T) {
 func TestBatchAnswer_Command(t *testing.T) {
 	tests := []struct {
 		b    BatchAnswer
-		want command.Code
+		want fields.Command
 	}{
-		{BatchAnswer{}, command.Answer},
-		{BatchAnswer{[]Result{}}, command.Answer},
-		{BatchAnswer{[]Result{{}}}, command.Answer},
-		{BatchAnswer{[]Result{{0, nil}}}, command.Answer},
-		{BatchAnswer{[]Result{{0, Read{}}}}, command.Answer},
-		{BatchAnswer{[]Result{{0, WriteAnswer{}}}}, command.Answer},
+		{BatchAnswer{}, fields.Answer},
+		{BatchAnswer{[]Result{}}, fields.Answer},
+		{BatchAnswer{[]Result{{}}}, fields.Answer},
+		{BatchAnswer{[]Result{{0, nil}}}, fields.Answer},
+		{BatchAnswer{[]Result{{0, Read{}}}}, fields.Answer},
+		{BatchAnswer{[]Result{{0, WriteAnswer{}}}}, fields.Answer},
 		{BatchAnswer{[]Result{
 			{0, WriteAnswer{}},
 			{0, DeleteAnswer{}},
-		}}, command.Answer},
+		}}, fields.Answer},
 		{BatchAnswer{[]Result{
 			{0, WriteAnswer{}},
 			{1, DeleteAnswer{}},
-		}}, command.Answer},
+		}}, fields.Answer},
 		{BatchAnswer{[]Result{
 			{1, ReadAnswer{Value: values.String("message")}},
 			{2, WriteAnswer{}},
-		}}, command.Answer},
+		}}, fields.Answer},
 		{BatchAnswer{[]Result{
 			{1, ErrorAnswer{errs.NewErrorInternalErrorWithTracebackID(errors.New(""), [16]byte{0xDA, 0xE1, 0x2F, 0x25, 0x35, 0x1B, 0x48, 0x75, 0x99, 0xDE, 0x1D, 0xF5, 0x2A, 0x76, 0x3F, 0x96})}},
 			{2, ErrorAnswer{errs.NewErrorRequestInterruptedWithTracebackID(2, [16]byte{0x77, 0xA5, 0x7D, 0x8E, 0xCC, 0x20, 0x40, 0x7F, 0x8C, 0x65, 0x5E, 0x94, 0x5F, 0xE2, 0xA8, 0x91})}},
-		}}, command.Answer},
+		}}, fields.Answer},
 	}
 
 	for _, tt := range tests {

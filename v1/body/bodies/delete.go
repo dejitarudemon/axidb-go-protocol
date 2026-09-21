@@ -3,8 +3,8 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ body.Body = Delete{}
@@ -21,8 +21,8 @@ func (d Delete) Encode(buf buffer.Appender) {
 	buf.Append(d.Key)
 }
 
-func (d Delete) Command() command.Code {
-	return command.Delete
+func (d Delete) Command() fields.Command {
+	return fields.Delete
 }
 
 func (d Delete) IsValid() error {

@@ -3,7 +3,7 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ body.Body = Ping{}
@@ -16,8 +16,8 @@ func (p Ping) Size() int {
 
 func (p Ping) Encode(buf buffer.Appender) {}
 
-func (p Ping) Command() command.Code {
-	return command.Ping
+func (p Ping) Command() fields.Command {
+	return fields.Ping
 }
 
 func (p Ping) IsValid() error {

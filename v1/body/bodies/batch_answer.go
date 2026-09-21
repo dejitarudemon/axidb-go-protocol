@@ -3,8 +3,8 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 type Result struct {
@@ -43,7 +43,7 @@ func (r Result) IsValid() error {
 		return err
 	}
 
-	if r.Body.Command() == command.Answer {
+	if r.Body.Command() == fields.Answer {
 		return nil
 	}
 
@@ -51,7 +51,7 @@ func (r Result) IsValid() error {
 		"not an answer in batch",
 		"target", "BatchResult",
 		"number", r.Number,
-		"command", r.Body.Command(),
+		"fields", r.Body.Command(),
 	)
 }
 
@@ -80,8 +80,8 @@ func (b BatchAnswer) Encode(buf buffer.Appender) {
 	}
 }
 
-func (b BatchAnswer) Command() command.Code {
-	return command.Answer
+func (b BatchAnswer) Command() fields.Command {
+	return fields.Answer
 }
 
 func (b BatchAnswer) IsValid() error {

@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compression"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 func TestHeaders_Size(t *testing.T) {
@@ -16,11 +15,11 @@ func TestHeaders_Size(t *testing.T) {
 		want int
 	}{
 		{Headers{}, 10},
-		{Headers{Compression: compression.Lz4}, 10},
-		{Headers{Command: command.Read}, 10},
+		{Headers{Compression: fields.Lz4}, 10},
+		{Headers{Command: fields.Read}, 10},
 		{Headers{BodyLen: 1}, 10},
 		{Headers{RequestID: 2}, 10},
-		{Headers{Compression: compression.Lz4, Command: command.Read, BodyLen: 2, RequestID: 1}, 10},
+		{Headers{Compression: fields.Lz4, Command: fields.Read, BodyLen: 2, RequestID: 1}, 10},
 	}
 
 	for _, tt := range tests {
@@ -45,11 +44,11 @@ func TestHeaders_Encode(t *testing.T) {
 			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			Headers{Compression: compression.Lz4},
+			Headers{Compression: fields.Lz4},
 			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			Headers{Command: command.Read},
+			Headers{Command: fields.Read},
 			[]byte{0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
@@ -61,7 +60,7 @@ func TestHeaders_Encode(t *testing.T) {
 			[]byte{0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			Headers{Compression: compression.Lz4, Command: command.Read, BodyLen: 2, RequestID: 1},
+			Headers{Compression: fields.Lz4, Command: fields.Read, BodyLen: 2, RequestID: 1},
 			[]byte{0x02, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x02},
 		},
 	}
@@ -91,11 +90,11 @@ func TestHeaders_IsValid(t *testing.T) {
 		want bool
 	}{
 		{Headers{}, false},
-		{Headers{Compression: compression.Lz4}, false},
-		{Headers{Command: command.Read}, false},
+		{Headers{Compression: fields.Lz4}, false},
+		{Headers{Command: fields.Read}, false},
 		{Headers{BodyLen: 1}, false},
 		{Headers{RequestID: 2}, false},
-		{Headers{Compression: compression.Lz4, Command: command.Read, BodyLen: 2, RequestID: 1}, false},
+		{Headers{Compression: fields.Lz4, Command: fields.Read, BodyLen: 2, RequestID: 1}, false},
 	}
 
 	for _, tt := range tests {
