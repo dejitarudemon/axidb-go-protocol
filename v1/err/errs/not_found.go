@@ -3,34 +3,33 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorNotFound{}
 
 type ErrorNotFound struct {
-	key         []byte
-	tracebackID uuid.UUID
+	key         fields.Key
+	tracebackID fields.TracebackID
 }
 
-func NewErrorNotFound(key []byte) ErrorNotFound {
+func NewErrorNotFound(key fields.Key) ErrorNotFound {
 	return ErrorNotFound{
 		key:         key,
 		tracebackID: generateNewTracebackID(),
 	}
 }
 
-func NewErrorNotFoundWithTracebackID(key []byte, tracebackID uuid.UUID) ErrorNotFound {
+func NewErrorNotFoundWithTracebackID(key fields.Key, tracebackID fields.TracebackID) ErrorNotFound {
 	return ErrorNotFound{
 		key:         key,
 		tracebackID: tracebackID,
 	}
 }
 
-func (e ErrorNotFound) TracebackID() uuid.UUID {
+func (e ErrorNotFound) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -43,8 +42,8 @@ func (e ErrorNotFound) Code() err.Code {
 }
 
 func (e ErrorNotFound) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorNotFound) Error() string {

@@ -3,18 +3,17 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compression"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ body.Body = HandshakeAnswer{}
 
 type HandshakeAnswer struct {
-	Compressions []compression.Code
+	Compressions []fields.Compression
 }
 
-func NewHandshakeAnswer(compressions []compression.Code) HandshakeAnswer {
+func NewHandshakeAnswer(compressions []fields.Compression) HandshakeAnswer {
 	return HandshakeAnswer{
 		Compressions: filter(compressions),
 	}
@@ -23,7 +22,7 @@ func NewHandshakeAnswer(compressions []compression.Code) HandshakeAnswer {
 func (h HandshakeAnswer) Size() int {
 	size := min(len(h.Compressions), MaxCompressionsPerOneHandshake)
 
-	return ResultFieldSize + compression.FieldSize + size*compression.FieldSize
+	return ResultFieldSize + fields.CompressionFieldSize + size*fields.CompressionFieldSize
 }
 
 func (h HandshakeAnswer) Encode(buf buffer.Appender) {
@@ -39,8 +38,8 @@ func (h HandshakeAnswer) Encode(buf buffer.Appender) {
 	}
 }
 
-func (h HandshakeAnswer) Command() command.Code {
-	return command.Answer
+func (h HandshakeAnswer) Command() fields.Command {
+	return fields.Answer
 }
 
 // Не проверяем Compression на валидность, т.к. по спеке могут быть кастомные алгоритмы.

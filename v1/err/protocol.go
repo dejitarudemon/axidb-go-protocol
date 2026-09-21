@@ -2,7 +2,7 @@ package err
 
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/google/uuid"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 /*
@@ -28,7 +28,7 @@ type ProtocolError interface {
 	/*
 		func TracebackID возвращает Traceback ID ошибки.
 	*/
-	TracebackID() uuid.UUID
+	TracebackID() fields.TracebackID
 
 	/*
 		func Encode предназначена для кодирования сообщения об ошибке

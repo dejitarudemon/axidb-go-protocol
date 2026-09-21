@@ -3,34 +3,33 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorUnsupportedVersion{}
 
 type ErrorUnsupportedVersion struct {
-	got         uint8
-	tracebackID uuid.UUID
+	got         fields.Version
+	tracebackID fields.TracebackID
 }
 
-func NewErrorUnsupportedVersion(got uint8) ErrorUnsupportedVersion {
+func NewErrorUnsupportedVersion(got fields.Version) ErrorUnsupportedVersion {
 	return ErrorUnsupportedVersion{
 		got:         got,
 		tracebackID: generateNewTracebackID(),
 	}
 }
 
-func NewErrorUnsupportedVersionWithTracebackID(got uint8, tracebackID uuid.UUID) ErrorUnsupportedVersion {
+func NewErrorUnsupportedVersionWithTracebackID(got fields.Version, tracebackID fields.TracebackID) ErrorUnsupportedVersion {
 	return ErrorUnsupportedVersion{
 		got:         got,
 		tracebackID: tracebackID,
 	}
 }
 
-func (e ErrorUnsupportedVersion) TracebackID() uuid.UUID {
+func (e ErrorUnsupportedVersion) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -43,8 +42,8 @@ func (e ErrorUnsupportedVersion) Code() err.Code {
 }
 
 func (e ErrorUnsupportedVersion) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorUnsupportedVersion) Error() string {

@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
@@ -23,11 +22,10 @@ func TestReadAnswer_Size(t *testing.T) {
 		{
 			ReadAnswer{
 				values.UntypedArray{
-					Elems: []value.V{
-						values.Int(1),
-						values.String("hello world"),
-						values.Float(2.1),
-					},
+
+					values.Int(1),
+					values.String("hello world"),
+					values.Float(2.1),
 				},
 			}, 40,
 		},
@@ -57,11 +55,10 @@ func TestReadAnswer_Encode(t *testing.T) {
 		{
 			ReadAnswer{
 				values.UntypedArray{
-					Elems: []value.V{
-						values.Int(1),
-						values.String("hello world"),
-						values.Float(2.1),
-					},
+
+					values.Int(1),
+					values.String("hello world"),
+					values.Float(2.1),
 				},
 			},
 			[]byte{
@@ -99,22 +96,21 @@ func TestReadAnswer_Encode(t *testing.T) {
 func TestReadAnswer_Command(t *testing.T) {
 	tests := []struct {
 		r    ReadAnswer
-		want command.Code
+		want fields.Command
 	}{
-		{ReadAnswer{}, command.Answer},
-		{ReadAnswer{values.Int(0)}, command.Answer},
-		{ReadAnswer{values.Bytes("data")}, command.Answer},
-		{ReadAnswer{values.String("some-data")}, command.Answer},
+		{ReadAnswer{}, fields.Answer},
+		{ReadAnswer{values.Int(0)}, fields.Answer},
+		{ReadAnswer{values.Bytes("data")}, fields.Answer},
+		{ReadAnswer{values.String("some-data")}, fields.Answer},
 		{
 			ReadAnswer{
 				values.UntypedArray{
-					Elems: []value.V{
-						values.Int(1),
-						values.String("hello world"),
-						values.Float(2.1),
-					},
+
+					values.Int(1),
+					values.String("hello world"),
+					values.Float(2.1),
 				},
-			}, command.Answer,
+			}, fields.Answer,
 		},
 	}
 
@@ -142,11 +138,10 @@ func TestReadAnswer_IsValid(t *testing.T) {
 		{
 			ReadAnswer{
 				values.UntypedArray{
-					Elems: []value.V{
-						values.Int(1),
-						values.String("hello world"),
-						values.Float(2.1),
-					},
+
+					values.Int(1),
+					values.String("hello world"),
+					values.Float(2.1),
 				},
 			}, false,
 		},

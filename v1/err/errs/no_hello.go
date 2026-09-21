@@ -5,13 +5,13 @@ import (
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/google/uuid"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorNoHello{}
 
 type ErrorNoHello struct {
-	tracebackID uuid.UUID
+	tracebackID fields.TracebackID
 }
 
 func NewErrorNoHello() ErrorNoHello {
@@ -20,13 +20,13 @@ func NewErrorNoHello() ErrorNoHello {
 	}
 }
 
-func NewErrorNoHelloWithTracebackID(tracebackID uuid.UUID) ErrorNoHello {
+func NewErrorNoHelloWithTracebackID(tracebackID fields.TracebackID) ErrorNoHello {
 	return ErrorNoHello{
 		tracebackID: tracebackID,
 	}
 }
 
-func (e ErrorNoHello) TracebackID() uuid.UUID {
+func (e ErrorNoHello) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -39,8 +39,8 @@ func (e ErrorNoHello) Code() err.Code {
 }
 
 func (e ErrorNoHello) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorNoHello) Error() string {

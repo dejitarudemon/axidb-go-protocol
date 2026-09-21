@@ -3,37 +3,36 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 const (
-	FlagsFieldSize         = 1
-	RequestNumberFieldSize = 4
-	RequestsLenFieldSize   = 4
+	FlagsFieldSize       = 1
+	RequestsLenFieldSize = 4
 )
 
 type Request struct {
-	Number uint32
+	Number fields.RequestNumber
 	Body   body.Body
 }
 
 func (r Request) Size() int {
 	if r.Body == nil {
-		return RequestNumberFieldSize + command.FieldSize + RequestNumberFieldSize
+		return fields.RequestNumberFieldSize + fields.CommandFieldSize + fields.RequestNumberFieldSize
 	}
-	return RequestNumberFieldSize + command.FieldSize + RequestNumberFieldSize + r.Body.Size()
+	return fields.RequestNumberFieldSize + fields.CommandFieldSize + fields.RequestNumberFieldSize + r.Body.Size()
 }
 
 func (r Request) Encode(buf buffer.Appender) {
-	buf.AppendUint32(r.Number)
+	r.Number.Encode(buf)
 
 	if r.Body != nil {
 		r.Body.Command().Encode(buf)
 		buf.AppendUint32(uint32(r.Body.Size()))
 		r.Body.Encode(buf)
 	} else {
-		command.Code(0).Encode(buf)
+		fields.Command(0).Encode(buf)
 		buf.AppendUint32(0)
 	}
 }
@@ -52,15 +51,15 @@ func (r Request) IsValid() error {
 	}
 
 	switch r.Body.Command() {
-	case command.Read, command.Write, command.Delete:
+	case fields.Read, fields.Write, fields.Delete:
 		return nil
 	}
 
 	return err.NewValidationError(
-		"unexpected command in batch",
+		"unexpected fields in batch",
 		"target", "BatchRequest",
 		"number", r.Number,
-		"command", r.Body.Command(),
+		"fields", r.Body.Command(),
 	)
 }
 
@@ -111,8 +110,8 @@ func (b Batch) Encode(buf buffer.Appender) {
 	}
 }
 
-func (b Batch) Command() command.Code {
-	return command.Batch
+func (b Batch) Command() fields.Command {
+	return fields.Batch
 }
 
 func (b Batch) IsValid() error {
@@ -122,7 +121,7 @@ func (b Batch) IsValid() error {
 			"target", b.Command(),
 		)
 	}
-	used := make(map[uint32]int, len(b.Requests))
+	used := make(map[fields.RequestNumber]int, len(b.Requests))
 
 	for i, r := range b.Requests {
 		if err := r.IsValid(); err != nil {

@@ -3,10 +3,9 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorBodyLimitIsExceeded{}
@@ -14,12 +13,12 @@ var _ err.ProtocolError = ErrorBodyLimitIsExceeded{}
 const CurrentBodyLimitFieldSize = 4
 
 type ErrorBodyLimitIsExceeded struct {
-	got         uint32
-	limit       uint32
-	tracebackID uuid.UUID
+	got         fields.BodyLimit
+	limit       fields.BodyLimit
+	tracebackID fields.TracebackID
 }
 
-func NewErrorBodyLimitIsExceeded(got, limit uint32) ErrorBodyLimitIsExceeded {
+func NewErrorBodyLimitIsExceeded(got, limit fields.BodyLimit) ErrorBodyLimitIsExceeded {
 	return ErrorBodyLimitIsExceeded{
 		got:         got,
 		limit:       limit,
@@ -27,7 +26,7 @@ func NewErrorBodyLimitIsExceeded(got, limit uint32) ErrorBodyLimitIsExceeded {
 	}
 }
 
-func NewErrorBodyLimitIsExceededWithTracebackID(got, limit uint32, tracebackID uuid.UUID) ErrorBodyLimitIsExceeded {
+func NewErrorBodyLimitIsExceededWithTracebackID(got, limit fields.BodyLimit, tracebackID fields.TracebackID) ErrorBodyLimitIsExceeded {
 	return ErrorBodyLimitIsExceeded{
 		got:         got,
 		limit:       limit,
@@ -35,7 +34,7 @@ func NewErrorBodyLimitIsExceededWithTracebackID(got, limit uint32, tracebackID u
 	}
 }
 
-func (e ErrorBodyLimitIsExceeded) TracebackID() uuid.UUID {
+func (e ErrorBodyLimitIsExceeded) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -48,9 +47,9 @@ func (e ErrorBodyLimitIsExceeded) Code() err.Code {
 }
 
 func (e ErrorBodyLimitIsExceeded) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
-	buf.AppendUint32(e.limit)
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
+	e.limit.Encode(buf)
 }
 
 func (e ErrorBodyLimitIsExceeded) Error() string {

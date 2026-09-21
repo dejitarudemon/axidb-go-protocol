@@ -5,14 +5,14 @@ import (
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/google/uuid"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorUnauthorized{}
 
 type ErrorUnauthorized struct {
 	source      []byte
-	tracebackID uuid.UUID
+	tracebackID fields.TracebackID
 }
 
 func NewErrorUnauthorized(source []byte) ErrorUnauthorized {
@@ -22,14 +22,14 @@ func NewErrorUnauthorized(source []byte) ErrorUnauthorized {
 	}
 }
 
-func NewErrorUnauthorizedWithTracebackID(source []byte, tracebackID uuid.UUID) ErrorUnauthorized {
+func NewErrorUnauthorizedWithTracebackID(source []byte, tracebackID fields.TracebackID) ErrorUnauthorized {
 	return ErrorUnauthorized{
 		source:      source,
 		tracebackID: tracebackID,
 	}
 }
 
-func (e ErrorUnauthorized) TracebackID() uuid.UUID {
+func (e ErrorUnauthorized) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -42,8 +42,8 @@ func (e ErrorUnauthorized) Code() err.Code {
 }
 
 func (e ErrorUnauthorized) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorUnauthorized) Error() string {

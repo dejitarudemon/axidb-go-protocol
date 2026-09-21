@@ -3,8 +3,8 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
@@ -16,7 +16,7 @@ const (
 var _ body.Body = Write{}
 
 type Write struct {
-	Key   []byte
+	Key   fields.Key
 	Value value.V
 }
 
@@ -29,8 +29,8 @@ func (w Write) Size() int {
 }
 
 func (w Write) Encode(buf buffer.Appender) {
-	buf.AppendUint32(uint32(len(w.Key)))
-	buf.Append(w.Key)
+	buf.AppendUint32(uint32(w.Key.Size()))
+	w.Key.Encode(buf)
 
 	if w.Value != nil {
 		w.Value.Type().Encode(buf)
@@ -38,8 +38,8 @@ func (w Write) Encode(buf buffer.Appender) {
 	}
 }
 
-func (w Write) Command() command.Code {
-	return command.Write
+func (w Write) Command() fields.Command {
+	return fields.Write
 }
 
 func (w Write) IsValid() error {

@@ -3,34 +3,33 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorRequestInterrupted{}
 
 type ErrorRequestInterrupted struct {
-	interrupted uint32
-	tracebackID uuid.UUID
+	interrupted fields.RequestID
+	tracebackID fields.TracebackID
 }
 
-func NewErrorRequestInterrupted(interrupted uint32) ErrorRequestInterrupted {
+func NewErrorRequestInterrupted(interrupted fields.RequestID) ErrorRequestInterrupted {
 	return ErrorRequestInterrupted{
 		interrupted: interrupted,
 		tracebackID: generateNewTracebackID(),
 	}
 }
 
-func NewErrorRequestInterruptedWithTracebackID(interrupted uint32, tracebackID uuid.UUID) ErrorRequestInterrupted {
+func NewErrorRequestInterruptedWithTracebackID(interrupted fields.RequestID, tracebackID fields.TracebackID) ErrorRequestInterrupted {
 	return ErrorRequestInterrupted{
 		interrupted: interrupted,
 		tracebackID: tracebackID,
 	}
 }
 
-func (e ErrorRequestInterrupted) TracebackID() uuid.UUID {
+func (e ErrorRequestInterrupted) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -43,8 +42,8 @@ func (e ErrorRequestInterrupted) Code() err.Code {
 }
 
 func (e ErrorRequestInterrupted) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorRequestInterrupted) Error() string {

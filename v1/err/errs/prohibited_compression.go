@@ -3,23 +3,20 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compression"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorProhibitedCompression{}
 
 type ErrorProhibitedCompression struct {
-	compression compression.Code
-	command     command.Code
-	tracebackID uuid.UUID
+	compression fields.Compression
+	command     fields.Command
+	tracebackID fields.TracebackID
 }
 
-func NewErrorProhibitedCompression(compression compression.Code, command command.Code) ErrorProhibitedCompression {
+func NewErrorProhibitedCompression(compression fields.Compression, command fields.Command) ErrorProhibitedCompression {
 	return ErrorProhibitedCompression{
 		compression: compression,
 		command:     command,
@@ -27,7 +24,7 @@ func NewErrorProhibitedCompression(compression compression.Code, command command
 	}
 }
 
-func NewErrorProhibitedCompressionWithTracebackID(compression compression.Code, command command.Code, tracebackID uuid.UUID) ErrorProhibitedCompression {
+func NewErrorProhibitedCompressionWithTracebackID(compression fields.Compression, command fields.Command, tracebackID fields.TracebackID) ErrorProhibitedCompression {
 	return ErrorProhibitedCompression{
 		compression: compression,
 		command:     command,
@@ -35,7 +32,7 @@ func NewErrorProhibitedCompressionWithTracebackID(compression compression.Code, 
 	}
 }
 
-func (e ErrorProhibitedCompression) TracebackID() uuid.UUID {
+func (e ErrorProhibitedCompression) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -48,8 +45,8 @@ func (e ErrorProhibitedCompression) Code() err.Code {
 }
 
 func (e ErrorProhibitedCompression) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorProhibitedCompression) Error() string {
@@ -58,7 +55,7 @@ func (e ErrorProhibitedCompression) Error() string {
 
 // не проверяем команду и сжатие, т.к. могут быть кастомные.
 func (e ErrorProhibitedCompression) IsValid() error {
-	if e.compression == compression.None {
+	if e.compression == fields.None {
 		return err.NewValidationError(
 			"no compression",
 			"error", "ErrorProhibitedCompression",
@@ -68,7 +65,7 @@ func (e ErrorProhibitedCompression) IsValid() error {
 
 	// некоторые ответы дб без сжатия.
 	switch e.command {
-	case command.Handshake, command.Ping, command.Answer:
+	case fields.Handshake, fields.Ping, fields.Answer:
 		return nil
 	}
 

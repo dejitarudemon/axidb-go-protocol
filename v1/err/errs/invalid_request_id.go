@@ -3,22 +3,20 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorInvalidRequestID{}
 
 type ErrorInvalidRequestID struct {
-	command     command.Code
-	requestID   uint32
-	tracebackID uuid.UUID
+	command     fields.Command
+	requestID   fields.RequestID
+	tracebackID fields.TracebackID
 }
 
-func NewErrorInvalidRequestID(command command.Code, requestID uint32) ErrorInvalidRequestID {
+func NewErrorInvalidRequestID(command fields.Command, requestID fields.RequestID) ErrorInvalidRequestID {
 	return ErrorInvalidRequestID{
 		command:     command,
 		requestID:   requestID,
@@ -26,7 +24,7 @@ func NewErrorInvalidRequestID(command command.Code, requestID uint32) ErrorInval
 	}
 }
 
-func NewErrorInvalidRequestIDWithTracebackID(command command.Code, requestID uint32, tracebackID uuid.UUID) ErrorInvalidRequestID {
+func NewErrorInvalidRequestIDWithTracebackID(command fields.Command, requestID fields.RequestID, tracebackID fields.TracebackID) ErrorInvalidRequestID {
 	return ErrorInvalidRequestID{
 		command:     command,
 		requestID:   requestID,
@@ -34,7 +32,7 @@ func NewErrorInvalidRequestIDWithTracebackID(command command.Code, requestID uin
 	}
 }
 
-func (e ErrorInvalidRequestID) TracebackID() uuid.UUID {
+func (e ErrorInvalidRequestID) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -47,8 +45,8 @@ func (e ErrorInvalidRequestID) Code() err.Code {
 }
 
 func (e ErrorInvalidRequestID) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorInvalidRequestID) Error() string {
@@ -57,11 +55,11 @@ func (e ErrorInvalidRequestID) Error() string {
 
 // не проверяем команду, т.к. может быть кастомная
 func (e ErrorInvalidRequestID) IsValid() error {
-	if e.command == command.Answer {
+	if e.command == fields.Answer {
 		return nil
 	}
 
-	if e.command == command.Handshake {
+	if e.command == fields.Handshake {
 		if e.requestID == 0 {
 			return err.NewValidationError(
 				"the request id is valid for the  command",

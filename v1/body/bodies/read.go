@@ -3,30 +3,28 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ body.Body = Read{}
 
-type Read struct {
-	Key []byte
-}
+type Read fields.Key
 
 func (r Read) Size() int {
-	return len(r.Key)
+	return len(r)
 }
 
 func (r Read) Encode(buf buffer.Appender) {
-	buf.Append(r.Key)
+	buf.Append(r)
 }
 
-func (r Read) Command() command.Code {
-	return command.Read
+func (r Read) Command() fields.Command {
+	return fields.Read
 }
 
 func (r Read) IsValid() error {
-	if len(r.Key) == 0 {
+	if len(r) == 0 {
 		return err.NewValidationError(
 			"empty key",
 			"target", r.Command(),

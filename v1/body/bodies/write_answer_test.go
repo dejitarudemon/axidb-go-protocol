@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 func TestWriteAnswer_Size(t *testing.T) {
@@ -59,9 +59,9 @@ func TestWriteAnswer_Encode(t *testing.T) {
 func TestWriteAnswer_Command(t *testing.T) {
 	tests := []struct {
 		w    WriteAnswer
-		want command.Code
+		want fields.Command
 	}{
-		{WriteAnswer{}, command.Answer},
+		{WriteAnswer{}, fields.Answer},
 	}
 
 	for _, tt := range tests {

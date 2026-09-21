@@ -3,30 +3,28 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ body.Body = Delete{}
 
-type Delete struct {
-	Key []byte
-}
+type Delete fields.Key
 
 func (d Delete) Size() int {
-	return len(d.Key)
+	return len(d)
 }
 
 func (d Delete) Encode(buf buffer.Appender) {
-	buf.Append(d.Key)
+	buf.Append(d)
 }
 
-func (d Delete) Command() command.Code {
-	return command.Delete
+func (d Delete) Command() fields.Command {
+	return fields.Delete
 }
 
 func (d Delete) IsValid() error {
-	if len(d.Key) == 0 {
+	if len(d) == 0 {
 		return err.NewValidationError(
 			"empty key",
 			"target", d.Command(),

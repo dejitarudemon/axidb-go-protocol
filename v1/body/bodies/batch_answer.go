@@ -3,24 +3,24 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 type Result struct {
-	Number uint32
+	Number fields.RequestNumber
 	Body   body.Body
 }
 
 func (r Result) Size() int {
 	if r.Body == nil {
-		return RequestNumberFieldSize + RequestNumberFieldSize
+		return RequestsLenFieldSize + fields.RequestNumberFieldSize
 	}
-	return RequestsLenFieldSize + RequestNumberFieldSize + r.Body.Size()
+	return RequestsLenFieldSize + fields.RequestNumberFieldSize + r.Body.Size()
 }
 
 func (r Result) Encode(buf buffer.Appender) {
-	buf.AppendUint32(r.Number)
+	r.Number.Encode(buf)
 
 	if r.Body != nil {
 		buf.AppendUint32(uint32(r.Body.Size()))
@@ -43,7 +43,7 @@ func (r Result) IsValid() error {
 		return err
 	}
 
-	if r.Body.Command() == command.Answer {
+	if r.Body.Command() == fields.Answer {
 		return nil
 	}
 
@@ -51,20 +51,18 @@ func (r Result) IsValid() error {
 		"not an answer in batch",
 		"target", "BatchResult",
 		"number", r.Number,
-		"command", r.Body.Command(),
+		"fields", r.Body.Command(),
 	)
 }
 
 var _ body.Body = BatchAnswer{}
 
-type BatchAnswer struct {
-	Results []Result
-}
+type BatchAnswer []Result
 
 func (b BatchAnswer) Size() int {
 	size := RequestsLenFieldSize + ResultFieldSize
 
-	for _, r := range b.Results {
+	for _, r := range b {
 		size += r.Size()
 	}
 
@@ -73,27 +71,27 @@ func (b BatchAnswer) Size() int {
 
 func (b BatchAnswer) Encode(buf buffer.Appender) {
 	buf.Append(ResultOK)
-	buf.AppendUint32(uint32(len(b.Results)))
+	buf.AppendUint32(uint32(len(b)))
 
-	for _, r := range b.Results {
+	for _, r := range b {
 		r.Encode(buf)
 	}
 }
 
-func (b BatchAnswer) Command() command.Code {
-	return command.Answer
+func (b BatchAnswer) Command() fields.Command {
+	return fields.Answer
 }
 
 func (b BatchAnswer) IsValid() error {
-	if len(b.Results) == 0 {
+	if len(b) == 0 {
 		return err.NewValidationError(
 			"no results",
 			"target", b.Command(),
 		)
 	}
-	used := make(map[uint32]int, len(b.Results))
+	used := make(map[fields.RequestNumber]int, len(b))
 
-	for i, r := range b.Results {
+	for i, r := range b {
 		if err := r.IsValid(); err != nil {
 			return err
 		}

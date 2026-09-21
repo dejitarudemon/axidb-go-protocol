@@ -1,13 +1,9 @@
 /*
-package command предназначен для представления кодов
-команд (Command) согласно спецификации протокола v1.
-
-Использование:
-
-	с = Code(1)
+package field предназначен для представления различных кодов и полей
+согласно спецификации протокола v1.
 */
 
-package command
+package fields
 
 import (
 	"fmt"
@@ -16,23 +12,23 @@ import (
 )
 
 /*
-type Code предназначен для хранения
+type Command предназначен для хранения
 кода команды, его валидации и кодирования в сообщение.
 */
-type Code uint8
+type Command uint8
 
 /*
 FieldSize представляет размер в байтах,
 отведенный для хранения кода команды в сообщении.
 */
-const FieldSize = 1
+const CommandFieldSize = 1
 
 /*
 Константы, представляющие команды,
 используемые в спецификации протокола v1.
 */
 const (
-	Handshake Code = iota
+	Handshake Command = iota
 	Answer
 	Read
 	Write
@@ -48,7 +44,7 @@ func Encode предназначена для кодирования кода к
 Принимааемые параметры:
   - buf buffer.Appender - буфер для хранения закодированного значения.
 */
-func (c Code) Encode(buf buffer.Appender) {
+func (c Command) Encode(buf buffer.Appender) {
 	buf.AppendUint8(uint8(c))
 }
 
@@ -56,7 +52,7 @@ func (c Code) Encode(buf buffer.Appender) {
 func String предназначена для вывода человекочитаемого названия
 команды, представленного конкретным кодом.
 */
-func (c Code) String() string {
+func (c Command) String() string {
 	switch c {
 	case Handshake:
 		return "Handshake"
@@ -82,13 +78,13 @@ func IsValid предназначена для проверки кода ком�
 Проверки:
  1. Код находится в пределах 0-6.
 */
-func (c Code) IsValid() bool {
+func (c Command) IsValid() bool {
 	return c <= Ping
 }
 
 /*
 func Size возвращает размер кода команды в байтах.
 */
-func (c Code) Size() int {
-	return FieldSize
+func (c Command) Size() int {
+	return CommandFieldSize
 }

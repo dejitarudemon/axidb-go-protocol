@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 func TestDelete_Size(t *testing.T) {
@@ -15,9 +15,9 @@ func TestDelete_Size(t *testing.T) {
 		want int
 	}{
 		{Delete{}, 0},
-		{Delete{[]byte{0x00}}, 1},
-		{Delete{[]byte("ab")}, 2},
-		{Delete{[]byte("фи")}, 4},
+		{Delete{0x00}, 1},
+		{Delete("ab"), 2},
+		{Delete("фи"), 4},
 	}
 
 	for _, tt := range tests {
@@ -38,9 +38,9 @@ func TestDelete_Encode(t *testing.T) {
 		want []byte
 	}{
 		{Delete{}, []byte{}},
-		{Delete{[]byte{0x00}}, []byte{0x00}},
-		{Delete{[]byte("ab")}, []byte{0x61, 0x62}},
-		{Delete{[]byte("фи")}, []byte{0xD1, 0x84, 0xD0, 0xB8}},
+		{Delete{0x00}, []byte{0x00}},
+		{Delete("ab"), []byte{0x61, 0x62}},
+		{Delete("фи"), []byte{0xD1, 0x84, 0xD0, 0xB8}},
 	}
 
 	for _, tt := range tests {
@@ -65,12 +65,12 @@ func TestDelete_Encode(t *testing.T) {
 func TestDelete_Command(t *testing.T) {
 	tests := []struct {
 		d    Delete
-		want command.Code
+		want fields.Command
 	}{
-		{Delete{}, command.Delete},
-		{Delete{[]byte{0x00}}, command.Delete},
-		{Delete{[]byte("ab")}, command.Delete},
-		{Delete{[]byte("фи")}, command.Delete},
+		{Delete{}, fields.Delete},
+		{Delete{0x00}, fields.Delete},
+		{Delete("ab"), fields.Delete},
+		{Delete("фи"), fields.Delete},
 	}
 
 	for _, tt := range tests {
@@ -91,9 +91,9 @@ func TestDelete_IsValid(t *testing.T) {
 		want bool
 	}{
 		{Delete{}, true},
-		{Delete{[]byte{0x00}}, false},
-		{Delete{[]byte("ab")}, false},
-		{Delete{[]byte("фи")}, false},
+		{Delete{0x00}, false},
+		{Delete("ab"), false},
+		{Delete("фи"), false},
 	}
 
 	for _, tt := range tests {

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
@@ -20,7 +20,7 @@ func TestBatchAnswerReques_Size(t *testing.T) {
 		{Result{}, 8},
 		{Result{0, nil}, 8},
 		{Result{1, Read{}}, 8},
-		{Result{2, Read{[]byte("key")}}, 11},
+		{Result{2, Read("key")}, 11},
 		{Result{3, Write{[]byte("key"), nil}}, 15},
 		{Result{4, Ping{}}, 8},
 		{Result{5, Batch{}}, 13},
@@ -57,7 +57,7 @@ func TestResult_Encode(t *testing.T) {
 			[]byte{0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			Result{2, Read{[]byte("key")}},
+			Result{2, Read("key")},
 			[]byte{0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79},
 		},
 		{
@@ -105,7 +105,7 @@ func TestResult_IsValid(t *testing.T) {
 		{Result{}, true},
 		{Result{0, nil}, true},
 		{Result{1, Read{}}, true},
-		{Result{2, Read{[]byte("key")}}, true},
+		{Result{2, Read("key")}, true},
 		{Result{3, Write{[]byte("key"), nil}}, true},
 		{Result{4, Ping{}}, true},
 		{Result{5, Batch{}}, true},
@@ -130,27 +130,27 @@ func TestBatchAnswer_Size(t *testing.T) {
 		want int
 	}{
 		{BatchAnswer{}, 5},
-		{BatchAnswer{[]Result{}}, 5},
-		{BatchAnswer{[]Result{{}}}, 13},
-		{BatchAnswer{[]Result{{0, nil}}}, 13},
-		{BatchAnswer{[]Result{{0, Read{}}}}, 13},
-		{BatchAnswer{[]Result{{0, WriteAnswer{}}}}, 14},
-		{BatchAnswer{[]Result{
+		{BatchAnswer{}, 5},
+		{BatchAnswer{{}}, 13},
+		{BatchAnswer{{0, nil}}, 13},
+		{BatchAnswer{{0, Read{}}}, 13},
+		{BatchAnswer{{0, WriteAnswer{}}}, 14},
+		{BatchAnswer{
 			{0, WriteAnswer{}},
 			{0, DeleteAnswer{}},
-		}}, 23},
-		{BatchAnswer{[]Result{
+		}, 23},
+		{BatchAnswer{
 			{0, WriteAnswer{}},
 			{1, DeleteAnswer{}},
-		}}, 23},
-		{BatchAnswer{[]Result{
+		}, 23},
+		{BatchAnswer{
 			{1, ReadAnswer{Value: values.String("message")}},
 			{2, WriteAnswer{}},
-		}}, 35},
-		{BatchAnswer{[]Result{
+		}, 35},
+		{BatchAnswer{
 			{1, ErrorAnswer{errs.NewErrorInternalErrorWithTracebackID(errors.New(""), [16]byte{0xDA, 0xE1, 0x2F, 0x25, 0x35, 0x1B, 0x48, 0x75, 0x99, 0xDE, 0x1D, 0xF5, 0x2A, 0x76, 0x3F, 0x96})}},
 			{2, ErrorAnswer{errs.NewErrorRequestInterruptedWithTracebackID(2, [16]byte{0x77, 0xA5, 0x7D, 0x8E, 0xCC, 0x20, 0x40, 0x7F, 0x8C, 0x65, 0x5E, 0x94, 0x5F, 0xE2, 0xA8, 0x91})}},
-		}}, 59},
+		}, 59},
 	}
 
 	for _, tt := range tests {
@@ -171,42 +171,42 @@ func TestBatchAnswer_Encode(t *testing.T) {
 		want []byte
 	}{
 		{BatchAnswer{}, []byte{0x01, 0x00, 0x00, 0x00, 0x00}},
-		{BatchAnswer{[]Result{}}, []byte{0x01, 0x00, 0x00, 0x00, 0x00}},
+		{BatchAnswer{}, []byte{0x01, 0x00, 0x00, 0x00, 0x00}},
 		{
-			BatchAnswer{[]Result{{}}},
+			BatchAnswer{{}},
 			[]byte{0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			BatchAnswer{[]Result{{0, nil}}},
+			BatchAnswer{{0, nil}},
 			[]byte{0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			BatchAnswer{[]Result{{0, Read{}}}},
+			BatchAnswer{{0, Read{}}},
 			[]byte{0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			BatchAnswer{[]Result{{0, WriteAnswer{}}}},
+			BatchAnswer{{0, WriteAnswer{}}},
 			[]byte{0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01},
 		},
 		{
-			BatchAnswer{[]Result{
+			BatchAnswer{
 				{0, WriteAnswer{}},
 				{0, DeleteAnswer{}},
-			}},
+			},
 			[]byte{0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01},
 		},
 		{
-			BatchAnswer{[]Result{
+			BatchAnswer{
 				{0, WriteAnswer{}},
 				{1, DeleteAnswer{}},
-			}},
+			},
 			[]byte{0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x01},
 		},
 		{
-			BatchAnswer{[]Result{
+			BatchAnswer{
 				{1, ReadAnswer{Value: values.String("message")}},
 				{2, WriteAnswer{}},
-			}},
+			},
 			[]byte{
 				0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
 				0x00, 0x00, 0x0D, 0x01, 0x06, 0x00, 0x00, 0x00, 0x07, 0x6D,
@@ -214,10 +214,10 @@ func TestBatchAnswer_Encode(t *testing.T) {
 				0x00, 0x00, 0x00, 0x01, 0x01},
 		},
 		{
-			BatchAnswer{[]Result{
+			BatchAnswer{
 				{1, ErrorAnswer{errs.NewErrorInternalErrorWithTracebackID(errors.New(""), [16]byte{0xDA, 0xE1, 0x2F, 0x25, 0x35, 0x1B, 0x48, 0x75, 0x99, 0xDE, 0x1D, 0xF5, 0x2A, 0x76, 0x3F, 0x96})}},
 				{2, ErrorAnswer{errs.NewErrorRequestInterruptedWithTracebackID(2, [16]byte{0x77, 0xA5, 0x7D, 0x8E, 0xCC, 0x20, 0x40, 0x7F, 0x8C, 0x65, 0x5E, 0x94, 0x5F, 0xE2, 0xA8, 0x91})}},
-			}},
+			},
 			[]byte{
 				0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
 				0x00, 0x00, 0x13, 0x00, 0x00, 0x08, 0xDA, 0xE1, 0x2F, 0x25,
@@ -251,30 +251,30 @@ func TestBatchAnswer_Encode(t *testing.T) {
 func TestBatchAnswer_Command(t *testing.T) {
 	tests := []struct {
 		b    BatchAnswer
-		want command.Code
+		want fields.Command
 	}{
-		{BatchAnswer{}, command.Answer},
-		{BatchAnswer{[]Result{}}, command.Answer},
-		{BatchAnswer{[]Result{{}}}, command.Answer},
-		{BatchAnswer{[]Result{{0, nil}}}, command.Answer},
-		{BatchAnswer{[]Result{{0, Read{}}}}, command.Answer},
-		{BatchAnswer{[]Result{{0, WriteAnswer{}}}}, command.Answer},
-		{BatchAnswer{[]Result{
+		{BatchAnswer{}, fields.Answer},
+		{BatchAnswer{}, fields.Answer},
+		{BatchAnswer{{}}, fields.Answer},
+		{BatchAnswer{{0, nil}}, fields.Answer},
+		{BatchAnswer{{0, Read{}}}, fields.Answer},
+		{BatchAnswer{{0, WriteAnswer{}}}, fields.Answer},
+		{BatchAnswer{
 			{0, WriteAnswer{}},
 			{0, DeleteAnswer{}},
-		}}, command.Answer},
-		{BatchAnswer{[]Result{
+		}, fields.Answer},
+		{BatchAnswer{
 			{0, WriteAnswer{}},
 			{1, DeleteAnswer{}},
-		}}, command.Answer},
-		{BatchAnswer{[]Result{
+		}, fields.Answer},
+		{BatchAnswer{
 			{1, ReadAnswer{Value: values.String("message")}},
 			{2, WriteAnswer{}},
-		}}, command.Answer},
-		{BatchAnswer{[]Result{
+		}, fields.Answer},
+		{BatchAnswer{
 			{1, ErrorAnswer{errs.NewErrorInternalErrorWithTracebackID(errors.New(""), [16]byte{0xDA, 0xE1, 0x2F, 0x25, 0x35, 0x1B, 0x48, 0x75, 0x99, 0xDE, 0x1D, 0xF5, 0x2A, 0x76, 0x3F, 0x96})}},
 			{2, ErrorAnswer{errs.NewErrorRequestInterruptedWithTracebackID(2, [16]byte{0x77, 0xA5, 0x7D, 0x8E, 0xCC, 0x20, 0x40, 0x7F, 0x8C, 0x65, 0x5E, 0x94, 0x5F, 0xE2, 0xA8, 0x91})}},
-		}}, command.Answer},
+		}, fields.Answer},
 	}
 
 	for _, tt := range tests {
@@ -295,27 +295,27 @@ func TestBatchAnswer_IsValid(t *testing.T) {
 		want bool
 	}{
 		{BatchAnswer{}, true},
-		{BatchAnswer{[]Result{}}, true},
-		{BatchAnswer{[]Result{{}}}, true},
-		{BatchAnswer{[]Result{{0, nil}}}, true},
-		{BatchAnswer{[]Result{{0, Read{}}}}, true},
-		{BatchAnswer{[]Result{{0, WriteAnswer{}}}}, false},
-		{BatchAnswer{[]Result{
+		{BatchAnswer{}, true},
+		{BatchAnswer{{}}, true},
+		{BatchAnswer{{0, nil}}, true},
+		{BatchAnswer{{0, Read{}}}, true},
+		{BatchAnswer{{0, WriteAnswer{}}}, false},
+		{BatchAnswer{
 			{0, WriteAnswer{}},
 			{0, DeleteAnswer{}},
-		}}, true},
-		{BatchAnswer{[]Result{
+		}, true},
+		{BatchAnswer{
 			{0, WriteAnswer{}},
 			{1, DeleteAnswer{}},
-		}}, false},
-		{BatchAnswer{[]Result{
+		}, false},
+		{BatchAnswer{
 			{1, ReadAnswer{Value: values.String("message")}},
 			{2, WriteAnswer{}},
-		}}, false},
-		{BatchAnswer{[]Result{
+		}, false},
+		{BatchAnswer{
 			{1, ErrorAnswer{errs.NewErrorInternalErrorWithTracebackID(errors.New(""), [16]byte{0xDA, 0xE1, 0x2F, 0x25, 0x35, 0x1B, 0x48, 0x75, 0x99, 0xDE, 0x1D, 0xF5, 0x2A, 0x76, 0x3F, 0x96})}},
 			{2, ErrorAnswer{errs.NewErrorRequestInterruptedWithTracebackID(2, [16]byte{0x77, 0xA5, 0x7D, 0x8E, 0xCC, 0x20, 0x40, 0x7F, 0x8C, 0x65, 0x5E, 0x94, 0x5F, 0xE2, 0xA8, 0x91})}},
-		}}, false},
+		}, false},
 	}
 
 	for _, tt := range tests {

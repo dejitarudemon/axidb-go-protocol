@@ -7,7 +7,6 @@ import (
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
 func TestUntypedArray_Size(t *testing.T) {
@@ -16,25 +15,20 @@ func TestUntypedArray_Size(t *testing.T) {
 		want int
 	}{
 		{
-			UntypedArray{Elems: nil}, 4,
+			UntypedArray{nil}, 4,
+		},
+
+		{
+			UntypedArray{Int(1)}, 13,
 		},
 		{
-			UntypedArray{Elems: []value.V{}}, 4,
+			UntypedArray{Int(1), Int(2)}, 22,
 		},
 		{
-			UntypedArray{Elems: []value.V{Int(1)}}, 13,
+			UntypedArray{Int(1), Float(1)}, 22,
 		},
 		{
-			UntypedArray{Elems: []value.V{Int(1), Int(2)}}, 22,
-		},
-		{
-			UntypedArray{Elems: []value.V{nil}}, 4,
-		},
-		{
-			UntypedArray{Elems: []value.V{Int(1), Float(1)}}, 22,
-		},
-		{
-			UntypedArray{[]value.V{Int(1), Bytes([]byte{0x01, 0x02, 0x03})}}, 21,
+			UntypedArray{Int(1), Bytes([]byte{0x01, 0x02, 0x03})}, 21,
 		},
 	}
 
@@ -56,31 +50,27 @@ func TestUntypedArray_Encode(t *testing.T) {
 		want []byte
 	}{
 		{
-			UntypedArray{Elems: nil},
+			UntypedArray{nil},
 			[]byte{0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			UntypedArray{Elems: []value.V{}},
+			UntypedArray{},
 			[]byte{0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			UntypedArray{Elems: []value.V{Int(1)}},
+			UntypedArray{Int(1)},
 			[]byte{0x00, 0x00, 0x00, 0x01, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
 		},
 		{
-			UntypedArray{Elems: []value.V{Int(1), Int(2)}},
+			UntypedArray{Int(1), Int(2)},
 			[]byte{0x00, 0x00, 0x00, 0x02, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
 		},
 		{
-			UntypedArray{Elems: []value.V{nil}},
-			[]byte{0x00, 0x00, 0x00, 0x00},
-		},
-		{
-			UntypedArray{Elems: []value.V{Int(1), Float(1)}},
+			UntypedArray{Int(1), Float(1)},
 			[]byte{0x00, 0x00, 0x00, 0x02, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x05, 0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			UntypedArray{[]value.V{Int(1), Bytes([]byte{0x01, 0x02, 0x03})}},
+			UntypedArray{Int(1), Bytes([]byte{0x01, 0x02, 0x03})},
 			[]byte{0x00, 0x00, 0x00, 0x02, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x03, 0x01, 0x02, 0x03},
 		},
 	}
@@ -113,25 +103,25 @@ func TestUntypedArray_Type(t *testing.T) {
 		want types.Code
 	}{
 		{
-			UntypedArray{Elems: nil}, types.UntypedArray,
+			UntypedArray{nil}, types.UntypedArray,
 		},
 		{
-			UntypedArray{Elems: []value.V{}}, types.UntypedArray,
+			UntypedArray{}, types.UntypedArray,
 		},
 		{
-			UntypedArray{Elems: []value.V{Int(1)}}, types.UntypedArray,
+			UntypedArray{Int(1)}, types.UntypedArray,
 		},
 		{
-			UntypedArray{Elems: []value.V{Int(1), Int(2)}}, types.UntypedArray,
+			UntypedArray{Int(1), Int(2)}, types.UntypedArray,
 		},
 		{
-			UntypedArray{Elems: []value.V{nil}}, types.UntypedArray,
+			UntypedArray{nil}, types.UntypedArray,
 		},
 		{
-			UntypedArray{Elems: []value.V{Int(1), Float(1)}}, types.UntypedArray,
+			UntypedArray{Int(1), Float(1)}, types.UntypedArray,
 		},
 		{
-			UntypedArray{[]value.V{Int(1), Bytes([]byte{0x01, 0x02, 0x03})}}, types.UntypedArray,
+			UntypedArray{Int(1), Bytes([]byte{0x01, 0x02, 0x03})}, types.UntypedArray,
 		},
 	}
 
@@ -155,25 +145,22 @@ func TestUntypedArray_IsValid(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			UntypedArray{Elems: nil}, false,
+			UntypedArray{}, false,
 		},
 		{
-			UntypedArray{Elems: []value.V{}}, false,
+			UntypedArray{Int(1)}, false,
 		},
 		{
-			UntypedArray{Elems: []value.V{Int(1)}}, false,
+			UntypedArray{Int(1), Int(2)}, false,
 		},
 		{
-			UntypedArray{Elems: []value.V{Int(1), Int(2)}}, false,
+			UntypedArray{nil}, true,
 		},
 		{
-			UntypedArray{Elems: []value.V{nil}}, true,
+			UntypedArray{Int(1), Float(1)}, false,
 		},
 		{
-			UntypedArray{Elems: []value.V{Int(1), Float(1)}}, false,
-		},
-		{
-			UntypedArray{[]value.V{Int(1), Bytes([]byte{0x01, 0x02, 0x03})}}, false,
+			UntypedArray{Int(1), Bytes([]byte{0x01, 0x02, 0x03})}, false,
 		},
 	}
 

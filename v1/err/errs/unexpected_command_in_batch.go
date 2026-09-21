@@ -3,11 +3,9 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorUnexpectedCommandInBatch{}
@@ -15,12 +13,12 @@ var _ err.ProtocolError = ErrorUnexpectedCommandInBatch{}
 const RequestNumberFieldSize = 4
 
 type ErrorUnexpectedCommandInBatch struct {
-	command       command.Code
-	requestNumber uint32
-	tracebackID   uuid.UUID
+	command       fields.Command
+	requestNumber fields.RequestNumber
+	tracebackID   fields.TracebackID
 }
 
-func NewErrorUnexpectedCommandInBatch(command command.Code, requestNumber uint32) ErrorUnexpectedCommandInBatch {
+func NewErrorUnexpectedCommandInBatch(command fields.Command, requestNumber fields.RequestNumber) ErrorUnexpectedCommandInBatch {
 	return ErrorUnexpectedCommandInBatch{
 		command:       command,
 		requestNumber: requestNumber,
@@ -28,7 +26,7 @@ func NewErrorUnexpectedCommandInBatch(command command.Code, requestNumber uint32
 	}
 }
 
-func NewErrorUnexpectedCommandInBatchWithTracebackID(command command.Code, requestNumber uint32, tracebackID uuid.UUID) ErrorUnexpectedCommandInBatch {
+func NewErrorUnexpectedCommandInBatchWithTracebackID(command fields.Command, requestNumber fields.RequestNumber, tracebackID fields.TracebackID) ErrorUnexpectedCommandInBatch {
 	return ErrorUnexpectedCommandInBatch{
 		command:       command,
 		requestNumber: requestNumber,
@@ -36,7 +34,7 @@ func NewErrorUnexpectedCommandInBatchWithTracebackID(command command.Code, reque
 	}
 }
 
-func (e ErrorUnexpectedCommandInBatch) TracebackID() uuid.UUID {
+func (e ErrorUnexpectedCommandInBatch) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -49,9 +47,9 @@ func (e ErrorUnexpectedCommandInBatch) Code() err.Code {
 }
 
 func (e ErrorUnexpectedCommandInBatch) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
-	buf.AppendUint32(e.requestNumber)
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
+	e.requestNumber.Encode(buf)
 }
 
 func (e ErrorUnexpectedCommandInBatch) Error() string {
@@ -61,7 +59,7 @@ func (e ErrorUnexpectedCommandInBatch) Error() string {
 // не проверяем команду на валидность, т.к. может быть кастомная
 func (e ErrorUnexpectedCommandInBatch) IsValid() error {
 	switch e.command {
-	case command.Read, command.Write, command.Delete:
+	case fields.Read, fields.Write, fields.Delete:
 		return err.NewValidationError(
 			"command is allowed for a batch",
 			"error", "ErrorUnexpectedCommandInBatch",

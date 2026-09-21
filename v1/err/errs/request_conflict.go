@@ -3,34 +3,33 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorRequestsConflict{}
 
 type ErrorRequestsConflict struct {
-	got         uint32
-	tracebackID uuid.UUID
+	got         fields.RequestID
+	tracebackID fields.TracebackID
 }
 
-func NewErrorRequestsConflict(got uint32) ErrorRequestsConflict {
+func NewErrorRequestsConflict(got fields.RequestID) ErrorRequestsConflict {
 	return ErrorRequestsConflict{
 		got:         got,
 		tracebackID: generateNewTracebackID(),
 	}
 }
 
-func NewErrorRequestsConflictWithTracebackID(got uint32, tracebackID uuid.UUID) ErrorRequestsConflict {
+func NewErrorRequestsConflictWithTracebackID(got fields.RequestID, tracebackID fields.TracebackID) ErrorRequestsConflict {
 	return ErrorRequestsConflict{
 		got:         got,
 		tracebackID: tracebackID,
 	}
 }
 
-func (e ErrorRequestsConflict) TracebackID() uuid.UUID {
+func (e ErrorRequestsConflict) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -43,8 +42,8 @@ func (e ErrorRequestsConflict) Code() err.Code {
 }
 
 func (e ErrorRequestsConflict) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorRequestsConflict) Error() string {

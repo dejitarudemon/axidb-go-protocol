@@ -3,10 +3,9 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorBatchLimitIsExceeded{}
@@ -14,12 +13,12 @@ var _ err.ProtocolError = ErrorBatchLimitIsExceeded{}
 const CurrentBatchLimitFieldSize = 4
 
 type ErrorBatchLimitIsExceeded struct {
-	got         uint32
-	limit       uint32
-	tracebackID uuid.UUID
+	got         fields.BatchLimit
+	limit       fields.BatchLimit
+	tracebackID fields.TracebackID
 }
 
-func NewErrorBatchLimitIsExceeded(got, limit uint32) ErrorBatchLimitIsExceeded {
+func NewErrorBatchLimitIsExceeded(got, limit fields.BatchLimit) ErrorBatchLimitIsExceeded {
 	return ErrorBatchLimitIsExceeded{
 		got:         got,
 		limit:       limit,
@@ -27,7 +26,7 @@ func NewErrorBatchLimitIsExceeded(got, limit uint32) ErrorBatchLimitIsExceeded {
 	}
 }
 
-func NewErrorBatchLimitIsExceededWithTracebackID(got, limit uint32, tracebackID uuid.UUID) ErrorBatchLimitIsExceeded {
+func NewErrorBatchLimitIsExceededWithTracebackID(got, limit fields.BatchLimit, tracebackID fields.TracebackID) ErrorBatchLimitIsExceeded {
 	return ErrorBatchLimitIsExceeded{
 		got:         got,
 		limit:       limit,
@@ -35,7 +34,7 @@ func NewErrorBatchLimitIsExceededWithTracebackID(got, limit uint32, tracebackID 
 	}
 }
 
-func (e ErrorBatchLimitIsExceeded) TracebackID() uuid.UUID {
+func (e ErrorBatchLimitIsExceeded) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -48,9 +47,9 @@ func (e ErrorBatchLimitIsExceeded) Code() err.Code {
 }
 
 func (e ErrorBatchLimitIsExceeded) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
-	buf.AppendUint32(e.limit)
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
+	e.limit.Encode(buf)
 }
 
 func (e ErrorBatchLimitIsExceeded) Error() string {

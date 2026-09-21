@@ -1,4 +1,4 @@
-package compression
+package fields
 
 import (
 	"bytes"
@@ -8,16 +8,20 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 )
 
-func TestCode_Size(t *testing.T) {
+func TestCommand_Size(t *testing.T) {
 	tests := []struct {
-		c    Code
+		c    Command
 		want int
 	}{
-		{None, 1},
-		{Zstd, 1},
-		{Lz4, 1},
-		{Code(3), 1},
-		{Code(255), 1},
+		{Handshake, 1},
+		{Answer, 1},
+		{Read, 1},
+		{Write, 1},
+		{Delete, 1},
+		{Batch, 1},
+		{Ping, 1},
+		{Command(7), 1},
+		{Command(255), 1},
 	}
 
 	for _, tt := range tests {
@@ -32,14 +36,20 @@ func TestCode_Size(t *testing.T) {
 	}
 }
 
-func TestCode_Encode(t *testing.T) {
+func TestCommand_Encode(t *testing.T) {
 	tests := []struct {
-		c    Code
+		c    Command
 		want []byte
 	}{
-		{None, []byte{0x00}},
-		{Zstd, []byte{0x01}},
-		{Lz4, []byte{0x02}},
+		{Handshake, []byte{0x00}},
+		{Answer, []byte{0x01}},
+		{Read, []byte{0x02}},
+		{Write, []byte{0x03}},
+		{Delete, []byte{0x04}},
+		{Batch, []byte{0x05}},
+		{Ping, []byte{0x06}},
+		{Command(7), []byte{0x07}},
+		{Command(255), []byte{0xFF}},
 	}
 
 	for _, tt := range tests {
@@ -64,16 +74,20 @@ func TestCode_Encode(t *testing.T) {
 	}
 }
 
-func TestCode_String(t *testing.T) {
+func TestCommand_String(t *testing.T) {
 	tests := []struct {
-		c    Code
+		c    Command
 		want string
 	}{
-		{None, "None"},
-		{Zstd, "Zstd"},
-		{Lz4, "Lz4"},
-		{Code(3), "Unknown (3)"},
-		{Code(255), "Unknown (255)"},
+		{Handshake, "Handshake"},
+		{Answer, "Answer"},
+		{Read, "Read"},
+		{Write, "Write"},
+		{Delete, "Delete"},
+		{Batch, "Batch"},
+		{Ping, "Ping"},
+		{Command(7), "Unknown (7)"},
+		{Command(255), "Unknown (255)"},
 	}
 
 	for _, tt := range tests {
@@ -88,24 +102,28 @@ func TestCode_String(t *testing.T) {
 	}
 }
 
-func TestCode_IsValid(t *testing.T) {
+func TestCommand_IsValid(t *testing.T) {
 	tests := []struct {
-		c       Code
-		wantErr bool
+		c    Command
+		want bool
 	}{
-		{None, true},
-		{Zstd, true},
-		{Lz4, true},
-		{Code(3), false},
-		{Code(255), false},
+		{Handshake, true},
+		{Answer, true},
+		{Read, true},
+		{Write, true},
+		{Delete, true},
+		{Batch, true},
+		{Ping, true},
+		{Command(7), false},
+		{Command(255), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(
 			fmt.Sprintf("%v", tt.c),
 			func(t *testing.T) {
-				if got := tt.c.IsValid(); got != tt.wantErr {
-					t.Errorf("got %v, want %v", got, tt.wantErr)
+				if got := tt.c.IsValid(); got != tt.want {
+					t.Errorf("got %v, want %v", got, tt.want)
 				}
 			},
 		)

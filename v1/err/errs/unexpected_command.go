@@ -3,22 +3,20 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorUnexpectedCommand{}
 
 type ErrorUnexpectedCommand struct {
-	got         command.Code
-	expected    command.Code
-	tracebackID uuid.UUID
+	got         fields.Command
+	expected    fields.Command
+	tracebackID fields.TracebackID
 }
 
-func NewErrorUnexpectedCommand(got, expected command.Code) ErrorUnexpectedCommand {
+func NewErrorUnexpectedCommand(got, expected fields.Command) ErrorUnexpectedCommand {
 	return ErrorUnexpectedCommand{
 		got:         got,
 		expected:    expected,
@@ -26,7 +24,7 @@ func NewErrorUnexpectedCommand(got, expected command.Code) ErrorUnexpectedComman
 	}
 }
 
-func NewErrorUnexpectedCommandWithTracebackID(got, expected command.Code, tracebackID uuid.UUID) ErrorUnexpectedCommand {
+func NewErrorUnexpectedCommandWithTracebackID(got, expected fields.Command, tracebackID fields.TracebackID) ErrorUnexpectedCommand {
 	return ErrorUnexpectedCommand{
 		got:         got,
 		expected:    expected,
@@ -34,12 +32,12 @@ func NewErrorUnexpectedCommandWithTracebackID(got, expected command.Code, traceb
 	}
 }
 
-func (e ErrorUnexpectedCommand) TracebackID() uuid.UUID {
+func (e ErrorUnexpectedCommand) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
 func (e ErrorUnexpectedCommand) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize + command.FieldSize
+	return err.FieldSize + err.TracebackIDFieldSize + fields.CommandFieldSize
 }
 
 func (e ErrorUnexpectedCommand) Code() err.Code {
@@ -47,8 +45,8 @@ func (e ErrorUnexpectedCommand) Code() err.Code {
 }
 
 func (e ErrorUnexpectedCommand) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
 	e.expected.Encode(buf)
 }
 

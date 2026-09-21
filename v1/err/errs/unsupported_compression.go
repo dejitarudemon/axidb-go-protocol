@@ -3,35 +3,33 @@ package errs
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compression"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorUnsupportedCompression{}
 
 type ErrorUnsupportedCompression struct {
-	compression compression.Code
-	tracebackID uuid.UUID
+	compression fields.Compression
+	tracebackID fields.TracebackID
 }
 
-func NewErrorUnsupportedCompression(compression compression.Code) ErrorUnsupportedCompression {
+func NewErrorUnsupportedCompression(compression fields.Compression) ErrorUnsupportedCompression {
 	return ErrorUnsupportedCompression{
 		compression: compression,
 		tracebackID: generateNewTracebackID(),
 	}
 }
 
-func NewErrorUnsupportedCompressionWithTracebackID(compression compression.Code, tracebackID uuid.UUID) ErrorUnsupportedCompression {
+func NewErrorUnsupportedCompressionWithTracebackID(compression fields.Compression, tracebackID fields.TracebackID) ErrorUnsupportedCompression {
 	return ErrorUnsupportedCompression{
 		compression: compression,
 		tracebackID: tracebackID,
 	}
 }
 
-func (e ErrorUnsupportedCompression) TracebackID() uuid.UUID {
+func (e ErrorUnsupportedCompression) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -44,8 +42,8 @@ func (e ErrorUnsupportedCompression) Code() err.Code {
 }
 
 func (e ErrorUnsupportedCompression) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorUnsupportedCompression) Error() string {
@@ -53,7 +51,7 @@ func (e ErrorUnsupportedCompression) Error() string {
 }
 
 func (e ErrorUnsupportedCompression) IsValid() error {
-	if e.compression == compression.None {
+	if e.compression == fields.None {
 		return err.NewValidationError(
 			"unsupported no compression",
 			"error", "ErrorUnsupportedCompression",

@@ -4,23 +4,22 @@ import (
 	"fmt"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/google/uuid"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorRestrictedRequest{}
 
 type ErrorRestrictedRequest struct {
-	id          []byte
-	source      []byte
-	key         []byte
-	command     command.Code
-	requestID   uint32
-	tracebackID uuid.UUID
+	id          fields.Key
+	source      fields.Key
+	key         fields.Key
+	command     fields.Command
+	requestID   fields.RequestID
+	tracebackID fields.TracebackID
 }
 
-func NewErrorRestrictedRequest(id, source, key []byte, command command.Code, requestID uint32) ErrorRestrictedRequest {
+func NewErrorRestrictedRequest(id, source, key fields.Key, command fields.Command, requestID fields.RequestID) ErrorRestrictedRequest {
 	return ErrorRestrictedRequest{
 		id:          id,
 		source:      source,
@@ -31,7 +30,7 @@ func NewErrorRestrictedRequest(id, source, key []byte, command command.Code, req
 	}
 }
 
-func NewErrorRestrictedRequestWithTracebackID(id, source, key []byte, command command.Code, requestID uint32, tracebackID uuid.UUID) ErrorRestrictedRequest {
+func NewErrorRestrictedRequestWithTracebackID(id, source, key fields.Key, command fields.Command, requestID fields.RequestID, tracebackID fields.TracebackID) ErrorRestrictedRequest {
 	return ErrorRestrictedRequest{
 		id:          id,
 		source:      source,
@@ -42,7 +41,7 @@ func NewErrorRestrictedRequestWithTracebackID(id, source, key []byte, command co
 	}
 }
 
-func (e ErrorRestrictedRequest) TracebackID() uuid.UUID {
+func (e ErrorRestrictedRequest) TracebackID() fields.TracebackID {
 	return e.tracebackID
 }
 
@@ -55,8 +54,8 @@ func (e ErrorRestrictedRequest) Code() err.Code {
 }
 
 func (e ErrorRestrictedRequest) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(e.Code()))
-	buf.Append(e.tracebackID[:])
+	e.Code().Encode(buf)
+	e.tracebackID.Encode(buf)
 }
 
 func (e ErrorRestrictedRequest) Error() string {

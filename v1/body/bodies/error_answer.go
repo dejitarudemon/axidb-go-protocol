@@ -3,8 +3,8 @@ package bodies
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var ResultNotOK = []byte{0x00}
@@ -29,8 +29,8 @@ func (e ErrorAnswer) Encode(buf buffer.Appender) {
 	}
 }
 
-func (e ErrorAnswer) Command() command.Code {
-	return command.Answer
+func (e ErrorAnswer) Command() fields.Command {
+	return fields.Answer
 }
 
 func (e ErrorAnswer) IsValid() error {
