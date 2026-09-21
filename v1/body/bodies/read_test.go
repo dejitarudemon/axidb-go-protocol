@@ -15,9 +15,9 @@ func TestRead_Size(t *testing.T) {
 		want int
 	}{
 		{Read{}, 0},
-		{Read{[]byte{0x00}}, 1},
-		{Read{[]byte("ab")}, 2},
-		{Read{[]byte("фи")}, 4},
+		{Read{0x00}, 1},
+		{Read("ab"), 2},
+		{Read("фи"), 4},
 	}
 
 	for _, tt := range tests {
@@ -38,9 +38,9 @@ func TestRead_Encode(t *testing.T) {
 		want []byte
 	}{
 		{Read{}, []byte{}},
-		{Read{[]byte{0x00}}, []byte{0x00}},
-		{Read{[]byte("ab")}, []byte{0x61, 0x62}},
-		{Read{[]byte("фи")}, []byte{0xD1, 0x84, 0xD0, 0xB8}},
+		{Read{0x00}, []byte{0x00}},
+		{Read("ab"), []byte{0x61, 0x62}},
+		{Read("фи"), []byte{0xD1, 0x84, 0xD0, 0xB8}},
 	}
 
 	for _, tt := range tests {
@@ -68,9 +68,9 @@ func TestRead_Command(t *testing.T) {
 		want fields.Command
 	}{
 		{Read{}, fields.Read},
-		{Read{[]byte{0x00}}, fields.Read},
-		{Read{[]byte("ab")}, fields.Read},
-		{Read{[]byte("фи")}, fields.Read},
+		{Read{0x00}, fields.Read},
+		{Read("ab"), fields.Read},
+		{Read("фи"), fields.Read},
 	}
 
 	for _, tt := range tests {
@@ -91,9 +91,9 @@ func TestRead_IsValid(t *testing.T) {
 		want bool
 	}{
 		{Read{}, true},
-		{Read{[]byte{0x00}}, false},
-		{Read{[]byte("ab")}, false},
-		{Read{[]byte("фи")}, false},
+		{Read{0x00}, false},
+		{Read("ab"), false},
+		{Read("фи"), false},
 	}
 
 	for _, tt := range tests {

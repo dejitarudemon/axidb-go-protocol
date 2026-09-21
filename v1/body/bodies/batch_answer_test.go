@@ -20,7 +20,7 @@ func TestBatchAnswerReques_Size(t *testing.T) {
 		{Result{}, 8},
 		{Result{0, nil}, 8},
 		{Result{1, Read{}}, 8},
-		{Result{2, Read{[]byte("key")}}, 11},
+		{Result{2, Read("key")}, 11},
 		{Result{3, Write{[]byte("key"), nil}}, 15},
 		{Result{4, Ping{}}, 8},
 		{Result{5, Batch{}}, 13},
@@ -57,7 +57,7 @@ func TestResult_Encode(t *testing.T) {
 			[]byte{0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			Result{2, Read{[]byte("key")}},
+			Result{2, Read("key")},
 			[]byte{0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79},
 		},
 		{
@@ -105,7 +105,7 @@ func TestResult_IsValid(t *testing.T) {
 		{Result{}, true},
 		{Result{0, nil}, true},
 		{Result{1, Read{}}, true},
-		{Result{2, Read{[]byte("key")}}, true},
+		{Result{2, Read("key")}, true},
 		{Result{3, Write{[]byte("key"), nil}}, true},
 		{Result{4, Ping{}}, true},
 		{Result{5, Batch{}}, true},

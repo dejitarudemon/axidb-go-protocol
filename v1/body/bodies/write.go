@@ -16,7 +16,7 @@ const (
 var _ body.Body = Write{}
 
 type Write struct {
-	Key   []byte
+	Key   fields.Key
 	Value value.V
 }
 
