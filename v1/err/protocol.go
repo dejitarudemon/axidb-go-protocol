@@ -17,7 +17,7 @@ const (
 interface Error предназначен для представления
 ошибки протокола согласно спецификации протокола v1.
 */
-type Error interface {
+type ProtocolError interface {
 	error
 
 	/*
@@ -48,5 +48,5 @@ type Error interface {
 		func IsValid возвращает валидность настоящей ошибки
 		согласно спецификациям протокола v1.
 	*/
-	IsValid() bool
+	IsValid() error
 }
