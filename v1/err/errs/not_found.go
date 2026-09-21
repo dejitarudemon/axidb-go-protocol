@@ -11,18 +11,18 @@ import (
 var _ err.ProtocolError = ErrorNotFound{}
 
 type ErrorNotFound struct {
-	key         []byte
+	key         fields.Key
 	tracebackID fields.TracebackID
 }
 
-func NewErrorNotFound(key []byte) ErrorNotFound {
+func NewErrorNotFound(key fields.Key) ErrorNotFound {
 	return ErrorNotFound{
 		key:         key,
 		tracebackID: generateNewTracebackID(),
 	}
 }
 
-func NewErrorNotFoundWithTracebackID(key []byte, tracebackID fields.TracebackID) ErrorNotFound {
+func NewErrorNotFoundWithTracebackID(key fields.Key, tracebackID fields.TracebackID) ErrorNotFound {
 	return ErrorNotFound{
 		key:         key,
 		tracebackID: tracebackID,

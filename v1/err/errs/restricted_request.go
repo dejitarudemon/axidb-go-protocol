@@ -11,15 +11,15 @@ import (
 var _ err.ProtocolError = ErrorRestrictedRequest{}
 
 type ErrorRestrictedRequest struct {
-	id          []byte
-	source      []byte
-	key         []byte
+	id          fields.Key
+	source      fields.Key
+	key         fields.Key
 	command     fields.Command
 	requestID   fields.RequestID
 	tracebackID fields.TracebackID
 }
 
-func NewErrorRestrictedRequest(id, source, key []byte, command fields.Command, requestID fields.RequestID) ErrorRestrictedRequest {
+func NewErrorRestrictedRequest(id, source, key fields.Key, command fields.Command, requestID fields.RequestID) ErrorRestrictedRequest {
 	return ErrorRestrictedRequest{
 		id:          id,
 		source:      source,
@@ -30,7 +30,7 @@ func NewErrorRestrictedRequest(id, source, key []byte, command fields.Command, r
 	}
 }
 
-func NewErrorRestrictedRequestWithTracebackID(id, source, key []byte, command fields.Command, requestID fields.RequestID, tracebackID fields.TracebackID) ErrorRestrictedRequest {
+func NewErrorRestrictedRequestWithTracebackID(id, source, key fields.Key, command fields.Command, requestID fields.RequestID, tracebackID fields.TracebackID) ErrorRestrictedRequest {
 	return ErrorRestrictedRequest{
 		id:          id,
 		source:      source,
