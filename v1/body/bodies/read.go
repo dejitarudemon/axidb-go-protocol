@@ -4,7 +4,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
 var _ body.Body = Read{}
@@ -27,7 +27,10 @@ func (r Read) Command() command.Code {
 
 func (r Read) IsValid() error {
 	if len(r.Key) == 0 {
-		return errs.NewErrorMalformedValue("expected key, but got nothing")
+		return err.NewValidationError(
+			"empty key",
+			"target", r.Command(),
+		)
 	}
 	return nil
 }

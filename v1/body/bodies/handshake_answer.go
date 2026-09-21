@@ -1,13 +1,11 @@
 package bodies
 
 import (
-	"fmt"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/compression"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
 var _ body.Body = HandshakeAnswer{}
@@ -48,7 +46,11 @@ func (h HandshakeAnswer) Command() command.Code {
 // Не проверяем Compression на валидность, т.к. по спеке могут быть кастомные алгоритмы.
 func (h HandshakeAnswer) IsValid() error {
 	if len(h.Compressions) > MaxCompressionsPerOneHandshake {
-		return errs.NewErrorMalformedValue(fmt.Sprintf("got %v compressions, but max compression per a handshake is %v", len(h.Compressions), MaxCompressionsPerOneHandshake))
+		return err.NewValidationError(
+			"too many compressions",
+			"compressions", len(h.Compressions),
+			"target", h.Command(),
+		)
 	}
 
 	return nil

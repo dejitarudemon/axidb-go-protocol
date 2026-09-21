@@ -4,7 +4,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 )
 
 var _ body.Body = Delete{}
@@ -27,8 +27,9 @@ func (d Delete) Command() command.Code {
 
 func (d Delete) IsValid() error {
 	if len(d.Key) == 0 {
-		return errs.NewErrorMalformedValue(
-			"expected key, buy got nothing",
+		return err.NewValidationError(
+			"empty key",
+			"target", d.Command(),
 		)
 	}
 

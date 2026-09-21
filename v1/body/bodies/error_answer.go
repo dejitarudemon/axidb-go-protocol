@@ -5,7 +5,6 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 )
 
 var ResultNotOK = []byte{0x00}
@@ -13,7 +12,7 @@ var ResultNotOK = []byte{0x00}
 var _ body.Body = ErrorAnswer{}
 
 type ErrorAnswer struct {
-	Err err.Error
+	Err err.ProtocolError
 }
 
 func (e ErrorAnswer) Size() int {
@@ -30,9 +29,5 @@ func (e ErrorAnswer) Command() command.Code {
 }
 
 func (e ErrorAnswer) IsValid() error {
-	if !e.Err.IsValid() {
-		return errs.NewErrorMalformedValue("invalid error")
-	}
-
-	return nil
+	return e.IsValid()
 }

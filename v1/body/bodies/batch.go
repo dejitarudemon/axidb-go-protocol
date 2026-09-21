@@ -1,11 +1,10 @@
 package bodies
 
 import (
-	"fmt"
-
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/command"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 )
 
@@ -110,20 +109,29 @@ func (b Batch) Command() command.Code {
 
 func (b Batch) IsValid() error {
 	if len(b.Requests) == 0 {
-		return errs.NewErrorMalformedValue("expected requests but got nothing")
+		return err.NewValidationError(
+			"no requests",
+			"target", b.Command(),
+		)
 	}
-	used := make(map[uint32]struct{}, len(b.Requests))
+	used := make(map[uint32]int, len(b.Requests))
 
-	for _, r := range b.Requests {
+	for i, r := range b.Requests {
 		if err := r.IsValid(); err != nil {
 			return err
 		}
 
-		if _, ok := used[r.Number]; ok {
-			return errs.NewErrorMalformedValue(fmt.Sprintf("found at least 2 requests with number %v in the batch", r.Number))
+		if j, ok := used[r.Number]; ok {
+			return err.NewValidationError(
+				"found at least 2 requests with same numbers",
+				"firstIndex", j,
+				"secondIndex", i,
+				"number", r.Number,
+				"target", b.Command(),
+			)
 		}
 
-		used[r.Number] = struct{}{}
+		used[r.Number] = i
 	}
 
 	return nil
