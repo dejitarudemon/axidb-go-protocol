@@ -8,10 +8,6 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
-const (
-	KeyLenFieldSize = 4
-)
-
 var _ body.Body = Write{}
 
 type Write struct {
@@ -21,10 +17,10 @@ type Write struct {
 
 func (w Write) Size() int {
 	if w.Value == nil {
-		return len(w.Key) + KeyLenFieldSize
+		return w.Key.Size() + fields.KeyLenFieldSize
 	}
 
-	return len(w.Key) + KeyLenFieldSize + w.Value.Size() + w.Value.Type().Size()
+	return w.Key.Size() + fields.KeyLenFieldSize + w.Value.Size() + w.Value.Type().Size()
 }
 
 func (w Write) Encode(buf buffer.Appender) {
