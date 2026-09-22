@@ -31,7 +31,7 @@ func TestErrorAnswer_Size(t *testing.T) {
 		{ErrorAnswer{errs.NewErrorNoHello()}, 19},
 		{ErrorAnswer{errs.NewErrorNotFound([]byte("key"))}, 19},
 		{ErrorAnswer{errs.NewErrorNotFound([]byte(""))}, 19},
-		{ErrorAnswer{errs.NewErrorProhibitedCompression(fields.Lz4, fields.Handshake)}, 19},
+		{ErrorAnswer{errs.NewErrorProhibitedCompression(fields.S2, fields.Handshake)}, 19},
 		{ErrorAnswer{errs.NewErrorProhibitedCompression(fields.None, fields.Handshake)}, 19},
 		{ErrorAnswer{errs.NewErrorRequestsConflict(0)}, 19},
 		{ErrorAnswer{errs.NewErrorRequestInterrupted(0)}, 19},
@@ -43,7 +43,7 @@ func TestErrorAnswer_Size(t *testing.T) {
 		{ErrorAnswer{errs.NewErrorUnexpectedCommand(fields.Handshake, fields.Handshake)}, 20},
 		{ErrorAnswer{errs.NewErrorUnsupportedCommand(fields.Command(255))}, 19},
 		{ErrorAnswer{errs.NewErrorUnsupportedCommand(fields.Handshake)}, 19},
-		{ErrorAnswer{errs.NewErrorUnsupportedCompression(fields.Lz4)}, 19},
+		{ErrorAnswer{errs.NewErrorUnsupportedCompression(fields.S2)}, 19},
 		{ErrorAnswer{errs.NewErrorUnsupportedCompression(fields.None)}, 19},
 		{ErrorAnswer{errs.NewErrorUnsupportedVersion(3)}, 19},
 	}
@@ -123,7 +123,7 @@ func TestErrorAnswer_Encode(t *testing.T) {
 			[]byte{0x00, 0x00, 0x0A, 0xAB, 0xCD, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			ErrorAnswer{errs.NewErrorProhibitedCompressionWithTracebackID(fields.Lz4, fields.Handshake, [16]byte{0xC0, 0xFF, 0xEE})},
+			ErrorAnswer{errs.NewErrorProhibitedCompressionWithTracebackID(fields.S2, fields.Handshake, [16]byte{0xC0, 0xFF, 0xEE})},
 			[]byte{0x00, 0x00, 0x0B, 0xC0, 0xFF, 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
@@ -171,11 +171,11 @@ func TestErrorAnswer_Encode(t *testing.T) {
 			[]byte{0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			ErrorAnswer{errs.NewErrorUnsupportedCompressionWithTracebackID(fields.Lz4, [16]byte{})},
+			ErrorAnswer{errs.NewErrorUnsupportedCompressionWithTracebackID(fields.S2, [16]byte{})},
 			[]byte{0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
-			ErrorAnswer{errs.NewErrorUnsupportedCompressionWithTracebackID(fields.Lz4, [16]byte{})},
+			ErrorAnswer{errs.NewErrorUnsupportedCompressionWithTracebackID(fields.S2, [16]byte{})},
 			[]byte{0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
@@ -227,7 +227,7 @@ func TestErrorAnswer_Command(t *testing.T) {
 		{ErrorAnswer{errs.NewErrorNoHello()}, fields.Answer},
 		{ErrorAnswer{errs.NewErrorNotFound([]byte("key"))}, fields.Answer},
 		{ErrorAnswer{errs.NewErrorNotFound([]byte(""))}, fields.Answer},
-		{ErrorAnswer{errs.NewErrorProhibitedCompression(fields.Lz4, fields.Handshake)}, fields.Answer},
+		{ErrorAnswer{errs.NewErrorProhibitedCompression(fields.S2, fields.Handshake)}, fields.Answer},
 		{ErrorAnswer{errs.NewErrorProhibitedCompression(fields.None, fields.Handshake)}, fields.Answer},
 		{ErrorAnswer{errs.NewErrorRequestsConflict(0)}, fields.Answer},
 		{ErrorAnswer{errs.NewErrorRequestInterrupted(0)}, fields.Answer},
@@ -239,7 +239,7 @@ func TestErrorAnswer_Command(t *testing.T) {
 		{ErrorAnswer{errs.NewErrorUnexpectedCommand(fields.Handshake, fields.Handshake)}, fields.Answer},
 		{ErrorAnswer{errs.NewErrorUnsupportedCommand(fields.Command(255))}, fields.Answer},
 		{ErrorAnswer{errs.NewErrorUnsupportedCommand(fields.Handshake)}, fields.Answer},
-		{ErrorAnswer{errs.NewErrorUnsupportedCompression(fields.Lz4)}, fields.Answer},
+		{ErrorAnswer{errs.NewErrorUnsupportedCompression(fields.S2)}, fields.Answer},
 		{ErrorAnswer{errs.NewErrorUnsupportedCompression(fields.None)}, fields.Answer},
 		{ErrorAnswer{errs.NewErrorUnsupportedVersion(3)}, fields.Answer},
 	}
@@ -276,7 +276,7 @@ func TestErrorAnswer_IsValid(t *testing.T) {
 		{ErrorAnswer{errs.NewErrorNoHello()}, false},
 		{ErrorAnswer{errs.NewErrorNotFound([]byte("key"))}, false},
 		{ErrorAnswer{errs.NewErrorNotFound([]byte(""))}, true},
-		{ErrorAnswer{errs.NewErrorProhibitedCompression(fields.Lz4, fields.Handshake)}, false},
+		{ErrorAnswer{errs.NewErrorProhibitedCompression(fields.S2, fields.Handshake)}, false},
 		{ErrorAnswer{errs.NewErrorProhibitedCompression(fields.None, fields.Handshake)}, true},
 		{ErrorAnswer{errs.NewErrorRequestsConflict(0)}, false},
 		{ErrorAnswer{errs.NewErrorRequestInterrupted(0)}, false},
@@ -288,7 +288,7 @@ func TestErrorAnswer_IsValid(t *testing.T) {
 		{ErrorAnswer{errs.NewErrorUnexpectedCommand(fields.Handshake, fields.Handshake)}, true},
 		{ErrorAnswer{errs.NewErrorUnsupportedCommand(fields.Command(255))}, false},
 		{ErrorAnswer{errs.NewErrorUnsupportedCommand(fields.Handshake)}, true},
-		{ErrorAnswer{errs.NewErrorUnsupportedCompression(fields.Lz4)}, false},
+		{ErrorAnswer{errs.NewErrorUnsupportedCompression(fields.S2)}, false},
 		{ErrorAnswer{errs.NewErrorUnsupportedCompression(fields.None)}, true},
 		{ErrorAnswer{errs.NewErrorUnsupportedVersion(3)}, false},
 	}

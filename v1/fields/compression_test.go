@@ -15,7 +15,7 @@ func TestCompression_Size(t *testing.T) {
 	}{
 		{None, 1},
 		{Zstd, 1},
-		{Lz4, 1},
+		{S2, 1},
 		{Compression(3), 1},
 		{Compression(255), 1},
 	}
@@ -39,7 +39,7 @@ func TestCompression_Encode(t *testing.T) {
 	}{
 		{None, []byte{0x00}},
 		{Zstd, []byte{0x01}},
-		{Lz4, []byte{0x02}},
+		{S2, []byte{0x02}},
 	}
 
 	for _, tt := range tests {
@@ -71,7 +71,7 @@ func TestCompression_String(t *testing.T) {
 	}{
 		{None, "None"},
 		{Zstd, "Zstd"},
-		{Lz4, "Lz4"},
+		{S2, "S2"},
 		{Compression(3), "Unknown (3)"},
 		{Compression(255), "Unknown (255)"},
 	}
@@ -95,7 +95,7 @@ func TestCompression_IsValid(t *testing.T) {
 	}{
 		{None, true},
 		{Zstd, true},
-		{Lz4, true},
+		{S2, true},
 		{Compression(3), false},
 		{Compression(255), false},
 	}

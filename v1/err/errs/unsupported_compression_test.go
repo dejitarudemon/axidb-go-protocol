@@ -14,7 +14,7 @@ func TestUnsupportedCompression_Size(t *testing.T) {
 		e    ErrorUnsupportedCompression
 		want int
 	}{
-		{ErrorUnsupportedCompression{fields.Lz4, generateNewTracebackID()}, 18},
+		{ErrorUnsupportedCompression{fields.S2, generateNewTracebackID()}, 18},
 		{ErrorUnsupportedCompression{fields.None, generateNewTracebackID()}, 18},
 		{ErrorUnsupportedCompression{fields.Zstd, generateNewTracebackID()}, 18},
 		{ErrorUnsupportedCompression{fields.Compression(3), generateNewTracebackID()}, 18},
@@ -39,7 +39,7 @@ func TestUnsupportedCompression_Compression(t *testing.T) {
 		e    ErrorUnsupportedCompression
 		want fields.Error
 	}{
-		{ErrorUnsupportedCompression{fields.Lz4, generateNewTracebackID()}, fields.UnsupportedCompression},
+		{ErrorUnsupportedCompression{fields.S2, generateNewTracebackID()}, fields.UnsupportedCompression},
 		{ErrorUnsupportedCompression{fields.Zstd, generateNewTracebackID()}, fields.UnsupportedCompression},
 		{ErrorUnsupportedCompression{fields.None, generateNewTracebackID()}, fields.UnsupportedCompression},
 		{ErrorUnsupportedCompression{fields.Compression(3), generateNewTracebackID()}, fields.UnsupportedCompression},
@@ -65,7 +65,7 @@ func TestUnsupportedCompression_TracebackID(t *testing.T) {
 		want [16]byte
 	}{
 		{
-			ErrorUnsupportedCompression{fields.Lz4, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
+			ErrorUnsupportedCompression{fields.S2, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
 			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
 		},
 		{
@@ -108,7 +108,7 @@ func TestUnsupportedCompression_IsValid(t *testing.T) {
 		want bool
 	}{
 		{
-			ErrorUnsupportedCompression{fields.Lz4, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
+			ErrorUnsupportedCompression{fields.S2, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
 			false,
 		},
 		{
@@ -151,7 +151,7 @@ func TestUnsupportedCompression_Encode(t *testing.T) {
 		want []byte
 	}{
 		{
-			ErrorUnsupportedCompression{fields.Lz4, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
+			ErrorUnsupportedCompression{fields.S2, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
 			[]byte{0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
 		},
 		{
