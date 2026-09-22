@@ -9,7 +9,7 @@ type Key предназначен для хранения Key, его валид
 */
 type Key []byte
 
-const KeyFieldSize = 16
+const KeyLenFieldSize = 4
 
 func (k Key) Encode(buf buffer.Appender) {
 	buf.Append(k[:])

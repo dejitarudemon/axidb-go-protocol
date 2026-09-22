@@ -3,7 +3,7 @@ package values
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
@@ -16,7 +16,7 @@ type TypedArray представляет собой типизированную
 элементов из спецификации протокола v1.
 */
 type TypedArray struct {
-	ElemType types.Code
+	ElemType fields.Type
 	Elems    []value.V
 }
 
@@ -51,11 +51,11 @@ func (ta TypedArray) Size() int {
 		}
 	}
 
-	return TypedArrayLenFieldSize + types.FieldSize + size
+	return TypedArrayLenFieldSize + ta.ElemType.Size() + size
 }
 
-func (ta TypedArray) Type() types.Code {
-	return types.TypedArray
+func (ta TypedArray) Type() fields.Type {
+	return fields.TypedArray
 }
 
 func (ta TypedArray) IsValid() error {

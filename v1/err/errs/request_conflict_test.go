@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -37,12 +36,12 @@ func TestRequestsConflict_Size(t *testing.T) {
 func TestRequestsConflict_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorRequestsConflict
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorRequestsConflict{0, generateNewTracebackID()}, err.RequestsConflict},
-		{ErrorRequestsConflict{1, generateNewTracebackID()}, err.RequestsConflict},
-		{ErrorRequestsConflict{math.MaxUint32, generateNewTracebackID()}, err.RequestsConflict},
-		{ErrorRequestsConflict{}, err.RequestsConflict},
+		{ErrorRequestsConflict{0, generateNewTracebackID()}, fields.RequestsConflict},
+		{ErrorRequestsConflict{1, generateNewTracebackID()}, fields.RequestsConflict},
+		{ErrorRequestsConflict{math.MaxUint32, generateNewTracebackID()}, fields.RequestsConflict},
+		{ErrorRequestsConflict{}, fields.RequestsConflict},
 	}
 
 	for _, tt := range tests {

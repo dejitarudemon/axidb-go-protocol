@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -36,12 +35,12 @@ func TestUnsupportedVersion_Size(t *testing.T) {
 func TestUnsupportedVersion_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorUnsupportedVersion
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorUnsupportedVersion{0, generateNewTracebackID()}, err.UnsupportedVersion},
-		{ErrorUnsupportedVersion{1, generateNewTracebackID()}, err.UnsupportedVersion},
-		{ErrorUnsupportedVersion{255, generateNewTracebackID()}, err.UnsupportedVersion},
-		{ErrorUnsupportedVersion{}, err.UnsupportedVersion},
+		{ErrorUnsupportedVersion{0, generateNewTracebackID()}, fields.UnsupportedVersion},
+		{ErrorUnsupportedVersion{1, generateNewTracebackID()}, fields.UnsupportedVersion},
+		{ErrorUnsupportedVersion{255, generateNewTracebackID()}, fields.UnsupportedVersion},
+		{ErrorUnsupportedVersion{}, fields.UnsupportedVersion},
 	}
 
 	for _, tt := range tests {

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 func TestFloat_Size(t *testing.T) {
@@ -71,13 +71,13 @@ func TestFloat_Encode(t *testing.T) {
 func TestFloat_Type(t *testing.T) {
 	tests := []struct {
 		c    Float
-		want types.Code
+		want fields.Type
 	}{
-		{Float(0), types.Float},
-		{Float(math.MaxFloat64), types.Float},
-		{Float(math.SmallestNonzeroFloat64), types.Float},
-		{Float(-math.MaxFloat64), types.Float},
-		{Float(-math.SmallestNonzeroFloat64), types.Float},
+		{Float(0), fields.Float},
+		{Float(math.MaxFloat64), fields.Float},
+		{Float(math.SmallestNonzeroFloat64), fields.Float},
+		{Float(-math.MaxFloat64), fields.Float},
+		{Float(-math.SmallestNonzeroFloat64), fields.Float},
 	}
 
 	for _, tt := range tests {

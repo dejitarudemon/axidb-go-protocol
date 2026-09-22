@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -37,12 +36,12 @@ func TestInternalError_Size(t *testing.T) {
 func TestInternalError_Command(t *testing.T) {
 	tests := []struct {
 		e    ErrorInternalError
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorInternalError{nil, generateNewTracebackID()}, err.InternalError},
-		{ErrorInternalError{errors.New(""), generateNewTracebackID()}, err.InternalError},
-		{ErrorInternalError{errors.New("some-error"), generateNewTracebackID()}, err.InternalError},
-		{ErrorInternalError{}, err.InternalError},
+		{ErrorInternalError{nil, generateNewTracebackID()}, fields.InternalError},
+		{ErrorInternalError{errors.New(""), generateNewTracebackID()}, fields.InternalError},
+		{ErrorInternalError{errors.New("some-error"), generateNewTracebackID()}, fields.InternalError},
+		{ErrorInternalError{}, fields.InternalError},
 	}
 
 	for _, tt := range tests {

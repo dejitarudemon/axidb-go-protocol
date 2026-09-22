@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -40,15 +39,15 @@ func TestRestrictedRequest_Size(t *testing.T) {
 func TestRestrictedRequest_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorRestrictedRequest
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorRestrictedRequest{nil, nil, nil, fields.Handshake, 0, generateNewTracebackID()}, err.RestrictedRequest},
-		{ErrorRestrictedRequest{[]byte{}, nil, nil, fields.Answer, 0, generateNewTracebackID()}, err.RestrictedRequest},
-		{ErrorRestrictedRequest{nil, []byte{}, nil, fields.Read, 0, generateNewTracebackID()}, err.RestrictedRequest},
-		{ErrorRestrictedRequest{nil, nil, []byte{}, fields.Write, 0, generateNewTracebackID()}, err.RestrictedRequest},
-		{ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, 1, generateNewTracebackID()}, err.RestrictedRequest},
-		{ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, math.MaxUint32, generateNewTracebackID()}, err.RestrictedRequest},
-		{ErrorRestrictedRequest{}, err.RestrictedRequest},
+		{ErrorRestrictedRequest{nil, nil, nil, fields.Handshake, 0, generateNewTracebackID()}, fields.RestrictedRequest},
+		{ErrorRestrictedRequest{[]byte{}, nil, nil, fields.Answer, 0, generateNewTracebackID()}, fields.RestrictedRequest},
+		{ErrorRestrictedRequest{nil, []byte{}, nil, fields.Read, 0, generateNewTracebackID()}, fields.RestrictedRequest},
+		{ErrorRestrictedRequest{nil, nil, []byte{}, fields.Write, 0, generateNewTracebackID()}, fields.RestrictedRequest},
+		{ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, 1, generateNewTracebackID()}, fields.RestrictedRequest},
+		{ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, math.MaxUint32, generateNewTracebackID()}, fields.RestrictedRequest},
+		{ErrorRestrictedRequest{}, fields.RestrictedRequest},
 	}
 
 	for _, tt := range tests {

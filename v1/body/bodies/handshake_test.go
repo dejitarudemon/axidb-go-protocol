@@ -15,7 +15,7 @@ func generateManyCompressions(size uint16) []fields.Compression {
 	fieldss := make([]fields.Compression, 0, size)
 
 	for i := range size {
-		fieldss = append(fieldss, fields.Compression(i%256))
+		fieldss = append(fieldss, fields.Compression((i+1)%255))
 	}
 
 	return fieldss
@@ -96,7 +96,7 @@ func TestHandshake_Size(t *testing.T) {
 		{Handshake{"user", [32]byte{0x01, 0x02, 0x03, 0x04}, []fields.Compression{0x00, 0x01}}, 43},
 		{Handshake{"user", [32]byte{0x01, 0x02, 0x03}, []fields.Compression{0x00, 0x01, 0x00}}, 44},
 		{NewHandshake("user", [32]byte{0x01, 0x02}, []fields.Compression{0x00, 0x01, 0x00}), 43},
-		{Handshake{"user", [32]byte{0x01}, generateManyCompressions(1000)}, 297},
+		{Handshake{"user", [32]byte{0x01}, generateManyCompressions(1000)}, 296},
 	}
 
 	for _, tt := range tests {

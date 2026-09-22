@@ -42,7 +42,7 @@ type ProtocolError interface {
 	/*
 		func Code возвращает код ошибки.
 	*/
-	Code() Code
+	Code() fields.Error
 
 	/*
 		func IsValid возвращает валидность настоящей ошибки

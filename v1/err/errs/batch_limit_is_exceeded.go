@@ -39,11 +39,11 @@ func (e ErrorBatchLimitIsExceeded) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorBatchLimitIsExceeded) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize + CurrentBatchLimitFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize + CurrentBatchLimitFieldSize
 }
 
-func (e ErrorBatchLimitIsExceeded) Code() err.Code {
-	return err.BatchLimitIsExceeded
+func (e ErrorBatchLimitIsExceeded) Code() fields.Error {
+	return fields.BatchLimitIsExceeded
 }
 
 func (e ErrorBatchLimitIsExceeded) Encode(buf buffer.Appender) {

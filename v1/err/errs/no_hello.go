@@ -31,11 +31,11 @@ func (e ErrorNoHello) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorNoHello) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize
 }
 
-func (e ErrorNoHello) Code() err.Code {
-	return err.NoHello
+func (e ErrorNoHello) Code() fields.Error {
+	return fields.NoHello
 }
 
 func (e ErrorNoHello) Encode(buf buffer.Appender) {

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 func TestBytes_Size(t *testing.T) {
@@ -68,12 +68,12 @@ func TestBytes_Encode(t *testing.T) {
 func TestBytes_Type(t *testing.T) {
 	tests := []struct {
 		c    Bytes
-		want types.Code
+		want fields.Type
 	}{
-		{Bytes([]byte("")), types.Bytes},
-		{Bytes([]byte{0x0a, 0xff}), types.Bytes},
-		{Bytes([]byte{}), types.Bytes},
-		{Bytes(nil), types.Bytes},
+		{Bytes([]byte("")), fields.Bytes},
+		{Bytes([]byte{0x0a, 0xff}), fields.Bytes},
+		{Bytes([]byte{}), fields.Bytes},
+		{Bytes(nil), fields.Bytes},
 	}
 
 	for _, tt := range tests {

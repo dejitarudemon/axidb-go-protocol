@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -34,10 +33,10 @@ func TestNoHello_Size(t *testing.T) {
 func TestNoHello_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorNoHello
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorNoHello{generateNewTracebackID()}, err.NoHello},
-		{ErrorNoHello{}, err.NoHello},
+		{ErrorNoHello{generateNewTracebackID()}, fields.NoHello},
+		{ErrorNoHello{}, fields.NoHello},
 	}
 
 	for _, tt := range tests {

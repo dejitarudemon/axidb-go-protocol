@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 func TestString_Size(t *testing.T) {
@@ -66,11 +66,11 @@ func TestString_Encode(t *testing.T) {
 func TestString_Type(t *testing.T) {
 	tests := []struct {
 		c    String
-		want types.Code
+		want fields.Type
 	}{
-		{String(""), types.String},
-		{String("a"), types.String},
-		{String("ф"), types.String},
+		{String(""), fields.String},
+		{String("a"), fields.String},
+		{String("ф"), fields.String},
 	}
 
 	for _, tt := range tests {

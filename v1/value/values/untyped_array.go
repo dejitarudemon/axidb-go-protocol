@@ -3,7 +3,7 @@ package values
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
@@ -40,19 +40,19 @@ func (ua UntypedArray) Encode(buf buffer.Appender) {
 }
 
 func (ua UntypedArray) Size() int {
-	size := 0
+	size := UntypedArrayLenFieldSize
 
 	for _, elem := range ua {
 		if elem != nil {
-			size += elem.Size()
+			size += elem.Size() + elem.Type().Size()
 		}
 	}
 
-	return UntypedArrayLenFieldSize + size + ua.realLen()*types.FieldSize
+	return size
 }
 
-func (ua UntypedArray) Type() types.Code {
-	return types.UntypedArray
+func (ua UntypedArray) Type() fields.Type {
+	return fields.UntypedArray
 }
 
 func (ua UntypedArray) IsValid() error {

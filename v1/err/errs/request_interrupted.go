@@ -34,11 +34,11 @@ func (e ErrorRequestInterrupted) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorRequestInterrupted) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize
 }
 
-func (e ErrorRequestInterrupted) Code() err.Code {
-	return err.RequestInterrupted
+func (e ErrorRequestInterrupted) Code() fields.Error {
+	return fields.RequestInterrupted
 }
 
 func (e ErrorRequestInterrupted) Encode(buf buffer.Appender) {

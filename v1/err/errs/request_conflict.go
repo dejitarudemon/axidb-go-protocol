@@ -34,11 +34,11 @@ func (e ErrorRequestsConflict) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorRequestsConflict) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize
 }
 
-func (e ErrorRequestsConflict) Code() err.Code {
-	return err.RequestsConflict
+func (e ErrorRequestsConflict) Code() fields.Error {
+	return fields.RequestsConflict
 }
 
 func (e ErrorRequestsConflict) Encode(buf buffer.Appender) {

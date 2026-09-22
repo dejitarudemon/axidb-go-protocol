@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -37,12 +36,12 @@ func TestRequestInterrupted_Size(t *testing.T) {
 func TestRequestInterrupted_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorRequestInterrupted
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorRequestInterrupted{0, generateNewTracebackID()}, err.RequestInterrupted},
-		{ErrorRequestInterrupted{1, generateNewTracebackID()}, err.RequestInterrupted},
-		{ErrorRequestInterrupted{math.MaxUint32, generateNewTracebackID()}, err.RequestInterrupted},
-		{ErrorRequestInterrupted{}, err.RequestInterrupted},
+		{ErrorRequestInterrupted{0, generateNewTracebackID()}, fields.RequestInterrupted},
+		{ErrorRequestInterrupted{1, generateNewTracebackID()}, fields.RequestInterrupted},
+		{ErrorRequestInterrupted{math.MaxUint32, generateNewTracebackID()}, fields.RequestInterrupted},
+		{ErrorRequestInterrupted{}, fields.RequestInterrupted},
 	}
 
 	for _, tt := range tests {

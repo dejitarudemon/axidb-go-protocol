@@ -37,11 +37,11 @@ func (e ErrorInvalidRequestID) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorInvalidRequestID) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize
 }
 
-func (e ErrorInvalidRequestID) Code() err.Code {
-	return err.InvalidRequestID
+func (e ErrorInvalidRequestID) Code() fields.Error {
+	return fields.InvalidRequestID
 }
 
 func (e ErrorInvalidRequestID) Encode(buf buffer.Appender) {

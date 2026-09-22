@@ -1,4 +1,4 @@
-package types
+package fields
 
 import (
 	"bytes"
@@ -8,9 +8,9 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 )
 
-func TestCode_Size(t *testing.T) {
+func TestType_Size(t *testing.T) {
 	tests := []struct {
-		c    Code
+		t    Type
 		want int
 	}{
 		{Bytes, 1},
@@ -21,15 +21,15 @@ func TestCode_Size(t *testing.T) {
 		{Float, 1},
 		{String, 1},
 		{JSON, 1},
-		{Code(7), 1},
-		{Code(255), 1},
+		{Type(7), 1},
+		{Type(255), 1},
 	}
 
 	for _, tt := range tests {
 		t.Run(
-			fmt.Sprintf("%v", tt.c),
+			fmt.Sprintf("%v", tt.t),
 			func(t *testing.T) {
-				if got := tt.c.Size(); got != tt.want {
+				if got := tt.t.Size(); got != tt.want {
 					t.Errorf("got %v, want %v", got, tt.want)
 				}
 			},
@@ -37,9 +37,9 @@ func TestCode_Size(t *testing.T) {
 	}
 }
 
-func TestCode_Encode(t *testing.T) {
+func TestType_Encode(t *testing.T) {
 	tests := []struct {
-		c    Code
+		t    Type
 		want []byte
 	}{
 		{Bytes, []byte{0x00}},
@@ -50,22 +50,22 @@ func TestCode_Encode(t *testing.T) {
 		{Float, []byte{0x05}},
 		{String, []byte{0x06}},
 		{JSON, []byte{0x07}},
-		{Code(8), []byte{0x08}},
-		{Code(255), []byte{0xFF}},
+		{Type(8), []byte{0x08}},
+		{Type(255), []byte{0xFF}},
 	}
 
 	for _, tt := range tests {
 		t.Run(
-			fmt.Sprintf("%v", tt.c),
+			fmt.Sprintf("%v", tt.t),
 			func(t *testing.T) {
 				buf := buffer.Mock{}
-				buf.Preallocate(tt.c.Size())
+				buf.Preallocate(tt.t.Size())
 
-				tt.c.Encode(&buf)
+				tt.t.Encode(&buf)
 				got := buf.Bytes()
 
-				if len(got) != tt.c.Size() {
-					t.Fatalf("expected %v bytes, got %v bytes", tt.c.Size(), len(got))
+				if len(got) != tt.t.Size() {
+					t.Fatalf("expected %v bytes, got %v bytes", tt.t.Size(), len(got))
 				}
 
 				if !bytes.Equal(got, tt.want) {
@@ -76,9 +76,9 @@ func TestCode_Encode(t *testing.T) {
 	}
 }
 
-func TestCode_String(t *testing.T) {
+func TestType_String(t *testing.T) {
 	tests := []struct {
-		c    Code
+		t    Type
 		want string
 	}{
 		{Bytes, "Bytes"},
@@ -89,15 +89,15 @@ func TestCode_String(t *testing.T) {
 		{Float, "Float"},
 		{String, "String"},
 		{JSON, "JSON"},
-		{Code(8), "Unknown (8)"},
-		{Code(255), "Unknown (255)"},
+		{Type(8), "Unknown (8)"},
+		{Type(255), "Unknown (255)"},
 	}
 
 	for _, tt := range tests {
 		t.Run(
-			fmt.Sprintf("%v", tt.c),
+			fmt.Sprintf("%v", tt.t),
 			func(t *testing.T) {
-				if got := tt.c.String(); got != tt.want {
+				if got := tt.t.String(); got != tt.want {
 					t.Errorf("got %v, want %v", got, tt.want)
 				}
 			},
@@ -105,9 +105,9 @@ func TestCode_String(t *testing.T) {
 	}
 }
 
-func TestCode_IsValid(t *testing.T) {
+func TestType_IsValid(t *testing.T) {
 	tests := []struct {
-		c    Code
+		t    Type
 		want bool
 	}{
 		{Bytes, true},
@@ -118,15 +118,15 @@ func TestCode_IsValid(t *testing.T) {
 		{Float, true},
 		{String, true},
 		{JSON, true},
-		{Code(8), false},
-		{Code(255), false},
+		{Type(8), false},
+		{Type(255), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(
-			fmt.Sprintf("%v", tt.c),
+			fmt.Sprintf("%v", tt.t),
 			func(t *testing.T) {
-				if got := tt.c.IsValid(); got != tt.want {
+				if got := tt.t.IsValid(); got != tt.want {
 					t.Errorf("got %v, want %v", got, tt.want)
 				}
 			},

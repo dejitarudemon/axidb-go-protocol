@@ -37,11 +37,11 @@ func (e ErrorProhibitedCompression) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorProhibitedCompression) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize
 }
 
-func (e ErrorProhibitedCompression) Code() err.Code {
-	return err.ProhibitedCompression
+func (e ErrorProhibitedCompression) Code() fields.Error {
+	return fields.ProhibitedCompression
 }
 
 func (e ErrorProhibitedCompression) Encode(buf buffer.Appender) {

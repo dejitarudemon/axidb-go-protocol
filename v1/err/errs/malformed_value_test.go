@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -36,12 +35,12 @@ func TestMalformedValue_Size(t *testing.T) {
 func TestMalformedValue_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorMalformedValue
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorMalformedValue{"", generateNewTracebackID()}, err.MalformedValue},
-		{ErrorMalformedValue{"a", generateNewTracebackID()}, err.MalformedValue},
-		{ErrorMalformedValue{"ф", generateNewTracebackID()}, err.MalformedValue},
-		{ErrorMalformedValue{}, err.MalformedValue},
+		{ErrorMalformedValue{"", generateNewTracebackID()}, fields.MalformedValue},
+		{ErrorMalformedValue{"a", generateNewTracebackID()}, fields.MalformedValue},
+		{ErrorMalformedValue{"ф", generateNewTracebackID()}, fields.MalformedValue},
+		{ErrorMalformedValue{}, fields.MalformedValue},
 	}
 
 	for _, tt := range tests {

@@ -7,7 +7,7 @@ package values
 
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
@@ -30,8 +30,8 @@ func (b Bytes) Size() int {
 	return BytesLenFieldSize + len(b)
 }
 
-func (b Bytes) Type() types.Code {
-	return types.Bytes
+func (b Bytes) Type() fields.Type {
+	return fields.Bytes
 }
 
 func (b Bytes) IsValid() error {

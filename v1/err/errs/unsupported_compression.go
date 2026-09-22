@@ -34,11 +34,11 @@ func (e ErrorUnsupportedCompression) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorUnsupportedCompression) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize
 }
 
-func (e ErrorUnsupportedCompression) Code() err.Code {
-	return err.UnsupportedCompression
+func (e ErrorUnsupportedCompression) Code() fields.Error {
+	return fields.UnsupportedCompression
 }
 
 func (e ErrorUnsupportedCompression) Encode(buf buffer.Appender) {

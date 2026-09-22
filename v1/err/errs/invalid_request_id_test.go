@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -40,15 +39,15 @@ func TestInvalidRequestID_Size(t *testing.T) {
 func TestInvalidRequestID_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorInvalidRequestID
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorInvalidRequestID{fields.Answer, 1, generateNewTracebackID()}, err.InvalidRequestID},
-		{ErrorInvalidRequestID{fields.Batch, 0, generateNewTracebackID()}, err.InvalidRequestID},
-		{ErrorInvalidRequestID{fields.Handshake, math.MaxUint32, generateNewTracebackID()}, err.InvalidRequestID},
-		{ErrorInvalidRequestID{fields.Command(10), 1, generateNewTracebackID()}, err.InvalidRequestID},
-		{ErrorInvalidRequestID{fields.Command(11), math.MaxUint32, generateNewTracebackID()}, err.InvalidRequestID},
-		{ErrorInvalidRequestID{fields.Command(255), math.MaxUint32, generateNewTracebackID()}, err.InvalidRequestID},
-		{ErrorInvalidRequestID{}, err.InvalidRequestID},
+		{ErrorInvalidRequestID{fields.Answer, 1, generateNewTracebackID()}, fields.InvalidRequestID},
+		{ErrorInvalidRequestID{fields.Batch, 0, generateNewTracebackID()}, fields.InvalidRequestID},
+		{ErrorInvalidRequestID{fields.Handshake, math.MaxUint32, generateNewTracebackID()}, fields.InvalidRequestID},
+		{ErrorInvalidRequestID{fields.Command(10), 1, generateNewTracebackID()}, fields.InvalidRequestID},
+		{ErrorInvalidRequestID{fields.Command(11), math.MaxUint32, generateNewTracebackID()}, fields.InvalidRequestID},
+		{ErrorInvalidRequestID{fields.Command(255), math.MaxUint32, generateNewTracebackID()}, fields.InvalidRequestID},
+		{ErrorInvalidRequestID{}, fields.InvalidRequestID},
 	}
 
 	for _, tt := range tests {

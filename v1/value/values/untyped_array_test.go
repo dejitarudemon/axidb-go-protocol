@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 func TestUntypedArray_Size(t *testing.T) {
@@ -100,28 +100,28 @@ func TestUntypedArray_Encode(t *testing.T) {
 func TestUntypedArray_Type(t *testing.T) {
 	tests := []struct {
 		c    UntypedArray
-		want types.Code
+		want fields.Type
 	}{
 		{
-			UntypedArray{nil}, types.UntypedArray,
+			UntypedArray{nil}, fields.UntypedArray,
 		},
 		{
-			UntypedArray{}, types.UntypedArray,
+			UntypedArray{}, fields.UntypedArray,
 		},
 		{
-			UntypedArray{Int(1)}, types.UntypedArray,
+			UntypedArray{Int(1)}, fields.UntypedArray,
 		},
 		{
-			UntypedArray{Int(1), Int(2)}, types.UntypedArray,
+			UntypedArray{Int(1), Int(2)}, fields.UntypedArray,
 		},
 		{
-			UntypedArray{nil}, types.UntypedArray,
+			UntypedArray{nil}, fields.UntypedArray,
 		},
 		{
-			UntypedArray{Int(1), Float(1)}, types.UntypedArray,
+			UntypedArray{Int(1), Float(1)}, fields.UntypedArray,
 		},
 		{
-			UntypedArray{Int(1), Bytes([]byte{0x01, 0x02, 0x03})}, types.UntypedArray,
+			UntypedArray{Int(1), Bytes([]byte{0x01, 0x02, 0x03})}, fields.UntypedArray,
 		},
 	}
 

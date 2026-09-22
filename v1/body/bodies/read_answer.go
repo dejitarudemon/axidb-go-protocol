@@ -5,7 +5,6 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
@@ -20,7 +19,7 @@ func (r ReadAnswer) Size() int {
 		return ResultFieldSize
 	}
 
-	return ResultFieldSize + types.FieldSize + r.Value.Size()
+	return ResultFieldSize + r.Value.Type().Size() + r.Value.Size()
 }
 
 func (r ReadAnswer) Encode(buf buffer.Appender) {

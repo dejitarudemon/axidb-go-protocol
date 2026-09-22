@@ -5,12 +5,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
-)
-
-const (
-	KeyLenFieldSize = 4
 )
 
 var _ body.Body = Write{}
@@ -22,10 +17,10 @@ type Write struct {
 
 func (w Write) Size() int {
 	if w.Value == nil {
-		return len(w.Key) + KeyLenFieldSize
+		return w.Key.Size() + fields.KeyLenFieldSize
 	}
 
-	return len(w.Key) + KeyLenFieldSize + w.Value.Size() + types.FieldSize
+	return w.Key.Size() + fields.KeyLenFieldSize + w.Value.Size() + w.Value.Type().Size()
 }
 
 func (w Write) Encode(buf buffer.Appender) {
@@ -43,7 +38,7 @@ func (w Write) Command() fields.Command {
 }
 
 func (w Write) IsValid() error {
-	if len(w.Key) == 0 {
+	if w.Key.Size() == 0 {
 		return err.NewValidationError(
 			"empty key",
 			"target", w.Command(),
