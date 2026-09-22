@@ -12,11 +12,11 @@ var _ body.Body = Delete{}
 type Delete fields.Key
 
 func (d Delete) Size() int {
-	return len(d)
+	return fields.Key(d).Size()
 }
 
 func (d Delete) Encode(buf buffer.Appender) {
-	buf.Append(d)
+	fields.Key(d).Encode(buf)
 }
 
 func (d Delete) Command() fields.Command {
@@ -24,7 +24,7 @@ func (d Delete) Command() fields.Command {
 }
 
 func (d Delete) IsValid() error {
-	if len(d) == 0 {
+	if fields.Key(d).Size() == 0 {
 		return err.NewValidationError(
 			"empty key",
 			"target", d.Command(),

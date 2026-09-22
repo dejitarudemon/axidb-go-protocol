@@ -38,7 +38,7 @@ func (w Write) Command() fields.Command {
 }
 
 func (w Write) IsValid() error {
-	if len(w.Key) == 0 {
+	if w.Key.Size() == 0 {
 		return err.NewValidationError(
 			"empty key",
 			"target", w.Command(),

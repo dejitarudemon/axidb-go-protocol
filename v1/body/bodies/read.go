@@ -12,11 +12,11 @@ var _ body.Body = Read{}
 type Read fields.Key
 
 func (r Read) Size() int {
-	return len(r)
+	return fields.Key(r).Size()
 }
 
 func (r Read) Encode(buf buffer.Appender) {
-	buf.Append(r)
+	fields.Key(r).Encode(buf)
 }
 
 func (r Read) Command() fields.Command {
@@ -24,7 +24,7 @@ func (r Read) Command() fields.Command {
 }
 
 func (r Read) IsValid() error {
-	if len(r) == 0 {
+	if fields.Key(r).Size() == 0 {
 		return err.NewValidationError(
 			"empty key",
 			"target", r.Command(),
