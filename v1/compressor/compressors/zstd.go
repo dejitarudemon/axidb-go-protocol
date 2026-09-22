@@ -41,7 +41,7 @@ func (z Zstd) Close() {
 }
 
 func (z Zstd) Code() fields.Compression {
-	return fields.S2
+	return fields.Zstd
 }
 
 func (z Zstd) Compress(data []byte) ([]byte, error) {
