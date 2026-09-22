@@ -20,6 +20,5 @@ func (s S2) Compress(data []byte) ([]byte, error) {
 }
 
 func (s S2) Decompress(data []byte) ([]byte, error) {
-	decompressed := make([]byte, 0, len(data))
-	return s2.Decode(data, decompressed)
+	return s2.Decode(nil, data)
 }
