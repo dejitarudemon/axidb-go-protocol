@@ -56,7 +56,7 @@ func TestHandshakeAnswer_Size(t *testing.T) {
 		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, 4},
 		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, 5},
 		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), 4},
-		{HandshakeAnswer{generateManyCompressions(1000)}, 258},
+		{HandshakeAnswer{generateManyCompressions(1000)}, 257},
 	}
 
 	for _, tt := range tests {

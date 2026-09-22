@@ -9,7 +9,7 @@ import (
 
 const (
 	LoginLenFieldSize              = 4
-	MaxCompressionsPerOneHandshake = 256
+	MaxCompressionsPerOneHandshake = 255
 )
 
 var _ body.Body = Handshake{}
