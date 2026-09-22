@@ -37,11 +37,11 @@ func (e ErrorUnexpectedCommand) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorUnexpectedCommand) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize + fields.CommandFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize + fields.CommandFieldSize
 }
 
-func (e ErrorUnexpectedCommand) Code() err.Code {
-	return err.UnexpectedCommand
+func (e ErrorUnexpectedCommand) Code() fields.Error {
+	return fields.UnexpectedCommand
 }
 
 func (e ErrorUnexpectedCommand) Encode(buf buffer.Appender) {

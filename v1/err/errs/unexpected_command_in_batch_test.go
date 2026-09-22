@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -40,15 +39,15 @@ func TestUnexpectedCommandInBatch_Size(t *testing.T) {
 func TestUnexpectedCommandInBatch_Command(t *testing.T) {
 	tests := []struct {
 		e    ErrorUnexpectedCommandInBatch
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorUnexpectedCommandInBatch{fields.Answer, 1, generateNewTracebackID()}, err.UnexpectedCommandInBatch},
-		{ErrorUnexpectedCommandInBatch{fields.Batch, 0, generateNewTracebackID()}, err.UnexpectedCommandInBatch},
-		{ErrorUnexpectedCommandInBatch{fields.Handshake, math.MaxUint32, generateNewTracebackID()}, err.UnexpectedCommandInBatch},
-		{ErrorUnexpectedCommandInBatch{fields.Command(10), 1, generateNewTracebackID()}, err.UnexpectedCommandInBatch},
-		{ErrorUnexpectedCommandInBatch{fields.Command(11), math.MaxUint32, generateNewTracebackID()}, err.UnexpectedCommandInBatch},
-		{ErrorUnexpectedCommandInBatch{fields.Command(255), math.MaxUint32, generateNewTracebackID()}, err.UnexpectedCommandInBatch},
-		{ErrorUnexpectedCommandInBatch{}, err.UnexpectedCommandInBatch},
+		{ErrorUnexpectedCommandInBatch{fields.Answer, 1, generateNewTracebackID()}, fields.UnexpectedCommandInBatch},
+		{ErrorUnexpectedCommandInBatch{fields.Batch, 0, generateNewTracebackID()}, fields.UnexpectedCommandInBatch},
+		{ErrorUnexpectedCommandInBatch{fields.Handshake, math.MaxUint32, generateNewTracebackID()}, fields.UnexpectedCommandInBatch},
+		{ErrorUnexpectedCommandInBatch{fields.Command(10), 1, generateNewTracebackID()}, fields.UnexpectedCommandInBatch},
+		{ErrorUnexpectedCommandInBatch{fields.Command(11), math.MaxUint32, generateNewTracebackID()}, fields.UnexpectedCommandInBatch},
+		{ErrorUnexpectedCommandInBatch{fields.Command(255), math.MaxUint32, generateNewTracebackID()}, fields.UnexpectedCommandInBatch},
+		{ErrorUnexpectedCommandInBatch{}, fields.UnexpectedCommandInBatch},
 	}
 
 	for _, tt := range tests {

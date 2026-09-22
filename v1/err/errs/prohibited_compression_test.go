@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -40,16 +39,16 @@ func TestProhibitedCompression_Size(t *testing.T) {
 func TestProhibitedCompression_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorProhibitedCompression
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorProhibitedCompression{fields.None, fields.Handshake, generateNewTracebackID()}, err.ProhibitedCompression},
-		{ErrorProhibitedCompression{fields.Lz4, fields.Read, generateNewTracebackID()}, err.ProhibitedCompression},
-		{ErrorProhibitedCompression{fields.Zstd, fields.Write, generateNewTracebackID()}, err.ProhibitedCompression},
-		{ErrorProhibitedCompression{fields.Compression(4), fields.Delete, generateNewTracebackID()}, err.ProhibitedCompression},
-		{ErrorProhibitedCompression{fields.None, fields.Command(4), generateNewTracebackID()}, err.ProhibitedCompression},
-		{ErrorProhibitedCompression{fields.Compression(5), fields.Command(5), generateNewTracebackID()}, err.ProhibitedCompression},
-		{ErrorProhibitedCompression{fields.Compression(255), fields.Command(255), generateNewTracebackID()}, err.ProhibitedCompression},
-		{ErrorProhibitedCompression{}, err.ProhibitedCompression},
+		{ErrorProhibitedCompression{fields.None, fields.Handshake, generateNewTracebackID()}, fields.ProhibitedCompression},
+		{ErrorProhibitedCompression{fields.Lz4, fields.Read, generateNewTracebackID()}, fields.ProhibitedCompression},
+		{ErrorProhibitedCompression{fields.Zstd, fields.Write, generateNewTracebackID()}, fields.ProhibitedCompression},
+		{ErrorProhibitedCompression{fields.Compression(4), fields.Delete, generateNewTracebackID()}, fields.ProhibitedCompression},
+		{ErrorProhibitedCompression{fields.None, fields.Command(4), generateNewTracebackID()}, fields.ProhibitedCompression},
+		{ErrorProhibitedCompression{fields.Compression(5), fields.Command(5), generateNewTracebackID()}, fields.ProhibitedCompression},
+		{ErrorProhibitedCompression{fields.Compression(255), fields.Command(255), generateNewTracebackID()}, fields.ProhibitedCompression},
+		{ErrorProhibitedCompression{}, fields.ProhibitedCompression},
 	}
 
 	for _, tt := range tests {

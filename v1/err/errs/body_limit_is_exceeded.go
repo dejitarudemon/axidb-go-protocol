@@ -39,11 +39,11 @@ func (e ErrorBodyLimitIsExceeded) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorBodyLimitIsExceeded) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize + CurrentBodyLimitFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize + CurrentBodyLimitFieldSize
 }
 
-func (e ErrorBodyLimitIsExceeded) Code() err.Code {
-	return err.BodyLimitIsExceeded
+func (e ErrorBodyLimitIsExceeded) Code() fields.Error {
+	return fields.BodyLimitIsExceeded
 }
 
 func (e ErrorBodyLimitIsExceeded) Encode(buf buffer.Appender) {

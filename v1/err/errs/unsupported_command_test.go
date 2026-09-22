@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -42,18 +41,18 @@ func TestUnsupportedCommand_Size(t *testing.T) {
 func TestUnsupportedCommand_Command(t *testing.T) {
 	tests := []struct {
 		e    ErrorUnsupportedCommand
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorUnsupportedCommand{fields.Answer, generateNewTracebackID()}, err.UnsupportedCommand},
-		{ErrorUnsupportedCommand{fields.Handshake, generateNewTracebackID()}, err.UnsupportedCommand},
-		{ErrorUnsupportedCommand{fields.Read, generateNewTracebackID()}, err.UnsupportedCommand},
-		{ErrorUnsupportedCommand{fields.Write, generateNewTracebackID()}, err.UnsupportedCommand},
-		{ErrorUnsupportedCommand{fields.Delete, generateNewTracebackID()}, err.UnsupportedCommand},
-		{ErrorUnsupportedCommand{fields.Ping, generateNewTracebackID()}, err.UnsupportedCommand},
-		{ErrorUnsupportedCommand{fields.Batch, generateNewTracebackID()}, err.UnsupportedCommand},
-		{ErrorUnsupportedCommand{fields.Command(7), generateNewTracebackID()}, err.UnsupportedCommand},
-		{ErrorUnsupportedCommand{fields.Command(8), generateNewTracebackID()}, err.UnsupportedCommand},
-		{ErrorUnsupportedCommand{}, err.UnsupportedCommand},
+		{ErrorUnsupportedCommand{fields.Answer, generateNewTracebackID()}, fields.UnsupportedCommand},
+		{ErrorUnsupportedCommand{fields.Handshake, generateNewTracebackID()}, fields.UnsupportedCommand},
+		{ErrorUnsupportedCommand{fields.Read, generateNewTracebackID()}, fields.UnsupportedCommand},
+		{ErrorUnsupportedCommand{fields.Write, generateNewTracebackID()}, fields.UnsupportedCommand},
+		{ErrorUnsupportedCommand{fields.Delete, generateNewTracebackID()}, fields.UnsupportedCommand},
+		{ErrorUnsupportedCommand{fields.Ping, generateNewTracebackID()}, fields.UnsupportedCommand},
+		{ErrorUnsupportedCommand{fields.Batch, generateNewTracebackID()}, fields.UnsupportedCommand},
+		{ErrorUnsupportedCommand{fields.Command(7), generateNewTracebackID()}, fields.UnsupportedCommand},
+		{ErrorUnsupportedCommand{fields.Command(8), generateNewTracebackID()}, fields.UnsupportedCommand},
+		{ErrorUnsupportedCommand{}, fields.UnsupportedCommand},
 	}
 
 	for _, tt := range tests {

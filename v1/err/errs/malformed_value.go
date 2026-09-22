@@ -34,11 +34,11 @@ func (e ErrorMalformedValue) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorMalformedValue) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize + len(e.msg)
+	return e.Code().Size() + fields.TracebackIDFieldSize + len(e.msg)
 }
 
-func (e ErrorMalformedValue) Code() err.Code {
-	return err.MalformedValue
+func (e ErrorMalformedValue) Code() fields.Error {
+	return fields.MalformedValue
 }
 
 func (e ErrorMalformedValue) Encode(buf buffer.Appender) {

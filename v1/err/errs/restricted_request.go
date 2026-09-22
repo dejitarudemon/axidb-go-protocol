@@ -46,11 +46,11 @@ func (e ErrorRestrictedRequest) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorRestrictedRequest) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize
 }
 
-func (e ErrorRestrictedRequest) Code() err.Code {
-	return err.RestrictedRequest
+func (e ErrorRestrictedRequest) Code() fields.Error {
+	return fields.RestrictedRequest
 }
 
 func (e ErrorRestrictedRequest) Encode(buf buffer.Appender) {

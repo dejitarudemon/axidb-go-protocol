@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -38,14 +37,14 @@ func TestUnsupportedCompression_Size(t *testing.T) {
 func TestUnsupportedCompression_Compression(t *testing.T) {
 	tests := []struct {
 		e    ErrorUnsupportedCompression
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorUnsupportedCompression{fields.Lz4, generateNewTracebackID()}, err.UnsupportedCompression},
-		{ErrorUnsupportedCompression{fields.Zstd, generateNewTracebackID()}, err.UnsupportedCompression},
-		{ErrorUnsupportedCompression{fields.None, generateNewTracebackID()}, err.UnsupportedCompression},
-		{ErrorUnsupportedCompression{fields.Compression(3), generateNewTracebackID()}, err.UnsupportedCompression},
-		{ErrorUnsupportedCompression{fields.Compression(255), generateNewTracebackID()}, err.UnsupportedCompression},
-		{ErrorUnsupportedCompression{}, err.UnsupportedCompression},
+		{ErrorUnsupportedCompression{fields.Lz4, generateNewTracebackID()}, fields.UnsupportedCompression},
+		{ErrorUnsupportedCompression{fields.Zstd, generateNewTracebackID()}, fields.UnsupportedCompression},
+		{ErrorUnsupportedCompression{fields.None, generateNewTracebackID()}, fields.UnsupportedCompression},
+		{ErrorUnsupportedCompression{fields.Compression(3), generateNewTracebackID()}, fields.UnsupportedCompression},
+		{ErrorUnsupportedCompression{fields.Compression(255), generateNewTracebackID()}, fields.UnsupportedCompression},
+		{ErrorUnsupportedCompression{}, fields.UnsupportedCompression},
 	}
 
 	for _, tt := range tests {

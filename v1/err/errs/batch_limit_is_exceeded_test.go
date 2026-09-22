@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -40,15 +39,15 @@ func TestBatchLimitIsExceeded_Size(t *testing.T) {
 func TestBatchLimitIsExceeded_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorBatchLimitIsExceeded
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorBatchLimitIsExceeded{0, 1, generateNewTracebackID()}, err.BatchLimitIsExceeded},
-		{ErrorBatchLimitIsExceeded{1, 0, generateNewTracebackID()}, err.BatchLimitIsExceeded},
-		{ErrorBatchLimitIsExceeded{1, 1, generateNewTracebackID()}, err.BatchLimitIsExceeded},
-		{ErrorBatchLimitIsExceeded{1, math.MaxUint32, generateNewTracebackID()}, err.BatchLimitIsExceeded},
-		{ErrorBatchLimitIsExceeded{math.MaxUint32, 1, generateNewTracebackID()}, err.BatchLimitIsExceeded},
-		{ErrorBatchLimitIsExceeded{math.MaxUint32, math.MaxUint32, generateNewTracebackID()}, err.BatchLimitIsExceeded},
-		{ErrorBatchLimitIsExceeded{}, err.BatchLimitIsExceeded},
+		{ErrorBatchLimitIsExceeded{0, 1, generateNewTracebackID()}, fields.BatchLimitIsExceeded},
+		{ErrorBatchLimitIsExceeded{1, 0, generateNewTracebackID()}, fields.BatchLimitIsExceeded},
+		{ErrorBatchLimitIsExceeded{1, 1, generateNewTracebackID()}, fields.BatchLimitIsExceeded},
+		{ErrorBatchLimitIsExceeded{1, math.MaxUint32, generateNewTracebackID()}, fields.BatchLimitIsExceeded},
+		{ErrorBatchLimitIsExceeded{math.MaxUint32, 1, generateNewTracebackID()}, fields.BatchLimitIsExceeded},
+		{ErrorBatchLimitIsExceeded{math.MaxUint32, math.MaxUint32, generateNewTracebackID()}, fields.BatchLimitIsExceeded},
+		{ErrorBatchLimitIsExceeded{}, fields.BatchLimitIsExceeded},
 	}
 
 	for _, tt := range tests {

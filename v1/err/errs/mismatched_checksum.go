@@ -37,11 +37,11 @@ func (e ErrorMismatchedChecksum) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorMismatchedChecksum) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize
 }
 
-func (e ErrorMismatchedChecksum) Code() err.Code {
-	return err.MismatchedChecksum
+func (e ErrorMismatchedChecksum) Code() fields.Error {
+	return fields.MismatchedChecksum
 }
 
 func (e ErrorMismatchedChecksum) Encode(buf buffer.Appender) {

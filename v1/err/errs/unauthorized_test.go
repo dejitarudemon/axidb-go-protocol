@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -37,13 +36,13 @@ func TestUnauthorized_Size(t *testing.T) {
 func TestUnauthorized_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorUnauthorized
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorUnauthorized{nil, generateNewTracebackID()}, err.Unauthorized},
-		{ErrorUnauthorized{[]byte{}, generateNewTracebackID()}, err.Unauthorized},
-		{ErrorUnauthorized{[]byte{0x01, 0x02}, generateNewTracebackID()}, err.Unauthorized},
-		{ErrorUnauthorized{[]byte("192.168.1.1"), generateNewTracebackID()}, err.Unauthorized},
-		{ErrorUnauthorized{}, err.Unauthorized},
+		{ErrorUnauthorized{nil, generateNewTracebackID()}, fields.Unauthorized},
+		{ErrorUnauthorized{[]byte{}, generateNewTracebackID()}, fields.Unauthorized},
+		{ErrorUnauthorized{[]byte{0x01, 0x02}, generateNewTracebackID()}, fields.Unauthorized},
+		{ErrorUnauthorized{[]byte("192.168.1.1"), generateNewTracebackID()}, fields.Unauthorized},
+		{ErrorUnauthorized{}, fields.Unauthorized},
 	}
 
 	for _, tt := range tests {

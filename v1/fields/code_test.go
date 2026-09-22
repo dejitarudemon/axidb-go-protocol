@@ -1,4 +1,4 @@
-package err
+package fields
 
 import (
 	"bytes"
@@ -8,9 +8,9 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 )
 
-func TestCode_Size(t *testing.T) {
+func TestError_Size(t *testing.T) {
 	tests := []struct {
-		c    Code
+		e    Error
 		want int
 	}{
 		{NoHello, 2},
@@ -31,17 +31,17 @@ func TestCode_Size(t *testing.T) {
 		{InvalidRequestID, 2},
 		{Unauthorized, 2},
 		{RestrictedRequest, 2},
-		{UnknownErrorCode, 2},
-		{Code(19), 2},
-		{Code(255), 2},
-		{Code(65535), 2},
+		{UnknownErrorError, 2},
+		{Error(19), 2},
+		{Error(255), 2},
+		{Error(65535), 2},
 	}
 
 	for _, tt := range tests {
 		t.Run(
-			fmt.Sprintf("%v", tt.c),
+			fmt.Sprintf("%v", tt.e),
 			func(t *testing.T) {
-				if got := tt.c.Size(); got != tt.want {
+				if got := tt.e.Size(); got != tt.want {
 					t.Errorf("got %v, want %v", got, tt.want)
 				}
 			},
@@ -49,9 +49,9 @@ func TestCode_Size(t *testing.T) {
 	}
 }
 
-func TestCode_Encode(t *testing.T) {
+func TestError_Encode(t *testing.T) {
 	tests := []struct {
-		c    Code
+		e    Error
 		want []byte
 	}{
 		{NoHello, []byte{0x00, 0x00}},
@@ -72,24 +72,24 @@ func TestCode_Encode(t *testing.T) {
 		{InvalidRequestID, []byte{0x00, 0x0F}},
 		{Unauthorized, []byte{0x00, 0x10}},
 		{RestrictedRequest, []byte{0x00, 0x11}},
-		{UnknownErrorCode, []byte{0x00, 0x12}},
-		{Code(19), []byte{0x00, 0x13}},
-		{Code(255), []byte{0x00, 0xFF}},
-		{Code(65535), []byte{0xFF, 0xFF}},
+		{UnknownErrorError, []byte{0x00, 0x12}},
+		{Error(19), []byte{0x00, 0x13}},
+		{Error(255), []byte{0x00, 0xFF}},
+		{Error(65535), []byte{0xFF, 0xFF}},
 	}
 
 	for _, tt := range tests {
 		t.Run(
-			fmt.Sprintf("%v", tt.c),
+			fmt.Sprintf("%v", tt.e),
 			func(t *testing.T) {
 				buf := buffer.Mock{}
-				buf.Preallocate(tt.c.Size())
+				buf.Preallocate(tt.e.Size())
 
-				tt.c.Encode(&buf)
+				tt.e.Encode(&buf)
 				got := buf.Bytes()
 
-				if len(got) != tt.c.Size() {
-					t.Fatalf("expected %v bytes, got %v bytes", tt.c.Size(), len(got))
+				if len(got) != tt.e.Size() {
+					t.Fatalf("expected %v bytes, got %v bytes", tt.e.Size(), len(got))
 				}
 
 				if !bytes.Equal(got, tt.want) {
@@ -100,9 +100,9 @@ func TestCode_Encode(t *testing.T) {
 	}
 }
 
-func TestCode_String(t *testing.T) {
+func TestError_String(t *testing.T) {
 	tests := []struct {
-		c    Code
+		e    Error
 		want string
 	}{
 		{NoHello, "No Hello"},
@@ -122,17 +122,17 @@ func TestCode_String(t *testing.T) {
 		{InvalidRequestID, "Invalid Request ID"},
 		{Unauthorized, "Unauthorized"},
 		{RestrictedRequest, "Restricted Request"},
-		{UnknownErrorCode, "Unknown Error Code"},
-		{Code(19), "Unknown (19)"},
-		{Code(255), "Unknown (255)"},
-		{Code(65535), "Unknown (65535)"},
+		{UnknownErrorError, "Unknown Error Error"},
+		{Error(19), "Unknown (19)"},
+		{Error(255), "Unknown (255)"},
+		{Error(65535), "Unknown (65535)"},
 	}
 
 	for _, tt := range tests {
 		t.Run(
-			fmt.Sprintf("%v", tt.c),
+			fmt.Sprintf("%v", tt.e),
 			func(t *testing.T) {
-				if got := tt.c.String(); got != tt.want {
+				if got := tt.e.String(); got != tt.want {
 					t.Errorf("got %v, want %v", got, tt.want)
 				}
 			},
@@ -140,9 +140,9 @@ func TestCode_String(t *testing.T) {
 	}
 }
 
-func TestCode_IsValid(t *testing.T) {
+func TestError_IsValid(t *testing.T) {
 	tests := []struct {
-		c    Code
+		e    Error
 		want bool
 	}{
 		{NoHello, true},
@@ -162,17 +162,17 @@ func TestCode_IsValid(t *testing.T) {
 		{InvalidRequestID, true},
 		{Unauthorized, true},
 		{RestrictedRequest, true},
-		{UnknownErrorCode, true},
-		{Code(19), false},
-		{Code(255), false},
-		{Code(65535), false},
+		{UnknownErrorError, true},
+		{Error(19), false},
+		{Error(255), false},
+		{Error(65535), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(
-			fmt.Sprintf("%v", tt.c),
+			fmt.Sprintf("%v", tt.e),
 			func(t *testing.T) {
-				if got := tt.c.IsValid(); got != tt.want {
+				if got := tt.e.IsValid(); got != tt.want {
 					t.Errorf("got %v, want %v", got, tt.want)
 				}
 			},

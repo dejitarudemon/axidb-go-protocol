@@ -34,11 +34,11 @@ func (e ErrorUnauthorized) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorUnauthorized) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize
 }
 
-func (e ErrorUnauthorized) Code() err.Code {
-	return err.Unauthorized
+func (e ErrorUnauthorized) Code() fields.Error {
+	return fields.Unauthorized
 }
 
 func (e ErrorUnauthorized) Encode(buf buffer.Appender) {

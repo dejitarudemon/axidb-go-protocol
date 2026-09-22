@@ -1,13 +1,4 @@
-/*
-package err предназначен для представления кодов
-ошибок (Error Code) согласно спецификации протокола v1.
-
-Использование:
-
-	с = Code(1)
-*/
-
-package err
+package fields
 
 import (
 	"fmt"
@@ -16,23 +7,23 @@ import (
 )
 
 /*
-FieldSize представляет размер в байтах,
+ErrorFieldSize представляет размер в байтах,
 отведенный для хранения кода команды в сообщении.
 */
-const FieldSize = 2
+const ErrorFieldSize = 2
 
 /*
-type Code предназначен для хранения
+type Error предназначен для хранения
 кода ошибки, его валидации и кодирования в сообщение.
 */
-type Code uint16
+type Error uint16
 
 /*
 Константы, представляющие ошибки,
 используемые в спецификации протокола v1.
 */
 const (
-	NoHello Code = iota
+	NoHello Error = iota
 	UnsupportedVersion
 	UnexpectedCommand
 	UnsupportedCommand
@@ -50,7 +41,7 @@ const (
 	InvalidRequestID
 	Unauthorized
 	RestrictedRequest
-	UnknownErrorCode
+	UnknownErrorError
 )
 
 /*
@@ -60,16 +51,16 @@ func Encode предназначена для кодирования кода о
 Принимааемые параметры:
   - buf buffer.Appender - буфер для хранения закодированного значения.
 */
-func (c Code) Encode(buf buffer.Appender) {
-	buf.AppendUint16(uint16(c))
+func (e Error) Encode(buf buffer.Appender) {
+	buf.AppendUint16(uint16(e))
 }
 
 /*
 func String предназначена для вывода человекочитаемого названия
 ошибки, представленного конкретным кодом.
 */
-func (c Code) String() string {
-	switch c {
+func (e Error) String() string {
+	switch e {
 	case NoHello:
 		return "No Hello"
 	case UnsupportedVersion:
@@ -106,24 +97,24 @@ func (c Code) String() string {
 		return "Unauthorized"
 	case RestrictedRequest:
 		return "Restricted Request"
-	case UnknownErrorCode:
-		return "Unknown Error Code"
+	case UnknownErrorError:
+		return "Unknown Error Error"
 	}
 
-	return fmt.Sprintf("Unknown (%d)", c)
+	return fmt.Sprintf("Unknown (%d)", e)
 }
 
 /*
 func Size возвращает размер кода ошибок в байтах.
 */
-func (c Code) Size() int {
-	return FieldSize
+func (e Error) Size() int {
+	return ErrorFieldSize
 }
 
 /*
 func IsValid возвращает true, если код ошибки валиден.
 В противном случае false.
 */
-func (c Code) IsValid() bool {
-	return c <= UnknownErrorCode
+func (e Error) IsValid() bool {
+	return e <= UnknownErrorError
 }

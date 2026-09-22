@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -40,15 +39,15 @@ func TestBodyLimitIsExceeded_Size(t *testing.T) {
 func TestBodyLimitIsExceeded_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorBodyLimitIsExceeded
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorBodyLimitIsExceeded{0, 1, generateNewTracebackID()}, err.BodyLimitIsExceeded},
-		{ErrorBodyLimitIsExceeded{1, 0, generateNewTracebackID()}, err.BodyLimitIsExceeded},
-		{ErrorBodyLimitIsExceeded{1, 1, generateNewTracebackID()}, err.BodyLimitIsExceeded},
-		{ErrorBodyLimitIsExceeded{1, math.MaxUint32, generateNewTracebackID()}, err.BodyLimitIsExceeded},
-		{ErrorBodyLimitIsExceeded{math.MaxUint32, 1, generateNewTracebackID()}, err.BodyLimitIsExceeded},
-		{ErrorBodyLimitIsExceeded{math.MaxUint32, math.MaxUint32, generateNewTracebackID()}, err.BodyLimitIsExceeded},
-		{ErrorBodyLimitIsExceeded{}, err.BodyLimitIsExceeded},
+		{ErrorBodyLimitIsExceeded{0, 1, generateNewTracebackID()}, fields.BodyLimitIsExceeded},
+		{ErrorBodyLimitIsExceeded{1, 0, generateNewTracebackID()}, fields.BodyLimitIsExceeded},
+		{ErrorBodyLimitIsExceeded{1, 1, generateNewTracebackID()}, fields.BodyLimitIsExceeded},
+		{ErrorBodyLimitIsExceeded{1, math.MaxUint32, generateNewTracebackID()}, fields.BodyLimitIsExceeded},
+		{ErrorBodyLimitIsExceeded{math.MaxUint32, 1, generateNewTracebackID()}, fields.BodyLimitIsExceeded},
+		{ErrorBodyLimitIsExceeded{math.MaxUint32, math.MaxUint32, generateNewTracebackID()}, fields.BodyLimitIsExceeded},
+		{ErrorBodyLimitIsExceeded{}, fields.BodyLimitIsExceeded},
 	}
 
 	for _, tt := range tests {

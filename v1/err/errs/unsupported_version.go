@@ -34,11 +34,11 @@ func (e ErrorUnsupportedVersion) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorUnsupportedVersion) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize
 }
 
-func (e ErrorUnsupportedVersion) Code() err.Code {
-	return err.UnsupportedVersion
+func (e ErrorUnsupportedVersion) Code() fields.Error {
+	return fields.UnsupportedVersion
 }
 
 func (e ErrorUnsupportedVersion) Encode(buf buffer.Appender) {

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -43,19 +42,19 @@ func TestUnexpectedCommand_Size(t *testing.T) {
 func TestUnexpectedCommand_Command(t *testing.T) {
 	tests := []struct {
 		e    ErrorUnexpectedCommand
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorUnexpectedCommand{fields.Answer, fields.Handshake, generateNewTracebackID()}, err.UnexpectedCommand},
-		{ErrorUnexpectedCommand{fields.Handshake, fields.Read, generateNewTracebackID()}, err.UnexpectedCommand},
-		{ErrorUnexpectedCommand{fields.Read, fields.Write, generateNewTracebackID()}, err.UnexpectedCommand},
-		{ErrorUnexpectedCommand{fields.Write, fields.Delete, generateNewTracebackID()}, err.UnexpectedCommand},
-		{ErrorUnexpectedCommand{fields.Delete, fields.Ping, generateNewTracebackID()}, err.UnexpectedCommand},
-		{ErrorUnexpectedCommand{fields.Ping, fields.Batch, generateNewTracebackID()}, err.UnexpectedCommand},
-		{ErrorUnexpectedCommand{fields.Batch, fields.Answer, generateNewTracebackID()}, err.UnexpectedCommand},
-		{ErrorUnexpectedCommand{fields.Command(7), fields.Command(10), generateNewTracebackID()}, err.UnexpectedCommand},
-		{ErrorUnexpectedCommand{fields.Command(255), fields.Answer, generateNewTracebackID()}, err.UnexpectedCommand},
-		{ErrorUnexpectedCommand{fields.Answer, fields.Answer, generateNewTracebackID()}, err.UnexpectedCommand},
-		{ErrorUnexpectedCommand{}, err.UnexpectedCommand},
+		{ErrorUnexpectedCommand{fields.Answer, fields.Handshake, generateNewTracebackID()}, fields.UnexpectedCommand},
+		{ErrorUnexpectedCommand{fields.Handshake, fields.Read, generateNewTracebackID()}, fields.UnexpectedCommand},
+		{ErrorUnexpectedCommand{fields.Read, fields.Write, generateNewTracebackID()}, fields.UnexpectedCommand},
+		{ErrorUnexpectedCommand{fields.Write, fields.Delete, generateNewTracebackID()}, fields.UnexpectedCommand},
+		{ErrorUnexpectedCommand{fields.Delete, fields.Ping, generateNewTracebackID()}, fields.UnexpectedCommand},
+		{ErrorUnexpectedCommand{fields.Ping, fields.Batch, generateNewTracebackID()}, fields.UnexpectedCommand},
+		{ErrorUnexpectedCommand{fields.Batch, fields.Answer, generateNewTracebackID()}, fields.UnexpectedCommand},
+		{ErrorUnexpectedCommand{fields.Command(7), fields.Command(10), generateNewTracebackID()}, fields.UnexpectedCommand},
+		{ErrorUnexpectedCommand{fields.Command(255), fields.Answer, generateNewTracebackID()}, fields.UnexpectedCommand},
+		{ErrorUnexpectedCommand{fields.Answer, fields.Answer, generateNewTracebackID()}, fields.UnexpectedCommand},
+		{ErrorUnexpectedCommand{}, fields.UnexpectedCommand},
 	}
 
 	for _, tt := range tests {

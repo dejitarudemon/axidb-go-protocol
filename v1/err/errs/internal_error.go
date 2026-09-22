@@ -34,11 +34,11 @@ func (e ErrorInternalError) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorInternalError) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize
 }
 
-func (e ErrorInternalError) Code() err.Code {
-	return err.InternalError
+func (e ErrorInternalError) Code() fields.Error {
+	return fields.InternalError
 }
 
 func (e ErrorInternalError) Encode(buf buffer.Appender) {

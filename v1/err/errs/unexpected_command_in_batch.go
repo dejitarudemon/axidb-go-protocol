@@ -39,11 +39,11 @@ func (e ErrorUnexpectedCommandInBatch) TracebackID() fields.TracebackID {
 }
 
 func (e ErrorUnexpectedCommandInBatch) Size() int {
-	return err.FieldSize + err.TracebackIDFieldSize + RequestNumberFieldSize
+	return e.Code().Size() + fields.TracebackIDFieldSize + RequestNumberFieldSize
 }
 
-func (e ErrorUnexpectedCommandInBatch) Code() err.Code {
-	return err.UnexpectedCommandInBatch
+func (e ErrorUnexpectedCommandInBatch) Code() fields.Error {
+	return fields.UnexpectedCommandInBatch
 }
 
 func (e ErrorUnexpectedCommandInBatch) Encode(buf buffer.Appender) {

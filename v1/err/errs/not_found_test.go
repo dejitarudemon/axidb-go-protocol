@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
@@ -36,12 +35,12 @@ func TestNotFound_Size(t *testing.T) {
 func TestNotFound_Code(t *testing.T) {
 	tests := []struct {
 		e    ErrorNotFound
-		want err.Code
+		want fields.Error
 	}{
-		{ErrorNotFound{nil, generateNewTracebackID()}, err.NotFound},
-		{ErrorNotFound{[]byte(""), generateNewTracebackID()}, err.NotFound},
-		{ErrorNotFound{[]byte("key"), generateNewTracebackID()}, err.NotFound},
-		{ErrorNotFound{}, err.NotFound},
+		{ErrorNotFound{nil, generateNewTracebackID()}, fields.NotFound},
+		{ErrorNotFound{[]byte(""), generateNewTracebackID()}, fields.NotFound},
+		{ErrorNotFound{[]byte("key"), generateNewTracebackID()}, fields.NotFound},
+		{ErrorNotFound{}, fields.NotFound},
 	}
 
 	for _, tt := range tests {
