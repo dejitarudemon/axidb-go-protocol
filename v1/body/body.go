@@ -9,6 +9,8 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
+const BodyLenFieldSize = 4
+
 type Body interface {
 	/*
 		Size возвращает размер тела в байтах.
