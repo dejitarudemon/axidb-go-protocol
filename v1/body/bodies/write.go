@@ -5,7 +5,6 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
@@ -25,7 +24,7 @@ func (w Write) Size() int {
 		return len(w.Key) + KeyLenFieldSize
 	}
 
-	return len(w.Key) + KeyLenFieldSize + w.Value.Size() + types.FieldSize
+	return len(w.Key) + KeyLenFieldSize + w.Value.Size() + w.Value.Type().Size()
 }
 
 func (w Write) Encode(buf buffer.Appender) {

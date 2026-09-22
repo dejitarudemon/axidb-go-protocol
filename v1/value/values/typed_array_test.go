@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
@@ -17,14 +17,14 @@ func TestTypedArray_Size(t *testing.T) {
 	}{
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    []value.V{},
 			},
 			5,
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 				},
@@ -33,7 +33,7 @@ func TestTypedArray_Size(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Int(2),
@@ -43,14 +43,14 @@ func TestTypedArray_Size(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    nil,
 			},
 			5,
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Float(1),
@@ -60,7 +60,7 @@ func TestTypedArray_Size(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Bytes([]byte{0x01, 0x02, 0x03}),
@@ -70,7 +70,7 @@ func TestTypedArray_Size(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    []value.V{nil},
 			},
 			5,
@@ -96,14 +96,14 @@ func TestTypedArray_Encode(t *testing.T) {
 	}{
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    []value.V{},
 			},
 			[]byte{0x00, 0x00, 0x00, 0x00, 0x03},
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 				},
@@ -112,7 +112,7 @@ func TestTypedArray_Encode(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Int(2),
@@ -122,14 +122,14 @@ func TestTypedArray_Encode(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    nil,
 			},
 			[]byte{0x00, 0x00, 0x00, 0x00, 0x03},
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Float(1),
@@ -139,7 +139,7 @@ func TestTypedArray_Encode(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Bytes([]byte{0x01, 0x02, 0x03}),
@@ -149,7 +149,7 @@ func TestTypedArray_Encode(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    []value.V{nil},
 			},
 			[]byte{0x00, 0x00, 0x00, 0x00, 0x03},
@@ -181,67 +181,67 @@ func TestTypedArray_Encode(t *testing.T) {
 func TestTypedArray_Type(t *testing.T) {
 	tests := []struct {
 		c    TypedArray
-		want types.Code
+		want fields.Type
 	}{
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    []value.V{},
 			},
-			types.TypedArray,
+			fields.TypedArray,
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 				},
 			},
-			types.TypedArray,
+			fields.TypedArray,
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Int(2),
 				},
 			},
-			types.TypedArray,
+			fields.TypedArray,
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    nil,
 			},
-			types.TypedArray,
+			fields.TypedArray,
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Float(1),
 				},
 			},
-			types.TypedArray,
+			fields.TypedArray,
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Bytes([]byte{0x01, 0x02, 0x03}),
 				},
 			},
-			types.TypedArray,
+			fields.TypedArray,
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    []value.V{nil},
 			},
-			types.TypedArray,
+			fields.TypedArray,
 		},
 	}
 
@@ -266,14 +266,14 @@ func TestTypedArray_IsValid(t *testing.T) {
 	}{
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    []value.V{},
 			},
 			false,
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 				},
@@ -282,7 +282,7 @@ func TestTypedArray_IsValid(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Int(2),
@@ -292,14 +292,14 @@ func TestTypedArray_IsValid(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    nil,
 			},
 			false,
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Float(1),
@@ -309,7 +309,7 @@ func TestTypedArray_IsValid(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems: []value.V{
 					Int(1),
 					Bytes([]byte{0x01, 0x02, 0x03}),
@@ -319,7 +319,7 @@ func TestTypedArray_IsValid(t *testing.T) {
 		},
 		{
 			TypedArray{
-				ElemType: types.Int,
+				ElemType: fields.Int,
 				Elems:    []value.V{nil},
 			},
 			true,

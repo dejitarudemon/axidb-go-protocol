@@ -1,13 +1,4 @@
-package types
-
-/*
-package package types предназначен для представления кодов
-типов данных (Value Type) согласно спецификации протокола v1.
-
-Использование:
-
-	с = Code(1)
-*/
+package fields
 
 import (
 	"fmt"
@@ -16,23 +7,23 @@ import (
 )
 
 /*
-type Code предназначен для хранения
+type Type предназначен для хранения
 кода типа, его валидации и кодирования в сообщение.
 */
-type Code uint8
+type Type uint8
 
 /*
 FieldSize представляет размер в байтах,
 отведенный для хранения кода типа в сообщении.
 */
-const FieldSize = 1
+const TypeFieldSize = 1
 
 /*
 Константы, представляющие типов данных,
 используемые в спецификации протокола v1.
 */
 const (
-	Bytes Code = iota
+	Bytes Type = iota
 	TypedArray
 	UntypedArray
 	Int
@@ -49,16 +40,16 @@ func Encode предназначена для кодирования кода т
 Принимааемые параметры:
   - buf buffer.Appender - буфер для хранения закодированного значения.
 */
-func (c Code) Encode(buf buffer.Appender) {
-	buf.AppendUint8(uint8(c))
+func (t Type) Encode(buf buffer.Appender) {
+	buf.AppendUint8(uint8(t))
 }
 
 /*
 func String предназначена для вывода человекочитаемого названия
 типа данных, представленного конкретным кодом.
 */
-func (c Code) String() string {
-	switch c {
+func (t Type) String() string {
+	switch t {
 	case Bytes:
 		return "Bytes"
 	case TypedArray:
@@ -77,7 +68,7 @@ func (c Code) String() string {
 		return "JSON"
 	}
 
-	return fmt.Sprintf("Unknown (%d)", c)
+	return fmt.Sprintf("Unknown (%d)", t)
 }
 
 /*
@@ -85,13 +76,13 @@ func IsValid предназначена для проверки кода тип�
 Проверки:
  1. Код находится в пределах 0-7.
 */
-func (c Code) IsValid() bool {
-	return c <= JSON
+func (t Type) IsValid() bool {
+	return t <= JSON
 }
 
 /*
 func Size возвращает размер кода типа данных в байтах.
 */
-func (c Code) Size() int {
-	return FieldSize
+func (t Type) Size() int {
+	return TypeFieldSize
 }

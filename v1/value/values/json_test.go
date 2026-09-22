@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 var (
@@ -77,13 +77,13 @@ func TestJSON_Encode(t *testing.T) {
 func TestJSON_Type(t *testing.T) {
 	tests := []struct {
 		c    JSON
-		want types.Code
+		want fields.Type
 	}{
-		{JSON(json1), types.JSON},
-		{JSON(json2), types.JSON},
-		{JSON(json3), types.JSON},
-		{JSON([]byte{}), types.JSON},
-		{JSON([]byte{0x00, 0x01, 0x02}), types.JSON},
+		{JSON(json1), fields.JSON},
+		{JSON(json2), fields.JSON},
+		{JSON(json3), fields.JSON},
+		{JSON([]byte{}), fields.JSON},
+		{JSON([]byte{0x00, 0x01, 0x02}), fields.JSON},
 	}
 
 	for _, tt := range tests {

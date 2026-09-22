@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
@@ -26,8 +26,8 @@ func (f Float) Size() int {
 	return FloatValueFieldSize
 }
 
-func (f Float) Type() types.Code {
-	return types.Float
+func (f Float) Type() fields.Type {
+	return fields.Float
 }
 
 func (f Float) IsValid() error {

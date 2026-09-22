@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 func TestInt_Size(t *testing.T) {
@@ -71,13 +71,13 @@ func TestInt_Encode(t *testing.T) {
 func TestInt_Type(t *testing.T) {
 	tests := []struct {
 		c    Int
-		want types.Code
+		want fields.Type
 	}{
-		{Int(0), types.Int},
-		{Int(math.MaxInt64), types.Int},
-		{Int(10), types.Int},
-		{Int(math.MinInt), types.Int},
-		{Int(-10), types.Int},
+		{Int(0), fields.Int},
+		{Int(math.MaxInt64), fields.Int},
+		{Int(10), fields.Int},
+		{Int(math.MinInt), fields.Int},
+		{Int(-10), fields.Int},
 	}
 
 	for _, tt := range tests {

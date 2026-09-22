@@ -2,7 +2,7 @@ package value
 
 import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
 /*
@@ -36,5 +36,5 @@ type V interface {
 	/*
 		func Type возвращает код типа данных.
 	*/
-	Type() types.Code
+	Type() fields.Type
 }

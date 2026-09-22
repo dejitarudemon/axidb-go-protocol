@@ -6,7 +6,7 @@ import (
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/types"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
@@ -32,8 +32,8 @@ func (j JSON) Size() int {
 	return JSONLenFieldSize + len(j)
 }
 
-func (j JSON) Type() types.Code {
-	return types.JSON
+func (j JSON) Type() fields.Type {
+	return fields.JSON
 }
 
 func (j JSON) IsValid() error {
