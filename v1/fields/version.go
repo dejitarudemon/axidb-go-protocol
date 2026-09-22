@@ -9,7 +9,10 @@ type Version предназначен для хранения Version, его в
 */
 type Version uint32
 
-const VersionFieldSize = 1
+const (
+	VersionFieldSize = 1
+	CurrentVersion   = 1
+)
 
 func (r Version) Encode(buf buffer.Appender) {
 	buf.AppendUint8(uint8(r))
