@@ -70,8 +70,12 @@ func (d Decoder) handleReaderError(e error) error {
 	return err.NewDecodeError("internal reader error", e)
 }
 
-func (d Decoder) DecodePreamble(reader bufio.Reader) (fields.Version, error) {
-	buf, e := reader.Peek(MagicBytesLen)
+func (d Decoder) DecodePreamble(reader *bufio.Reader) (fields.Version, error) {
+	if reader == nil {
+		return 0, err.NewDecodeError("got nil reader", nil)
+	}
+
+	buf, e := reader.Peek(MagicBytesLen + fields.VersionFieldSize)
 	if e != nil {
 		return 0, d.handleReaderError(e)
 	}
@@ -83,10 +87,14 @@ func (d Decoder) DecodePreamble(reader bufio.Reader) (fields.Version, error) {
 	return fields.Version(buf[MagicBytesLen]), nil
 }
 
-func (d Decoder) DecodeFrame(reader bufio.Reader) (frame.Frame, error) {
-	headersBuf := make([]byte, 0, PreambleLen+frame.HeadersLen)
+func (d Decoder) DecodeFrame(reader *bufio.Reader) (frame.Frame, error) {
+	if reader == nil {
+		return frame.Frame{}, err.NewDecodeError("got nil reader", nil)
+	}
 
-	if _, e := io.ReadFull(&reader, headersBuf); e != nil {
+	headersBuf := make([]byte, PreambleLen+frame.HeadersLen)
+
+	if _, e := io.ReadFull(reader, headersBuf); e != nil {
 		return frame.Frame{}, d.handleReaderError(e)
 	}
 
@@ -100,17 +108,17 @@ func (d Decoder) DecodeFrame(reader bufio.Reader) (frame.Frame, error) {
 	}
 
 	compressor, ok := d.compressors[compression]
-	if !ok {
+	if !ok && compression != fields.None {
 		return frame.Frame{}, errs.NewErrorUnsupportedCompression(compression)
 	}
 
-	bodyBuf := make([]byte, 0, int(bodyLen))
-	if _, e := io.ReadFull(&reader, bodyBuf); e != nil {
+	bodyBuf := make([]byte, int(bodyLen))
+	if _, e := io.ReadFull(reader, bodyBuf); e != nil {
 		return frame.Frame{}, d.handleReaderError(e)
 	}
 
-	checksumBuf := make([]byte, 0, fields.ChecksumFieldSize)
-	if _, e := io.ReadFull(&reader, checksumBuf); e != nil {
+	checksumBuf := make([]byte, fields.ChecksumFieldSize)
+	if _, e := io.ReadFull(reader, checksumBuf); e != nil {
 		return frame.Frame{}, d.handleReaderError(e)
 	}
 
@@ -175,9 +183,9 @@ func (d Decoder) checkIfBodyLenIsTooSmall(l uint32, bound uint32) error {
 }
 
 func (d Decoder) checkIfBodyLenLowerThanExpected(l, expected uint32) error {
-	if l > expected {
+	if l < expected {
 		return errs.NewErrorMalformedValue(
-			fmt.Sprintf("invalid request: body (%v bytes) is lower than expected", l),
+			fmt.Sprintf("invalid request: body (%v bytes) is lower than expected (%v bytes)", l, expected),
 		)
 	}
 	return nil
@@ -192,14 +200,13 @@ func (d Decoder) answer(body []byte) (body.Answer, error) {
 	}
 
 	result := d.decodeUint8(body)
+	cursor += fields.CommandFieldSize
 
 	if result > 1 {
 		return nil, errs.NewErrorMalformedValue(
 			fmt.Sprintf("unkown result: %v", result),
 		)
 	}
-
-	cursor += bodies.RequestsLenFieldSize
 
 	if result == 0 {
 		return d.answerErr(body[cursor:])
@@ -244,7 +251,6 @@ func (d Decoder) answerHandshake(body []byte) (bodies.HandshakeAnswer, error) {
 	}
 
 	compressions := make([]fields.Compression, 0, compressionsLen)
-
 	for _, c := range body[cursor : cursor+uint32(compressionsLen)] {
 		compressions = append(compressions, fields.Compression(c))
 	}
@@ -519,11 +525,11 @@ func (d Decoder) handshake(body []byte) (bodies.Handshake, error) {
 
 	cursor += bodies.HashFieldSize
 
-	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+bodies.MaxCompressionsPerOneHandshake); e != nil {
+	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+bodies.CompressionLenFieldSize); e != nil {
 		return bodies.Handshake{}, e
 	}
 
-	compressionsLen := d.decodeUint8(body[cursor+bodies.HashFieldSize:])
+	compressionsLen := d.decodeUint8(body[cursor:])
 	cursor += bodies.CompressionLenFieldSize
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+uint32(compressionsLen)); e != nil {
