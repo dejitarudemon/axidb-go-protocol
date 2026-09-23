@@ -848,20 +848,22 @@ Hex-версия: 00 00 00 15 7B 22 74 68 69 73 22 3A 22 69 73 20 65 78 61 6D 70
 
 **Примечание автора**: сервер может поддерживать анонимные соединения. В таком случае Login Len становится равным 0, а Hash заполнятеся нулевыми байтами.
 
-Пример Handshake-запроса c поддерживаемыми протоколами Zstd и Lz4:
+Пример Handshake-запроса c поддерживаемыми протоколами Zstd и S2:
 
 ```text
 Hex-версия:
 
-0A DB 01 00 00 00 00 00 00 00 00 00 03 02 01 02 63 8F 96 50
+0A DB 01 00 00 00 00 00 00 00 00 00 2B 00 00 00 04 75 73 65 72 01 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 01 02 7A 39 15 BF
 
 Расшифровка:
 	Version: 1
 	Command: Handshake
 	Request ID: 0
 	Compression: -
-	Supported compression algorythms: Zstd, Lz4
-	CheckSum: 63 8F 96 50
+	Login: user
+	Hash: 0x01 0x02 0x00 ... 0x00
+	Supported compression algorythms: Zstd, S2
+	CheckSum: 7A 39 15 BF
 ```
 
 #### Ответ сервера
@@ -935,7 +937,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 00 00 00 00 00 14 00 00 02 6B AE 36 80 76 95 47 42 92 AF 0A 6F EC 33 98 25 00 0E 87 11 EA
+0A DB 01 01 00 00 00 00 00 00 00 00 14 00 00 02 6B AE 36 80 76 95 47 42 92 AF 0A 6F EC 33 98 25 00 F0 8E 28 51
 
 Расшифровка:
 	Version: 1
@@ -948,7 +950,7 @@ Hex-версия:
 		Traceback ID: 6bae3680-7695-4742-92af-0a6fec339825
 		Details:
     		Expected Command: Handshake
-	CheckSum: 0E 87 11 EA
+	CheckSum: F0 8E 28 51
 ```
 
 ### Алгоритм чтения данных
@@ -979,7 +981,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 02 00 00 00 01 00 00 00 00 08 73 6F 6D 65 2D 6B 65 79 82 CD BA 0B
+0A DB 01 02 00 00 00 01 00 00 00 00 08 73 6F 6D 65 2D 6B 65 79 E1 5A 14 00
 
 Расшифровка:
 	Version: 1
@@ -987,7 +989,7 @@ Hex-версия:
 	Request ID: 1
 	Compression: -
 	Key: some-key
-	CheckSum: 82 CD BA 0B
+	CheckSum: E1 5A 14 00
 ```
 
 #### Ответ сервера
@@ -1021,7 +1023,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 01 00 00 00 00 10 01 02 06 00 00 00 09 73 6F 6D 65 2D 64 61 74 61 5E 79 B8 83
+0A DB 01 01 00 00 00 01 00 00 00 00 11 01 02 06 00 00 00 0A 73 6F 6D 65 2D 64 61 74 61 29 28 9D DB EE
 
 Расшифровка:
 	Version: 1
@@ -1033,7 +1035,7 @@ Hex-версия:
 	Data:
 		Type: string
 		Value: some-data
-	CheckSum: 5E 79 B8 83
+	CheckSum: 28 9D DB EE
 ```
 
 Пример Answer-запроса без сжатия с Request ID = 10 и значением (Value) = {1, "hello world", 2.1}:
