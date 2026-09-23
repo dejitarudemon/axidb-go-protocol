@@ -1023,7 +1023,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 01 00 00 00 00 11 01 02 06 00 00 00 0A 73 6F 6D 65 2D 64 61 74 61 29 28 9D DB EE
+0A DB 01 01 00 00 00 01 00 00 00 00 10 01 02 06 00 00 00 09 73 6F 6D 65 2D 64 61 74 61 5E 79 B8 83
 
 Расшифровка:
 	Version: 1
@@ -1035,7 +1035,7 @@ Hex-версия:
 	Data:
 		Type: string
 		Value: some-data
-	CheckSum: 28 9D DB EE
+	CheckSum: 5E 79 B8 83
 ```
 
 Пример Answer-запроса без сжатия с Request ID = 10 и значением (Value) = {1, "hello world", 2.1}:
