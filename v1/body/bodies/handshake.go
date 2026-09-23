@@ -9,6 +9,8 @@ import (
 
 const (
 	LoginLenFieldSize              = 4
+	HashFieldSize                  = 32
+	CompressionLenFieldSize        = 1
 	MaxCompressionsPerOneHandshake = 255
 )
 
