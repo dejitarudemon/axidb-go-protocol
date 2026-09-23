@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body/bodies"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
 const (
@@ -32,6 +32,8 @@ const (
 	WriteKeyLenOffset = 0
 	WriteKeyOffset    = 4
 	WriteMinBodySize  = 5
+
+	BytesLenOffsetInValue = 0
 )
 
 type Decoder struct {
@@ -85,6 +87,13 @@ func (d Decoder) decodeString(data []byte) string {
 	return string(data)
 }
 
+func (d Decoder) decodeUint8(data []byte) uint8 {
+	u := make([]byte, 0, 1)
+	copy(u, data[:1])
+
+	return uint8(u[0])
+}
+
 func (d Decoder) DecodeFrame(reader bufio.Reader) (frame.Frame, error) {
 	headersBuf := make([]byte, 0, PreambleLen+frame.HeadersLen)
 
@@ -92,10 +101,10 @@ func (d Decoder) DecodeFrame(reader bufio.Reader) (frame.Frame, error) {
 		return frame.Frame{}, d.handleReaderError(e)
 	}
 
-	command := fields.Command(headersBuf[CommandOffset])
-	requestID := fields.RequestID(d.decodeUint32(headersBuf[RequestIDOffest : RequestIDOffest+fields.RequestIDFieldSize]))
-	compression := fields.Compression(headersBuf[CompressionOffset])
-	bodyLen := d.decodeUint32(headersBuf[BodyLenOffset : BodyLenOffset+body.BodyLenFieldSize])
+	command := fields.Command(d.decodeUint8(headersBuf[CommandOffset:]))
+	requestID := fields.RequestID(d.decodeUint32(headersBuf[RequestIDOffest:]))
+	compression := fields.Compression(d.decodeUint8(headersBuf[CompressionOffset:]))
+	bodyLen := d.decodeUint32(headersBuf[BodyLenOffset:])
 
 	if bodyLen > uint32(d.limit) {
 		return frame.Frame{}, errs.NewErrorBodyLimitIsExceeded(bodyLen, d.limit)
@@ -138,27 +147,13 @@ func (d Decoder) DecodeFrame(reader bufio.Reader) (frame.Frame, error) {
 
 	switch command {
 	case fields.Handshake:
-		body, err := d.handshake(bodyBuf)
-		if err != nil {
-			return frame.Frame{}, err
-		}
-
-		f.Body = body
+		return d.handshake(f, bodyBuf)
 	case fields.Read:
-		body, err := d.read(bodyBuf)
-		if err != nil {
-			return frame.Frame{}, err
-		}
-
-		f.Body = body
+		return d.read(f, bodyBuf)
 	case fields.Delete:
-		body, err := d.delete(bodyBuf)
-		if err != nil {
-			return frame.Frame{}, err
-		}
-		f.Body = body
+		return d.delete(f, bodyBuf)
 	case fields.Ping:
-		f.Body = bodies.Ping{}
+		return d.ping(f, bodyBuf)
 	case fields.Write:
 
 	}
@@ -166,107 +161,153 @@ func (d Decoder) DecodeFrame(reader bufio.Reader) (frame.Frame, error) {
 	return f, nil
 }
 
-func (d Decoder) handshake(buf []byte) (bodies.Handshake, error) {
-	if len(buf) < HandshakeMinBodySize {
-		return bodies.Handshake{}, errs.NewErrorMalformedValue(
-			fmt.Sprintf("invalid handshake-request: %v bytes min len, got %v bytes", HandshakeMinBodySize, len(buf)),
+func (d Decoder) checkIfBodyLenIsTooSmall(l uint32, bound uint32) error {
+	if l < bound {
+		return errs.NewErrorMalformedValue(
+			fmt.Sprintf("invalid request: %v bytes min len, got %v bytes", HandshakeMinBodySize, l),
 		)
 	}
 
-	bufLen := uint32(len(buf))
+	return nil
+}
 
-	loginLen := d.decodeUint32(buf[HandshakeLoginLenOffset : HandshakeLoginLenOffset+bodies.LoginLenFieldSize])
-
-	if loginLen >= bufLen {
-		return bodies.Handshake{}, errs.NewErrorMalformedValue(
-			fmt.Sprintf("invalid handshake-request: login (%v bytes) is greather than body (%v)", loginLen, len(buf)),
+func (d Decoder) checkIfBodyLenLowerThanExpected(l, expected uint32) error {
+	if l > expected {
+		return errs.NewErrorMalformedValue(
+			fmt.Sprintf("invalid request: body (%v bytes) is lower than expected", l),
 		)
+	}
+	return nil
+}
+
+func (d Decoder) ping(f frame.Frame, body []byte) (frame.Frame, error) {
+	f.Body = bodies.Ping{}
+	return f, nil
+}
+
+func (d Decoder) handshake(f frame.Frame, body []byte) (frame.Frame, error) {
+	cursor := uint32(HandshakeLoginLenOffset)
+	bodyLen := uint32(len(body))
+
+	if e := d.checkIfBodyLenIsTooSmall(bodyLen, HandshakeMinBodySize); e != nil {
+		return f, e
+	}
+
+	loginLen := d.decodeUint32(body[cursor:])
+	cursor += bodies.LoginLenFieldSize
+
+	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, loginLen+cursor); e != nil {
+		return f, e
 	}
 
 	login := ""
-	off := uint32(HandshakeLoginOffset)
 
 	if loginLen != 0 {
-		login = d.decodeString(buf[HandshakeLoginOffset : HandshakeLoginOffset+loginLen])
+		login = d.decodeString(body[HandshakeLoginOffset : HandshakeLoginOffset+loginLen])
 	}
 
-	off += loginLen
-	if off+bodies.HashFieldSize > bufLen {
-		return bodies.Handshake{}, errs.NewErrorMalformedValue(
-			fmt.Sprintf("invalid handshake-request: hash (%v bytes) missed", bodies.HashFieldSize),
-		)
+	cursor += loginLen
+
+	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+bodies.HashFieldSize); e != nil {
+		return f, e
 	}
 
-	hash := buf[off : off+bodies.HashFieldSize]
-	off += bodies.HashFieldSize + bodies.CompressionLenFieldSize
+	hash := make([]byte, 0, 32)
+	copy(hash, body[cursor:cursor+bodies.HashFieldSize])
 
-	if off > bufLen {
-		return bodies.Handshake{}, errs.NewErrorMalformedValue(
-			fmt.Sprintf("invalid handshake-request: supported compression len (%v bytes) missed", bodies.CompressionLenFieldSize),
-		)
+	cursor += bodies.HashFieldSize
+
+	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+bodies.MaxCompressionsPerOneHandshake); e != nil {
+		return f, e
 	}
 
-	compressionsLen := uint8(buf[off])
+	compressionsLen := d.decodeUint8(body[cursor+bodies.HashFieldSize:])
+	cursor += bodies.CompressionLenFieldSize
 
-	if off+uint32(compressionsLen) > bufLen {
-		return bodies.Handshake{}, errs.NewErrorMalformedValue(
-			fmt.Sprintf("invalid handshake-request: expected %v compressions", compressionsLen),
-		)
+	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+uint32(compressionsLen)); e != nil {
+		return f, e
 	}
 
 	compressions := make([]fields.Compression, 0, compressionsLen)
 
-	for _, c := range buf[off : off+uint32(compressionsLen)] {
+	for _, c := range body[cursor : cursor+uint32(compressionsLen)] {
 		compressions = append(compressions, fields.Compression(c))
 	}
 
-	return bodies.NewHandshake(login, [32]byte(hash), compressions), nil
+	f.Body = bodies.NewHandshake(login, [32]byte(hash), compressions)
+
+	return f, nil
 }
 
-func (d Decoder) read(buf []byte) (bodies.Read, error) {
-	key := make([]byte, 0, len(buf))
-	copy(key, buf)
+func (d Decoder) decodeBytes(body []byte) []byte {
+	key := make([]byte, 0, len(body))
+	copy(key, body)
 
-	return bodies.Read(key), nil
+	return key
 }
 
-func (d Decoder) delete(buf []byte) (bodies.Delete, error) {
-	key := make([]byte, 0, len(buf))
-	copy(key, buf)
-
-	return bodies.Delete(key), nil
+func (d Decoder) read(f frame.Frame, body []byte) (frame.Frame, error) {
+	f.Body = bodies.Read(d.decodeBytes(body))
+	return f, nil
 }
 
-func (d Decoder) write(buf []byte) (bodies.Write, error) {
-	if len(buf) < WriteMinBodySize {
-		return bodies.Write{}, errs.NewErrorMalformedValue(
-			fmt.Sprintf("invalid write-request: %v bytes min len, got %v bytes", WriteMinBodySize, len(buf)),
-		)
+func (d Decoder) delete(f frame.Frame, body []byte) (frame.Frame, error) {
+	f.Body = bodies.Delete(d.decodeBytes(body))
+	return f, nil
+}
+
+func (d Decoder) write(f frame.Frame, body []byte) (frame.Frame, error) {
+	cursor := uint32(WriteKeyLenOffset)
+	bodyLen := uint32(len(body))
+
+	if e := d.checkIfBodyLenIsTooSmall(bodyLen, cursor+fields.KeyLenFieldSize); e != nil {
+		return f, e
 	}
 
-	bufLen := uint32(len(buf))
-	keyLen := d.decodeUint32(buf[WriteKeyLenOffset : WriteKeyLenOffset+fields.KeyLenFieldSize])
+	keyLen := d.decodeUint32(body[WriteKeyLenOffset:])
+	cursor += fields.KeyLenFieldSize
 
-	if keyLen > bufLen {
-		return bodies.Write{}, errs.NewErrorMalformedValue(
-			fmt.Sprintf("invalid write-request: key (%v bytes) is greather than body (%v)", keyLen, len(buf)),
-		)
+	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+keyLen); e != nil {
+		return f, e
 	}
 
 	key := fields.Key{}
-	off := uint32(WriteKeyOffset)
 
 	if keyLen != 0 {
-		key = fields.Key(buf[WriteKeyOffset : WriteKeyOffset+keyLen])
+		key = fields.Key(d.decodeBytes(body[cursor:]))
 	}
 
-	off += keyLen
+	cursor += keyLen
 
-	if off+fields.TypeFieldSize > bufLen {
-		return bodies.Write{}, errs.NewErrorMalformedValue(
-			fmt.Sprintf("invalid write-request: value type (%v bytes) missed", fields.TypeFieldSize),
-		)
+	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+fields.TypeFieldSize); e != nil {
+		return f, e
+	}
+
+	valueType := fields.Type(d.decodeUint8(body[cursor:]))
+	cursor += fields.TypeFieldSize
+
+	switch valueType {
+	case fields.Bytes:
+		return bodies.Write{Key: key}
 	}
 
 	return bodies.Write{Key: key}, nil
+}
+
+func (d Decoder) decodeBytesValue(value []byte) (values.Bytes, error) {
+	cursor := uint32(BytesLenOffsetInValue)
+	valueLen := uint32(len(value))
+
+	if e := d.checkIfBodyLenLowerThanExpected(valueLen, cursor+values.BytesLenFieldSize); e != nil {
+		return values.Bytes{}, e
+	}
+
+	bytesLen := d.decodeUint32(value[cursor:])
+	cursor += values.BytesLenFieldSize
+
+	if e := d.checkIfBodyLenLowerThanExpected(valueLen, cursor+bytesLen); e != nil {
+		return values.Bytes{}, e
+	}
+
+	return values.Bytes(d.decodeBytes(value[cursor : cursor+bytesLen])), nil
 }
