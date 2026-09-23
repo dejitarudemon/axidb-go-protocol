@@ -9,6 +9,26 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 )
 
+func TestChecksum_NewsEqual(t *testing.T) {
+	tests := []struct {
+		c1 Checksum
+		c2 Checksum
+	}{
+		{NewChecksum([]byte{0x00, 0x01, 0x02}), NewChecksumWithParts([]byte{0x00}, []byte{0x01, 0x02})},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("%v", tt.c1),
+			func(t *testing.T) {
+				if tt.c1 != tt.c2 {
+					t.Errorf("NewChecksum: %v, NewChecsumWithParts: %v", tt.c1, tt.c2)
+				}
+			},
+		)
+	}
+}
+
 func TestChecksum_Size(t *testing.T) {
 	tests := []struct {
 		c    Checksum
