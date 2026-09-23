@@ -12,6 +12,10 @@ type DefaultBufferForBodyCompression = buffer.Slice
 
 var MagicBytes = []byte{0x0A, 0xDB}
 
+const (
+	HeadersLen = 10
+)
+
 type Frame struct {
 	RequestID fields.RequestID
 	Body      body.Body
