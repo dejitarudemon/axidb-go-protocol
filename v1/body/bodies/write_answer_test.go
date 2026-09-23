@@ -14,7 +14,7 @@ func TestWriteAnswer_Size(t *testing.T) {
 		w    WriteAnswer
 		want int
 	}{
-		{WriteAnswer{}, 1},
+		{WriteAnswer{}, 2},
 	}
 
 	for _, tt := range tests {
@@ -34,7 +34,7 @@ func TestWriteAnswer_Encode(t *testing.T) {
 		w    WriteAnswer
 		want []byte
 	}{
-		{WriteAnswer{}, []byte{0x01}},
+		{WriteAnswer{}, []byte{0x01, 0x03}},
 	}
 
 	for _, tt := range tests {

@@ -14,7 +14,7 @@ func TestDeleteAnswer_Size(t *testing.T) {
 		d    DeleteAnswer
 		want int
 	}{
-		{DeleteAnswer{}, 1},
+		{DeleteAnswer{}, 2},
 	}
 
 	for _, tt := range tests {
@@ -34,7 +34,7 @@ func TestDeleteAnswer_Encode(t *testing.T) {
 		d    DeleteAnswer
 		want []byte
 	}{
-		{DeleteAnswer{}, []byte{0x01}},
+		{DeleteAnswer{}, []byte{0x01, 0x04}},
 	}
 
 	for _, tt := range tests {

@@ -9,7 +9,7 @@ import (
 
 var ResultNotOK = []byte{0x00}
 
-var _ body.Body = ErrorAnswer{}
+var _ body.Answer = ErrorAnswer{}
 
 type ErrorAnswer struct {
 	Err err.ProtocolError
@@ -27,6 +27,10 @@ func (e ErrorAnswer) Encode(buf buffer.Appender) {
 	if e.Err != nil {
 		e.Err.Encode(buf)
 	}
+}
+
+func (e ErrorAnswer) IsResponseTo() fields.Command {
+	return fields.Answer
 }
 
 func (e ErrorAnswer) Command() fields.Command {

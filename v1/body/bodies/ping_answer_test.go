@@ -14,7 +14,7 @@ func TestPingAnswer_Size(t *testing.T) {
 		p    PingAnswer
 		want int
 	}{
-		{PingAnswer{}, 1},
+		{PingAnswer{}, 2},
 	}
 
 	for _, tt := range tests {
@@ -34,7 +34,7 @@ func TestPingAnswer_Encode(t *testing.T) {
 		p    PingAnswer
 		want []byte
 	}{
-		{PingAnswer{}, []byte{0x01}},
+		{PingAnswer{}, []byte{0x01, 0x06}},
 	}
 
 	for _, tt := range tests {

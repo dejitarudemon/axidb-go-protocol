@@ -50,13 +50,13 @@ func TestHandshakeAnswer_Size(t *testing.T) {
 		h    HandshakeAnswer
 		want int
 	}{
-		{HandshakeAnswer{}, 2},
-		{HandshakeAnswer{[]fields.Compression{}}, 2},
-		{HandshakeAnswer{[]fields.Compression{0x00}}, 3},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, 4},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, 5},
-		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), 4},
-		{HandshakeAnswer{generateManyCompressions(1000)}, 257},
+		{HandshakeAnswer{}, 3},
+		{HandshakeAnswer{[]fields.Compression{}}, 3},
+		{HandshakeAnswer{[]fields.Compression{0x00}}, 4},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, 5},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, 6},
+		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), 5},
+		{HandshakeAnswer{generateManyCompressions(1000)}, 258},
 	}
 
 	for _, tt := range tests {
@@ -77,13 +77,13 @@ func TestHandshakeAnswer_Encode(t *testing.T) {
 		h    HandshakeAnswer
 		want []byte
 	}{
-		{HandshakeAnswer{}, []byte{0x01, 0x00}},
-		{HandshakeAnswer{[]fields.Compression{}}, []byte{0x01, 0x00}},
-		{HandshakeAnswer{[]fields.Compression{0x00}}, []byte{0x01, 0x01, 0x00}},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, []byte{0x01, 0x02, 0x00, 0x01}},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, []byte{0x01, 0x03, 0x00, 0x01, 0x00}},
-		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), []byte{0x01, 0x02, 0x00, 0x01}},
-		{HandshakeAnswer{generated}, append([]byte{0x01}, encodeCompressions(generated)...)},
+		{HandshakeAnswer{}, []byte{0x01, 0x00, 0x00}},
+		{HandshakeAnswer{[]fields.Compression{}}, []byte{0x01, 0x00, 0x00}},
+		{HandshakeAnswer{[]fields.Compression{0x00}}, []byte{0x01, 0x00, 0x01, 0x00}},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, []byte{0x01, 0x00, 0x02, 0x00, 0x01}},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, []byte{0x01, 0x00, 0x03, 0x00, 0x01, 0x00}},
+		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), []byte{0x01, 0x00, 0x02, 0x00, 0x01}},
+		{HandshakeAnswer{generated}, append([]byte{0x01, 0x00}, encodeCompressions(generated)...)},
 	}
 
 	for _, tt := range tests {
