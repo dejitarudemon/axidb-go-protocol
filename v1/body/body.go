@@ -36,3 +36,9 @@ type Body interface {
 	*/
 	IsValid() error
 }
+
+type Answer interface {
+	Body
+
+	IsResponseTo() fields.Command
+}
