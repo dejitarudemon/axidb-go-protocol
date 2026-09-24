@@ -21,7 +21,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
-var zstd, _ = compressors.NewZstd(1 << 20)
+var zstd, _ = compressors.NewZstd(1 << 12)
 var s2 = compressors.S2{}
 
 var testsSpecs = []struct {
@@ -1739,6 +1739,43 @@ func TestDecoder_EncodeDecodeEncode(t *testing.T) {
 	}
 }
 
+func TestDecoder_ZipBomb(t *testing.T) {
+	frames := []struct {
+		f          frame.Frame
+		compressor compressor.Compressor
+	}{
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 1<<40))}},
+			s2,
+		},
+	}
+
+	for i, tt := range frames {
+		t.Run(
+			fmt.Sprintf("TestDecoder_ZipBomb_%v", i),
+			func(t *testing.T) {
+				decoder := NewDecoder(1024, []compressor.Compressor{zstd, s2})
+
+				buf := buffer.Slice{}
+				buf.Preallocate(tt.f.Size())
+
+				err := tt.f.Encode(&buf, s2)
+				if err != nil {
+					t.Fatalf("EncodeFrame: got err %v", err)
+				}
+
+				reader := bufio.NewReader(bytes.NewReader(buf.Bytes()))
+
+				_, err = decoder.DecodeFrame(reader)
+				if err == nil {
+					t.Fatal("DecodeFrame: didn't get err")
+					return
+				}
+			},
+		)
+	}
+}
+
 func FuzzDecoder_Preamble(f *testing.F) {
 	f.Add([]byte{0x0A, 0xDB, 0x01})
 	f.Fuzz(func(t *testing.T, a []byte) {
@@ -1767,7 +1804,7 @@ func FuzzDecoder_RoundTrip(f *testing.F) {
 		f.Add(buf.Bytes())
 	}
 	f.Fuzz(func(t *testing.T, a []byte) {
-		decoder := NewDecoder(1<<20, nil)
+		decoder := NewDecoder(1<<12, nil)
 		_, _ = decoder.DecodeFrame(bufio.NewReader(bytes.NewBuffer(a)))
 	})
 }
