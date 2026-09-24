@@ -22,7 +22,7 @@ import (
 )
 
 var zstd, _ = compressors.NewZstd(1 << 12)
-var s2 = compressors.S2{}
+var s2, _ = compressors.NewS2(1 << 12)
 
 var testsSpecs = []struct {
 	encoded []byte
@@ -1747,6 +1747,10 @@ func TestDecoder_ZipBomb(t *testing.T) {
 		{
 			frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 1<<13))}},
 			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 1<<13))}},
+			s2,
 		},
 	}
 
