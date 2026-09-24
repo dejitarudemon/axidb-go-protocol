@@ -44,5 +44,5 @@ func (e ErrorAnswer) IsValid() error {
 			"target", e.Command(),
 		)
 	}
-	return e.Err.IsValid()
+	return nil
 }
