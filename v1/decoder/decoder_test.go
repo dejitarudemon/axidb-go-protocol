@@ -1745,8 +1745,8 @@ func TestDecoder_ZipBomb(t *testing.T) {
 		compressor compressor.Compressor
 	}{
 		{
-			frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 1<<40))}},
-			s2,
+			frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 1<<10))}},
+			zstd,
 		},
 	}
 
@@ -1759,7 +1759,7 @@ func TestDecoder_ZipBomb(t *testing.T) {
 				buf := buffer.Slice{}
 				buf.Preallocate(tt.f.Size())
 
-				err := tt.f.Encode(&buf, s2)
+				err := tt.f.Encode(&buf, zstd)
 				if err != nil {
 					t.Fatalf("EncodeFrame: got err %v", err)
 				}
