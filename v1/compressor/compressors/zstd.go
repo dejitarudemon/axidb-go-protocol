@@ -23,6 +23,7 @@ func NewZstd(limit uint32) (Zstd, error) {
 
 	decoder, err := zstd.NewReader(nil,
 		zstd.WithDecoderMaxMemory(uint64(limit)),
+		zstd.WithDecoderMaxWindow(uint64(limit)),
 		zstd.WithDecoderConcurrency(1),
 	)
 	if err != nil {
@@ -45,11 +46,9 @@ func (z Zstd) Code() fields.Compression {
 }
 
 func (z Zstd) Compress(data []byte) ([]byte, error) {
-	compressed := make([]byte, 0, len(data))
-	return z.encoder.EncodeAll(data, compressed), nil
+	return z.encoder.EncodeAll(data, nil), nil
 }
 
 func (z Zstd) Decompress(data []byte) ([]byte, error) {
-	decompressed := make([]byte, 0, len(data))
-	return z.decoder.DecodeAll(data, decompressed)
+	return z.decoder.DecodeAll(data, nil)
 }
