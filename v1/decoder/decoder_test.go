@@ -1745,7 +1745,7 @@ func TestDecoder_ZipBomb(t *testing.T) {
 		compressor compressor.Compressor
 	}{
 		{
-			frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 1<<10))}},
+			frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 1<<13))}},
 			zstd,
 		},
 	}
@@ -1754,7 +1754,7 @@ func TestDecoder_ZipBomb(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestDecoder_ZipBomb_%v", i),
 			func(t *testing.T) {
-				decoder := NewDecoder(1024, []compressor.Compressor{zstd, s2})
+				decoder := NewDecoder(1<<12, []compressor.Compressor{zstd, s2})
 
 				buf := buffer.Slice{}
 				buf.Preallocate(tt.f.Size())
