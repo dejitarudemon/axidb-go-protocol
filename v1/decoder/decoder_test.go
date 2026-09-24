@@ -4,18 +4,32 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"math/rand"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body/bodies"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor/compressors"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
+
+func fakeHash() [32]byte {
+	hash := make([]byte, 0, 32)
+
+	for range 32 {
+		hash = append(hash, byte(rand.Int31()))
+	}
+
+	return [32]byte(hash)
+}
 
 func compareValues(t *testing.T, v1, v2 value.V) {
 	switch want := v2.(type) {
@@ -262,6 +276,14 @@ func compareBodies(t *testing.T, b1, b2 body.Body) {
 			compareBodies(t, got[i].Body, want[i].Body)
 		}
 	}
+}
+
+func compareFrames(t *testing.T, f1, f2 frame.Frame) {
+	if f1.RequestID != f2.RequestID {
+		t.Fatalf("Compare Request IDs: got %v, want %v", f1, f2.RequestID)
+	}
+
+	compareBodies(t, f1.Body, f2.Body)
 }
 
 func TestDecoder_BySpecs(t *testing.T) {
@@ -691,11 +713,7 @@ func TestDecoder_BySpecs(t *testing.T) {
 					return
 				}
 
-				if f.RequestID != tt.decoded.RequestID {
-					t.Fatalf("Compare Request IDs: got %v, want %v", f.RequestID, tt.decoded.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.decoded.Body)
+				compareFrames(t, f, tt.decoded)
 
 			},
 		)
@@ -744,6 +762,952 @@ func TestDecoder_Preamble(t *testing.T) {
 				if got != tt.version {
 					t.Errorf("DecodePreamble: got %v version got %v version", got, tt.version)
 				}
+			},
+		)
+	}
+}
+
+func TestDecoder_EncodeDecodeEncode(t *testing.T) {
+	zstd, _ := compressors.NewZstd(1024)
+	s2 := compressors.S2{}
+
+	tests := []struct {
+		f          frame.Frame
+		compressor compressor.Compressor
+	}{
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshake("", [32]byte{}, []fields.Compression{})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Zstd})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Compression(23)})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Zstd})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Compression(23)})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Read("")},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Read("key")},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Read("")},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Read("key")},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{0xFF}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(0)}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(1)}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{}}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.TypedArray{
+				Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
+				ElemType: fields.Bytes,
+			}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Write{Key: fields.Key(""), Value: values.Bytes{}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 2, Body: bodies.Write{Key: fields.Key("k"), Value: values.Bytes{0xFF}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 3, Body: bodies.Write{Key: fields.Key("ke"), Value: values.Int(0)}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 4, Body: bodies.Write{Key: fields.Key("key"), Value: values.Int(1)}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 5, Body: bodies.Write{Key: fields.Key("key "), Value: values.UntypedArray{}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 6, Body: bodies.Write{Key: fields.Key("key k"), Value: values.UntypedArray{values.Bytes{}}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 7, Body: bodies.Write{Key: fields.Key("key ke"), Value: values.UntypedArray{values.Bytes{0xff}}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 8, Body: bodies.Write{Key: fields.Key("key key"), Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 9, Body: bodies.Write{Key: fields.Key("key yek"), Value: values.TypedArray{
+				Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
+				ElemType: fields.Bytes,
+			}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.WriteAnswer{}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.WriteAnswer{}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Delete("")},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Delete("key")},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Delete("")},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Delete("key")},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.DeleteAnswer{}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.DeleteAnswer{}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Ping{}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Ping{}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.PingAnswer{}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.PingAnswer{}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ErrorAnswer{Err: errs.NewErrorInternalError(nil)}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(1, 0)}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(0, 1)}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Command(10), fields.Handshake)}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Handshake, fields.Command(10))}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+			}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+			}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+				bodies.Request{Number: 1, Body: bodies.Read("key")},
+			}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+				bodies.Request{Number: 1, Body: bodies.Delete("key")},
+			}}},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer(nil)},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 0, Body: bodies.DeleteAnswer{}},
+			})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 1, Body: bodies.DeleteAnswer{}},
+			})},
+			nil,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
+			})},
+			nil,
+		},
+
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshake("", [32]byte{}, []fields.Compression{})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Zstd})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Compression(23)})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Zstd})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Compression(23)})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Read("")},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Read("key")},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Read("")},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Read("key")},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{0xFF}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(0)}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(1)}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{}}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.TypedArray{
+				Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
+				ElemType: fields.Bytes,
+			}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Write{Key: fields.Key(""), Value: values.Bytes{}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 2, Body: bodies.Write{Key: fields.Key("k"), Value: values.Bytes{0xFF}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 3, Body: bodies.Write{Key: fields.Key("ke"), Value: values.Int(0)}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 4, Body: bodies.Write{Key: fields.Key("key"), Value: values.Int(1)}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 5, Body: bodies.Write{Key: fields.Key("key "), Value: values.UntypedArray{}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 6, Body: bodies.Write{Key: fields.Key("key k"), Value: values.UntypedArray{values.Bytes{}}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 7, Body: bodies.Write{Key: fields.Key("key ke"), Value: values.UntypedArray{values.Bytes{0xff}}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 8, Body: bodies.Write{Key: fields.Key("key key"), Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 9, Body: bodies.Write{Key: fields.Key("key yek"), Value: values.TypedArray{
+				Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
+				ElemType: fields.Bytes,
+			}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.WriteAnswer{}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.WriteAnswer{}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Delete("")},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Delete("key")},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Delete("")},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Delete("key")},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.DeleteAnswer{}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.DeleteAnswer{}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Ping{}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Ping{}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.PingAnswer{}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.PingAnswer{}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ErrorAnswer{Err: errs.NewErrorInternalError(nil)}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(1, 0)}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(0, 1)}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Command(10), fields.Handshake)}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Handshake, fields.Command(10))}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+			}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+			}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+				bodies.Request{Number: 1, Body: bodies.Read("key")},
+			}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+				bodies.Request{Number: 1, Body: bodies.Delete("key")},
+			}}},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer(nil)},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 0, Body: bodies.DeleteAnswer{}},
+			})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 1, Body: bodies.DeleteAnswer{}},
+			})},
+			zstd,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
+			})},
+			zstd,
+		},
+
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshake("", [32]byte{}, []fields.Compression{})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Zstd})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Compression(23)})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Zstd})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Compression(23)})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Read("")},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Read("key")},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Read("")},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Read("key")},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{0xFF}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(0)}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(1)}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{}}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.TypedArray{
+				Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
+				ElemType: fields.Bytes,
+			}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Write{Key: fields.Key(""), Value: values.Bytes{}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 2, Body: bodies.Write{Key: fields.Key("k"), Value: values.Bytes{0xFF}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 3, Body: bodies.Write{Key: fields.Key("ke"), Value: values.Int(0)}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 4, Body: bodies.Write{Key: fields.Key("key"), Value: values.Int(1)}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 5, Body: bodies.Write{Key: fields.Key("key "), Value: values.UntypedArray{}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 6, Body: bodies.Write{Key: fields.Key("key k"), Value: values.UntypedArray{values.Bytes{}}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 7, Body: bodies.Write{Key: fields.Key("key ke"), Value: values.UntypedArray{values.Bytes{0xff}}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 8, Body: bodies.Write{Key: fields.Key("key key"), Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 9, Body: bodies.Write{Key: fields.Key("key yek"), Value: values.TypedArray{
+				Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
+				ElemType: fields.Bytes,
+			}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.WriteAnswer{}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.WriteAnswer{}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Delete("")},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Delete("key")},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Delete("")},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Delete("key")},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.DeleteAnswer{}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.DeleteAnswer{}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.Ping{}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Ping{}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.PingAnswer{}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.PingAnswer{}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 0, Body: bodies.ErrorAnswer{Err: errs.NewErrorInternalError(nil)}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(1, 0)}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(0, 1)}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Command(10), fields.Handshake)}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Handshake, fields.Command(10))}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+			}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+			}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+				bodies.Request{Number: 1, Body: bodies.Read("key")},
+			}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
+				bodies.Request{Number: 0, Body: bodies.Read("key")},
+				bodies.Request{Number: 1, Body: bodies.Delete("key")},
+			}}},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer(nil)},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 0, Body: bodies.DeleteAnswer{}},
+			})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 1, Body: bodies.DeleteAnswer{}},
+			})},
+			s2,
+		},
+		{
+			frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
+				bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+				bodies.Result{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
+			})},
+			s2,
+		},
+	}
+
+	decoder := NewDecoder(1024, []compressor.Compressor{
+		zstd,
+		s2,
+	})
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_EncodeDecodeEncode_%v", i),
+			func(t *testing.T) {
+				buf := buffer.Mock{}
+				buf.Preallocate(tt.f.Size())
+
+				err := tt.f.Encode(&buf, tt.compressor)
+				if err != nil {
+					t.Fatalf("EncodeFrame: got err %v", err)
+				}
+
+				reader := bufio.NewReader(bytes.NewReader(buf.Bytes()))
+
+				_, err = decoder.DecodePreamble(reader)
+				if err != nil {
+					t.Fatalf("DecodePreamble: got err %v", err)
+					return
+				}
+
+				f, err := decoder.DecodeFrame(reader)
+				if err != nil {
+					t.Fatalf("DecodeFrame: got err %v", err)
+					return
+				}
+
+				compareFrames(t, f, tt.f)
 			},
 		)
 	}
