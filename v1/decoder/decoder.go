@@ -172,7 +172,7 @@ func (d Decoder) decodeBody(body []byte, command fields.Command) (body.Body, err
 	return nil, err.NewDecodeError(fmt.Sprintf("unkown command: %v", command), nil)
 }
 
-func (d Decoder) checkIfBodyLenIsTooSmall(l uint32, bound uint32) error {
+func (d Decoder) checkIfBodyLenIsTooSmall(l, bound int) error {
 	if l < bound {
 		return errs.NewErrorMalformedValue(
 			fmt.Sprintf("invalid request: %v bytes min len, got %v bytes", HandshakeMinBodySize, l),
@@ -182,7 +182,7 @@ func (d Decoder) checkIfBodyLenIsTooSmall(l uint32, bound uint32) error {
 	return nil
 }
 
-func (d Decoder) checkIfBodyLenLowerThanExpected(l, expected uint32) error {
+func (d Decoder) checkIfBodyLenLowerThanExpected(l, expected int) error {
 	if l < expected {
 		return errs.NewErrorMalformedValue(
 			fmt.Sprintf("invalid request: body (%v bytes) is lower than expected (%v bytes)", l, expected),
@@ -192,8 +192,8 @@ func (d Decoder) checkIfBodyLenLowerThanExpected(l, expected uint32) error {
 }
 
 func (d Decoder) answer(body []byte) (body.Answer, error) {
-	cursor := uint32(0)
-	bodyLen := uint32(len(body))
+	cursor := 0
+	bodyLen := len(body)
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, AnswerMinBodySize); e != nil {
 		return nil, e
@@ -236,8 +236,8 @@ func (d Decoder) answer(body []byte) (body.Answer, error) {
 }
 
 func (d Decoder) answerHandshake(body []byte) (bodies.HandshakeAnswer, error) {
-	bodyLen := uint32(len(body))
-	cursor := uint32(0)
+	bodyLen := len(body)
+	cursor := 0
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+bodies.CompressionLenFieldSize); e != nil {
 		return bodies.HandshakeAnswer{}, e
@@ -246,12 +246,12 @@ func (d Decoder) answerHandshake(body []byte) (bodies.HandshakeAnswer, error) {
 	compressionsLen := d.decodeUint8(body[cursor:])
 	cursor += bodies.CompressionLenFieldSize
 
-	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+uint32(compressionsLen)); e != nil {
+	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+int(compressionsLen)); e != nil {
 		return bodies.HandshakeAnswer{}, e
 	}
 
 	compressions := make([]fields.Compression, 0, compressionsLen)
-	for _, c := range body[cursor : cursor+uint32(compressionsLen)] {
+	for _, c := range body[cursor : cursor+int(compressionsLen)] {
 		compressions = append(compressions, fields.Compression(c))
 	}
 
@@ -259,8 +259,8 @@ func (d Decoder) answerHandshake(body []byte) (bodies.HandshakeAnswer, error) {
 }
 
 func (d Decoder) answerRead(body []byte) (bodies.ReadAnswer, error) {
-	bodyLen := uint32(len(body))
-	cursor := uint32(0)
+	bodyLen := len(body)
+	cursor := 0
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+fields.TypeFieldSize); e != nil {
 		return bodies.ReadAnswer{}, e
@@ -290,8 +290,8 @@ func (d Decoder) answerPing() (bodies.PingAnswer, error) {
 }
 
 func (d Decoder) answerErr(body []byte) (bodies.ErrorAnswer, error) {
-	cursor := uint32(0)
-	bodyLen := uint32(len(body))
+	cursor := 0
+	bodyLen := len(body)
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, fields.ErrorFieldSize); e != nil {
 		return bodies.ErrorAnswer{}, e
@@ -368,8 +368,8 @@ func (d Decoder) answerErr(body []byte) (bodies.ErrorAnswer, error) {
 }
 
 func (d Decoder) answerBatch(body []byte) (bodies.BatchAnswer, error) {
-	bodyLen := uint32(len(body))
-	cursor := uint32(0)
+	bodyLen := len(body)
+	cursor := 0
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, BatchAnswerMinBodySize); e != nil {
 		return bodies.BatchAnswer{}, e
@@ -387,15 +387,15 @@ func (d Decoder) answerBatch(body []byte) (bodies.BatchAnswer, error) {
 		}
 
 		results = append(results, result)
-		cursor += uint32(i)
+		cursor += i
 	}
 
 	return bodies.BatchAnswer(results), nil
 }
 
 func (d Decoder) batchResult(body []byte) (bodies.Result, int, error) {
-	cursor := uint32(0)
-	bodyLen := uint32(len(body))
+	cursor := 0
+	bodyLen := len(body)
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, BatchResultMinBodySize); e != nil {
 		return bodies.Result{}, 0, e
@@ -404,7 +404,7 @@ func (d Decoder) batchResult(body []byte) (bodies.Result, int, error) {
 	requestNumber := fields.RequestNumber(d.decodeUint32(body[cursor:]))
 	cursor += fields.RequestNumberFieldSize
 
-	resultBodyLen := d.decodeUint32(body[cursor:])
+	resultBodyLen := int(d.decodeUint32(body[cursor:]))
 	cursor += bodies.RequestBodyLenFieldSize
 
 	b, e := d.answer(body[cursor : cursor+resultBodyLen])
@@ -422,8 +422,8 @@ func (d Decoder) batchResult(body []byte) (bodies.Result, int, error) {
 }
 
 func (d Decoder) batch(body []byte) (bodies.Batch, error) {
-	bodyLen := uint32(len(body))
-	cursor := uint32(0)
+	bodyLen := len(body)
+	cursor := 0
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, BatchMinBodySize); e != nil {
 		return bodies.Batch{}, e
@@ -444,7 +444,7 @@ func (d Decoder) batch(body []byte) (bodies.Batch, error) {
 		}
 
 		requests = append(requests, request)
-		cursor += uint32(i)
+		cursor += i
 	}
 
 	return bodies.Batch{
@@ -456,8 +456,8 @@ func (d Decoder) batch(body []byte) (bodies.Batch, error) {
 }
 
 func (d Decoder) batchRequest(body []byte) (bodies.Request, int, error) {
-	cursor := uint32(0)
-	bodyLen := uint32(len(body))
+	cursor := 0
+	bodyLen := len(body)
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, BatchRequestMinBodySize); e != nil {
 		return bodies.Request{}, 0, e
@@ -473,7 +473,7 @@ func (d Decoder) batchRequest(body []byte) (bodies.Request, int, error) {
 		return bodies.Request{}, 0, errs.NewErrorUnexpectedCommandInBatch(command, requestNumber)
 	}
 
-	requestBodyLen := d.decodeUint32(body[cursor:])
+	requestBodyLen := int(d.decodeUint32(body[cursor:]))
 	cursor += bodies.RequestBodyLenFieldSize
 
 	b, e := d.decodeBody(body[cursor:cursor+requestBodyLen], command)
@@ -495,14 +495,14 @@ func (d Decoder) ping() (bodies.Ping, error) {
 }
 
 func (d Decoder) handshake(body []byte) (bodies.Handshake, error) {
-	cursor := uint32(0)
-	bodyLen := uint32(len(body))
+	cursor := 0
+	bodyLen := len(body)
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, HandshakeMinBodySize); e != nil {
 		return bodies.Handshake{}, e
 	}
 
-	loginLen := d.decodeUint32(body[cursor:])
+	loginLen := int(d.decodeUint32(body[cursor:]))
 	cursor += bodies.LoginLenFieldSize
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, loginLen+cursor); e != nil {
@@ -529,16 +529,16 @@ func (d Decoder) handshake(body []byte) (bodies.Handshake, error) {
 		return bodies.Handshake{}, e
 	}
 
-	compressionsLen := d.decodeUint8(body[cursor:])
+	compressionsLen := int(d.decodeUint8(body[cursor:]))
 	cursor += bodies.CompressionLenFieldSize
 
-	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+uint32(compressionsLen)); e != nil {
+	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+compressionsLen); e != nil {
 		return bodies.Handshake{}, e
 	}
 
 	compressions := make([]fields.Compression, 0, compressionsLen)
 
-	for _, c := range body[cursor : cursor+uint32(compressionsLen)] {
+	for _, c := range body[cursor : cursor+int(compressionsLen)] {
 		compressions = append(compressions, fields.Compression(c))
 	}
 
@@ -554,14 +554,14 @@ func (d Decoder) delete(body []byte) (bodies.Delete, error) {
 }
 
 func (d Decoder) write(body []byte) (bodies.Write, error) {
-	cursor := uint32(0)
-	bodyLen := uint32(len(body))
+	cursor := 0
+	bodyLen := len(body)
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, cursor+fields.KeyLenFieldSize); e != nil {
 		return bodies.Write{}, e
 	}
 
-	keyLen := d.decodeUint32(body[cursor:])
+	keyLen := int(d.decodeUint32(body[cursor:]))
 	cursor += fields.KeyLenFieldSize
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+keyLen); e != nil {
@@ -623,14 +623,14 @@ func (d Decoder) write(body []byte) (bodies.Write, error) {
 }
 
 func (d Decoder) decodeBytesValue(value []byte) (values.Bytes, int, error) {
-	cursor := uint32(0)
-	valueLen := uint32(len(value))
+	cursor := 0
+	valueLen := len(value)
 
 	if e := d.checkIfBodyLenLowerThanExpected(valueLen, cursor+values.BytesLenFieldSize); e != nil {
 		return values.Bytes{}, 0, e
 	}
 
-	bytesLen := d.decodeUint32(value[cursor:])
+	bytesLen := int(d.decodeUint32(value[cursor:]))
 	cursor += values.BytesLenFieldSize
 
 	if e := d.checkIfBodyLenLowerThanExpected(valueLen, cursor+bytesLen); e != nil {
@@ -641,7 +641,7 @@ func (d Decoder) decodeBytesValue(value []byte) (values.Bytes, int, error) {
 }
 
 func (d Decoder) decodeIntValue(value []byte) (values.Int, int, error) {
-	if e := d.checkIfBodyLenLowerThanExpected(uint32(len(value)), values.IntValueFieldSize); e != nil {
+	if e := d.checkIfBodyLenLowerThanExpected(len(value), values.IntValueFieldSize); e != nil {
 		return values.Int(0), 0, e
 	}
 
@@ -649,7 +649,7 @@ func (d Decoder) decodeIntValue(value []byte) (values.Int, int, error) {
 }
 
 func (d Decoder) decodeUintValue(value []byte) (values.Uint, int, error) {
-	if e := d.checkIfBodyLenLowerThanExpected(uint32(len(value)), values.UintValueFieldSize); e != nil {
+	if e := d.checkIfBodyLenLowerThanExpected(len(value), values.UintValueFieldSize); e != nil {
 		return values.Uint(0), 0, e
 	}
 
@@ -657,7 +657,7 @@ func (d Decoder) decodeUintValue(value []byte) (values.Uint, int, error) {
 }
 
 func (d Decoder) decodeFloatValue(value []byte) (values.Float, int, error) {
-	if e := d.checkIfBodyLenLowerThanExpected(uint32(len(value)), values.FloatValueFieldSize); e != nil {
+	if e := d.checkIfBodyLenLowerThanExpected(len(value), values.FloatValueFieldSize); e != nil {
 		return values.Float(0), 0, e
 	}
 
@@ -665,8 +665,8 @@ func (d Decoder) decodeFloatValue(value []byte) (values.Float, int, error) {
 }
 
 func (d Decoder) decodeUntypedArray(data []byte) (values.UntypedArray, int, error) {
-	cursor := uint32(0)
-	lenValue := uint32(len(data))
+	cursor := 0
+	lenValue := len(data)
 
 	if e := d.checkIfBodyLenLowerThanExpected(lenValue, cursor+values.TypedArrayLenFieldSize); e != nil {
 		return values.UntypedArray{}, 0, e
@@ -692,15 +692,15 @@ func (d Decoder) decodeUntypedArray(data []byte) (values.UntypedArray, int, erro
 		}
 
 		elems = append(elems, elem)
-		cursor += uint32(i)
+		cursor += i
 	}
 
 	return values.UntypedArray(elems), int(cursor), nil
 }
 
 func (d Decoder) decodeTypedArray(data []byte) (values.TypedArray, int, error) {
-	cursor := uint32(0)
-	lenValue := uint32(len(data))
+	cursor := 0
+	lenValue := len(data)
 
 	if e := d.checkIfBodyLenLowerThanExpected(lenValue, cursor+values.TypedArrayLenFieldSize); e != nil {
 		return values.TypedArray{}, 0, e
@@ -726,7 +726,7 @@ func (d Decoder) decodeTypedArray(data []byte) (values.TypedArray, int, error) {
 		}
 
 		elems = append(elems, elem)
-		cursor += uint32(i)
+		cursor += i
 	}
 
 	return values.TypedArray{ElemType: elemType, Elems: elems}, int(cursor), nil
