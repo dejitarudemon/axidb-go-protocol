@@ -142,16 +142,19 @@ func (d Decoder) DecodeFrame(reader *bufio.Reader) (frame.Frame, error) {
 		bodyBuf = decompressed
 	}
 
-	body, e := d.decodeBody(bodyBuf, command)
+	body, consumed, e := d.decodeBody(bodyBuf, command)
 	if e != nil {
 		return f, e
+	}
+	if consumed != len(bodyBuf) {
+		return f, err.NewDecodeError(fmt.Sprintf("body len %v, but consumed %v", len(bodyBuf), consumed), nil)
 	}
 
 	f.Body = body
 	return f, nil
 }
 
-func (d Decoder) decodeBody(body []byte, command fields.Command) (body.Body, error) {
+func (d Decoder) decodeBody(body []byte, command fields.Command) (body.Body, int, error) {
 	switch command {
 	case fields.Handshake:
 		return d.handshake(body)
@@ -169,7 +172,7 @@ func (d Decoder) decodeBody(body []byte, command fields.Command) (body.Body, err
 		return d.batch(body)
 	}
 
-	return nil, err.NewDecodeError(fmt.Sprintf("unkown command: %v", command), nil)
+	return nil, 0, err.NewDecodeError(fmt.Sprintf("unkown command: %v", command), nil)
 }
 
 func (d Decoder) checkIfBodyLenIsTooSmall(l, bound int) error {
@@ -191,25 +194,26 @@ func (d Decoder) checkIfBodyLenLowerThanExpected(l, expected int) error {
 	return nil
 }
 
-func (d Decoder) answer(body []byte) (body.Answer, error) {
+func (d Decoder) answer(body []byte) (body.Answer, int, error) {
 	cursor := 0
 	bodyLen := len(body)
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, AnswerMinBodySize); e != nil {
-		return nil, e
+		return nil, 0, e
 	}
 
 	result := d.decodeUint8(body)
-	cursor += fields.CommandFieldSize
+	cursor += bodies.ResultFieldSize
 
 	if result > 1 {
-		return nil, errs.NewErrorMalformedValue(
+		return nil, 0, errs.NewErrorMalformedValue(
 			fmt.Sprintf("unkown result: %v", result),
 		)
 	}
 
 	if result == 0 {
-		return d.answerErr(body[cursor:])
+		b, consumed, e := d.answerErr(body[cursor:])
+		return b, cursor + consumed, e
 	}
 
 	originalCommand := fields.Command(d.decodeUint8(body[cursor:]))
@@ -217,91 +221,101 @@ func (d Decoder) answer(body []byte) (body.Answer, error) {
 
 	switch originalCommand {
 	case fields.Answer:
-		return nil, errs.NewErrorMalformedValue("got answer for answer")
+		return nil, cursor, errs.NewErrorMalformedValue("got answer for answer")
 	case fields.Ping:
-		return d.answerPing()
+		b, consumed, e := d.answerPing()
+		return b, cursor + consumed, e
 	case fields.Write:
-		return d.answerWrite()
+		b, consumed, e := d.answerWrite()
+		return b, cursor + consumed, e
 	case fields.Delete:
-		return d.answerDelete()
+		b, consumed, e := d.answerDelete()
+		return b, cursor + consumed, e
 	case fields.Read:
-		return d.answerRead(body[cursor:])
+		b, consumed, e := d.answerRead(body[cursor:])
+		return b, cursor + consumed, e
 	case fields.Handshake:
-		return d.answerHandshake(body[cursor:])
+		b, consumed, e := d.answerHandshake(body[cursor:])
+		return b, cursor + consumed, e
 	case fields.Batch:
-		return d.answerBatch(body[cursor:])
+		b, consumed, e := d.answerBatch(body[cursor:])
+		return b, cursor + consumed, e
 	}
 
-	return nil, err.NewDecodeError(fmt.Sprintf("unknown command in answer: %v", originalCommand), nil)
+	return nil, 0, err.NewDecodeError(fmt.Sprintf("unknown command in answer: %v", originalCommand), nil)
 }
 
-func (d Decoder) answerHandshake(body []byte) (bodies.HandshakeAnswer, error) {
+func (d Decoder) answerHandshake(body []byte) (bodies.HandshakeAnswer, int, error) {
 	bodyLen := len(body)
 	cursor := 0
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+bodies.CompressionLenFieldSize); e != nil {
-		return bodies.HandshakeAnswer{}, e
+		return bodies.HandshakeAnswer{}, 0, e
 	}
 
-	compressionsLen := d.decodeUint8(body[cursor:])
+	compressionsLen := int(d.decodeUint8(body[cursor:]))
 	cursor += bodies.CompressionLenFieldSize
 
-	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+int(compressionsLen)); e != nil {
-		return bodies.HandshakeAnswer{}, e
+	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+compressionsLen); e != nil {
+		return bodies.HandshakeAnswer{}, 0, e
 	}
 
 	compressions := make([]fields.Compression, 0, compressionsLen)
-	for _, c := range body[cursor : cursor+int(compressionsLen)] {
+	for _, c := range body[cursor : cursor+compressionsLen] {
 		compressions = append(compressions, fields.Compression(c))
 	}
 
-	return bodies.NewHandshakeAnswer(compressions), nil
+	cursor += compressionsLen * fields.CompressionFieldSize
+
+	return bodies.NewHandshakeAnswer(compressions), cursor, nil
 }
 
-func (d Decoder) answerRead(body []byte) (bodies.ReadAnswer, error) {
+func (d Decoder) answerRead(body []byte) (bodies.ReadAnswer, int, error) {
 	bodyLen := len(body)
 	cursor := 0
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+fields.TypeFieldSize); e != nil {
-		return bodies.ReadAnswer{}, e
+		return bodies.ReadAnswer{}, 0, e
 	}
 
 	valueType := fields.Type(d.decodeUint8(body[cursor:]))
 	cursor += fields.TypeFieldSize
 
-	value, _, e := d.decodeValue(body[cursor:], valueType)
+	value, consumed, e := d.decodeValue(body[cursor:], valueType)
 	if e != nil {
-		return bodies.ReadAnswer{}, e
+		return bodies.ReadAnswer{}, 0, e
 	}
 
-	return bodies.ReadAnswer{Value: value}, nil
+	cursor += consumed
+
+	return bodies.ReadAnswer{Value: value}, cursor, nil
 }
 
-func (d Decoder) answerDelete() (bodies.DeleteAnswer, error) {
-	return bodies.DeleteAnswer{}, nil
+func (d Decoder) answerDelete() (bodies.DeleteAnswer, int, error) {
+	return bodies.DeleteAnswer{}, 0, nil
 }
 
-func (d Decoder) answerWrite() (bodies.WriteAnswer, error) {
-	return bodies.WriteAnswer{}, nil
+func (d Decoder) answerWrite() (bodies.WriteAnswer, int, error) {
+	return bodies.WriteAnswer{}, 0, nil
 }
 
-func (d Decoder) answerPing() (bodies.PingAnswer, error) {
-	return bodies.PingAnswer{}, nil
+func (d Decoder) answerPing() (bodies.PingAnswer, int, error) {
+	return bodies.PingAnswer{}, 0, nil
 }
 
-func (d Decoder) answerErr(body []byte) (bodies.ErrorAnswer, error) {
+func (d Decoder) answerErr(body []byte) (bodies.ErrorAnswer, int, error) {
 	cursor := 0
 	bodyLen := len(body)
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, fields.ErrorFieldSize); e != nil {
-		return bodies.ErrorAnswer{}, e
+		return bodies.ErrorAnswer{}, 0, e
 	}
 
 	code := fields.Error(d.decodeUint16(body[cursor:]))
 	cursor += fields.ErrorFieldSize
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+fields.TracebackIDFieldSize); e != nil {
-		return bodies.ErrorAnswer{}, e
+		return bodies.ErrorAnswer{}, 0, e
 	}
 
 	tracebackID := fields.TracebackID(d.decodeBytes(body[cursor : cursor+fields.TracebackIDFieldSize]))
@@ -338,41 +352,45 @@ func (d Decoder) answerErr(body []byte) (bodies.ErrorAnswer, error) {
 		pe = errs.NewErrorRestrictedRequestWithTracebackID(fields.Key{}, []byte{}, []byte{}, 0, 0, tracebackID)
 	case fields.UnexpectedCommand:
 		if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+fields.CommandFieldSize); e != nil {
-			return bodies.ErrorAnswer{}, e
+			return bodies.ErrorAnswer{}, 0, e
 		}
 		pe = errs.NewErrorUnexpectedCommandWithTracebackID(0, fields.Command(d.decodeUint8(body[cursor:])), tracebackID)
+		cursor += fields.CommandFieldSize
 	case fields.BodyLimitIsExceeded:
 		if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+fields.BodyLimitFieldSize); e != nil {
-			return bodies.ErrorAnswer{}, e
+			return bodies.ErrorAnswer{}, 0, nil
 		}
 		pe = errs.NewErrorBodyLimitIsExceededWithTracebackID(0, fields.BodyLimit(d.decodeUint32(body[cursor:])), tracebackID)
+		cursor += fields.BodyLimitFieldSize
 	case fields.MalformedValue:
 		pe = errs.NewErrorMalformedValueWithTracebackID(d.decodeString(body[cursor:]), tracebackID)
 	case fields.BatchLimitIsExceeded:
 		if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+fields.BatchLimitFieldSize); e != nil {
-			return bodies.ErrorAnswer{}, e
+			return bodies.ErrorAnswer{}, 0, e
 		}
 		pe = errs.NewErrorBatchLimitIsExceededWithTracebackID(0, fields.BatchLimit(d.decodeUint32(body[cursor:])), tracebackID)
+		cursor += fields.BatchLimitFieldSize
 	case fields.UnexpectedCommandInBatch:
 		if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+fields.RequestNumberFieldSize); e != nil {
-			return bodies.ErrorAnswer{}, e
+			return bodies.ErrorAnswer{}, 0, e
 		}
 		pe = errs.NewErrorUnexpectedCommandInBatchWithTracebackID(0, fields.RequestNumber(d.decodeUint32(body[cursor:])), tracebackID)
+		cursor += fields.RequestNumberFieldSize
 	default:
-		return bodies.ErrorAnswer{}, err.NewDecodeError(
+		return bodies.ErrorAnswer{}, cursor, err.NewDecodeError(
 			fmt.Sprintf("unknown err code: %v", code), nil,
 		)
 	}
 
-	return bodies.ErrorAnswer{Err: pe}, nil
+	return bodies.ErrorAnswer{Err: pe}, cursor, nil
 }
 
-func (d Decoder) answerBatch(body []byte) (bodies.BatchAnswer, error) {
+func (d Decoder) answerBatch(body []byte) (bodies.BatchAnswer, int, error) {
 	bodyLen := len(body)
 	cursor := 0
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, BatchAnswerMinBodySize); e != nil {
-		return bodies.BatchAnswer{}, e
+		return bodies.BatchAnswer{}, 0, e
 	}
 
 	resultsLen := d.decodeUint32(body[cursor:])
@@ -383,14 +401,14 @@ func (d Decoder) answerBatch(body []byte) (bodies.BatchAnswer, error) {
 	for range resultsLen {
 		result, i, e := d.batchResult(body[cursor:])
 		if e != nil {
-			return bodies.BatchAnswer{}, e
+			return bodies.BatchAnswer{}, 0, e
 		}
 
 		results = append(results, result)
 		cursor += i
 	}
 
-	return bodies.BatchAnswer(results), nil
+	return bodies.BatchAnswer(results), cursor, nil
 }
 
 func (d Decoder) batchResult(body []byte) (bodies.Result, int, error) {
@@ -407,26 +425,26 @@ func (d Decoder) batchResult(body []byte) (bodies.Result, int, error) {
 	resultBodyLen := int(d.decodeUint32(body[cursor:]))
 	cursor += bodies.RequestBodyLenFieldSize
 
-	b, e := d.answer(body[cursor : cursor+resultBodyLen])
+	b, consumed, e := d.answer(body[cursor : cursor+resultBodyLen])
 	if e != nil {
 		return bodies.Result{}, 0, e
 	}
 
-	cursor += resultBodyLen
+	cursor += consumed
 
 	return bodies.Result{
 		Number: requestNumber,
 		Body:   b,
-	}, int(cursor), nil
+	}, cursor, nil
 
 }
 
-func (d Decoder) batch(body []byte) (bodies.Batch, error) {
+func (d Decoder) batch(body []byte) (bodies.Batch, int, error) {
 	bodyLen := len(body)
 	cursor := 0
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, BatchMinBodySize); e != nil {
-		return bodies.Batch{}, e
+		return bodies.Batch{}, 0, e
 	}
 
 	flags := d.decodeUint8(body[cursor:])
@@ -440,7 +458,7 @@ func (d Decoder) batch(body []byte) (bodies.Batch, error) {
 	for range requestsLen {
 		request, i, e := d.batchRequest(body[cursor:])
 		if e != nil {
-			return bodies.Batch{}, e
+			return bodies.Batch{}, 0, e
 		}
 
 		requests = append(requests, request)
@@ -452,7 +470,7 @@ func (d Decoder) batch(body []byte) (bodies.Batch, error) {
 		IsSequentialExecution: flags&bodies.IsSequentialExecution != 0,
 		InterruptAfterError:   flags&bodies.InterruptAfterError != 0,
 		IsOneAnswer:           flags&bodies.IsOneAnswer != 0,
-	}, nil
+	}, cursor, nil
 }
 
 func (d Decoder) batchRequest(body []byte) (bodies.Request, int, error) {
@@ -476,37 +494,36 @@ func (d Decoder) batchRequest(body []byte) (bodies.Request, int, error) {
 	requestBodyLen := int(d.decodeUint32(body[cursor:]))
 	cursor += bodies.RequestBodyLenFieldSize
 
-	b, e := d.decodeBody(body[cursor:cursor+requestBodyLen], command)
+	b, consumed, e := d.decodeBody(body[cursor:cursor+requestBodyLen], command)
 	if e != nil {
 		return bodies.Request{}, 0, e
 	}
 
-	cursor += requestBodyLen
+	cursor += consumed
 
 	return bodies.Request{
 		Number: requestNumber,
 		Body:   b,
-	}, int(cursor), nil
-
+	}, cursor, nil
 }
 
-func (d Decoder) ping() (bodies.Ping, error) {
-	return bodies.Ping{}, nil
+func (d Decoder) ping() (bodies.Ping, int, error) {
+	return bodies.Ping{}, 0, nil
 }
 
-func (d Decoder) handshake(body []byte) (bodies.Handshake, error) {
+func (d Decoder) handshake(body []byte) (bodies.Handshake, int, error) {
 	cursor := 0
 	bodyLen := len(body)
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, HandshakeMinBodySize); e != nil {
-		return bodies.Handshake{}, e
+		return bodies.Handshake{}, 0, e
 	}
 
 	loginLen := int(d.decodeUint32(body[cursor:]))
 	cursor += bodies.LoginLenFieldSize
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, loginLen+cursor); e != nil {
-		return bodies.Handshake{}, e
+		return bodies.Handshake{}, 0, e
 	}
 
 	login := ""
@@ -518,7 +535,7 @@ func (d Decoder) handshake(body []byte) (bodies.Handshake, error) {
 	cursor += loginLen
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+bodies.HashFieldSize); e != nil {
-		return bodies.Handshake{}, e
+		return bodies.Handshake{}, 0, e
 	}
 
 	hash := body[cursor : cursor+bodies.HashFieldSize]
@@ -526,46 +543,48 @@ func (d Decoder) handshake(body []byte) (bodies.Handshake, error) {
 	cursor += bodies.HashFieldSize
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+bodies.CompressionLenFieldSize); e != nil {
-		return bodies.Handshake{}, e
+		return bodies.Handshake{}, 0, e
 	}
 
 	compressionsLen := int(d.decodeUint8(body[cursor:]))
 	cursor += bodies.CompressionLenFieldSize
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+compressionsLen); e != nil {
-		return bodies.Handshake{}, e
+		return bodies.Handshake{}, 0, e
 	}
 
 	compressions := make([]fields.Compression, 0, compressionsLen)
 
-	for _, c := range body[cursor : cursor+int(compressionsLen)] {
+	for _, c := range body[cursor : cursor+compressionsLen*fields.CompressionFieldSize] {
 		compressions = append(compressions, fields.Compression(c))
 	}
 
-	return bodies.NewHandshake(login, [32]byte(hash), compressions), nil
+	cursor += compressionsLen * fields.CompressionFieldSize
+
+	return bodies.NewHandshake(login, [32]byte(hash), compressions), cursor, nil
 }
 
-func (d Decoder) read(body []byte) (bodies.Read, error) {
-	return bodies.Read(d.decodeBytes(body)), nil
+func (d Decoder) read(body []byte) (bodies.Read, int, error) {
+	return bodies.Read(d.decodeBytes(body)), len(body), nil
 }
 
-func (d Decoder) delete(body []byte) (bodies.Delete, error) {
-	return bodies.Delete(d.decodeBytes(body)), nil
+func (d Decoder) delete(body []byte) (bodies.Delete, int, error) {
+	return bodies.Delete(d.decodeBytes(body)), len(body), nil
 }
 
-func (d Decoder) write(body []byte) (bodies.Write, error) {
+func (d Decoder) write(body []byte) (bodies.Write, int, error) {
 	cursor := 0
 	bodyLen := len(body)
 
 	if e := d.checkIfBodyLenIsTooSmall(bodyLen, cursor+fields.KeyLenFieldSize); e != nil {
-		return bodies.Write{}, e
+		return bodies.Write{}, 0, e
 	}
 
 	keyLen := int(d.decodeUint32(body[cursor:]))
 	cursor += fields.KeyLenFieldSize
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+keyLen); e != nil {
-		return bodies.Write{}, e
+		return bodies.Write{}, 0, e
 	}
 
 	key := fields.Key{}
@@ -577,13 +596,13 @@ func (d Decoder) write(body []byte) (bodies.Write, error) {
 	cursor += keyLen
 
 	if e := d.checkIfBodyLenLowerThanExpected(bodyLen, cursor+fields.TypeFieldSize); e != nil {
-		return bodies.Write{}, e
+		return bodies.Write{}, 0, e
 	}
 
 	valueType := fields.Type(d.decodeUint8(body[cursor:]))
 
 	if !valueType.IsValid() {
-		return bodies.Write{}, errs.NewErrorMalformedValue(
+		return bodies.Write{}, 0, errs.NewErrorMalformedValue(
 			fmt.Sprintf("unknown value type: %v", valueType),
 		)
 	}
@@ -592,34 +611,37 @@ func (d Decoder) write(body []byte) (bodies.Write, error) {
 
 	value := value.V(nil)
 	e := error(nil)
+	consumed := 0
 
 	switch valueType {
 	case fields.Bytes:
-		value, _, e = d.decodeBytesValue(body[cursor:])
+		value, consumed, e = d.decodeBytesValue(body[cursor:])
 	case fields.TypedArray:
-		value, _, e = d.decodeTypedArray(body[cursor:])
+		value, consumed, e = d.decodeTypedArray(body[cursor:])
 	case fields.UntypedArray:
-		value, _, e = d.decodeUntypedArray(body[cursor:])
+		value, consumed, e = d.decodeUntypedArray(body[cursor:])
 	case fields.Int:
-		value, _, e = d.decodeIntValue(body[cursor:])
+		value, consumed, e = d.decodeIntValue(body[cursor:])
 	case fields.Uint:
-		value, _, e = d.decodeUintValue(body[cursor:])
+		value, consumed, e = d.decodeUintValue(body[cursor:])
 	case fields.Float:
-		value, _, e = d.decodeFloatValue(body[cursor:])
+		value, consumed, e = d.decodeFloatValue(body[cursor:])
 	case fields.String:
-		value, _, e = d.decodeStringValue(body[cursor:])
+		value, consumed, e = d.decodeStringValue(body[cursor:])
 	case fields.JSON:
-		value, _, e = d.decodeJSONValue(body[cursor:])
+		value, consumed, e = d.decodeJSONValue(body[cursor:])
 	}
 
 	if e != nil {
-		return bodies.Write{}, e
+		return bodies.Write{}, 0, e
 	}
+
+	cursor += consumed
 
 	return bodies.Write{
 		Key:   key,
 		Value: value,
-	}, nil
+	}, cursor, nil
 }
 
 func (d Decoder) decodeBytesValue(value []byte) (values.Bytes, int, error) {
@@ -637,7 +659,7 @@ func (d Decoder) decodeBytesValue(value []byte) (values.Bytes, int, error) {
 		return values.Bytes{}, 0, e
 	}
 
-	return values.Bytes(d.decodeBytes(value[cursor : cursor+bytesLen])), int(cursor + bytesLen), nil
+	return values.Bytes(d.decodeBytes(value[cursor : cursor+bytesLen])), cursor + bytesLen, nil
 }
 
 func (d Decoder) decodeIntValue(value []byte) (values.Int, int, error) {
