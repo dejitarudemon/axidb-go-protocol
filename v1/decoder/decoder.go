@@ -571,7 +571,7 @@ func (d Decoder) write(body []byte) (bodies.Write, error) {
 	key := fields.Key{}
 
 	if keyLen != 0 {
-		key = fields.Key(d.decodeBytes(body[cursor:]))
+		key = fields.Key(d.decodeBytes(body[cursor : cursor+keyLen]))
 	}
 
 	cursor += keyLen
@@ -637,7 +637,7 @@ func (d Decoder) decodeBytesValue(value []byte) (values.Bytes, int, error) {
 		return values.Bytes{}, 0, e
 	}
 
-	return values.Bytes(d.decodeBytes(value[cursor : cursor+bytesLen])), int(bytesLen), nil
+	return values.Bytes(d.decodeBytes(value[cursor : cursor+bytesLen])), int(cursor + bytesLen), nil
 }
 
 func (d Decoder) decodeIntValue(value []byte) (values.Int, int, error) {
