@@ -5,14 +5,264 @@ import (
 	"bytes"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body/bodies"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
+
+func compareValues(t *testing.T, v1, v2 value.V) {
+	switch want := v2.(type) {
+	case values.Bytes:
+		got, ok := v1.(values.Bytes)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
+			return
+		}
+		if !bytes.Equal(want, got) {
+			t.Fatalf("Compare values.Bytes: got %v, want %v", got, want)
+		}
+	case values.JSON:
+		got, ok := v1.(values.JSON)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
+			return
+		}
+		if !bytes.Equal(want, got) {
+			t.Fatalf("Compare values.JSON: got %v, want %v", got, want)
+		}
+	case values.Int:
+		got, ok := v1.(values.Int)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
+			return
+		}
+		if want != got {
+			t.Fatalf("Compare values.Int: got %v, want %v", got, want)
+		}
+	case values.Uint:
+		got, ok := v1.(values.Uint)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
+			return
+		}
+		if want != got {
+			t.Fatalf("Compare values.Uint: got %v, want %v", got, want)
+		}
+	case values.Float:
+		got, ok := v1.(values.Float)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
+			return
+		}
+		if want != got {
+			t.Fatalf("Compare values.Float: got %v, want %v", got, want)
+		}
+	case values.String:
+		got, ok := v1.(values.String)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
+			return
+		}
+		if !strings.EqualFold(string(got), string(want)) {
+			t.Fatalf("Compare values.String: got %v, want %v", got, want)
+		}
+	case values.TypedArray:
+		got, ok := v1.(values.TypedArray)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
+			return
+		}
+		if want.ElemType != got.ElemType {
+			t.Fatalf("Compare values.TypedArray: mismatched elem type: got %v, want %v", got.ElemType, want.ElemType)
+		}
+		if len(want.Elems) != len(got.Elems) {
+			t.Fatalf("Compare values.TypedArray: mismatched lens: got %v, want %v", len(got.Elems), len(want.Elems))
+		}
+
+		for i := range want.Elems {
+			compareValues(t, got.Elems[i], want.Elems[i])
+		}
+	case values.UntypedArray:
+		got, ok := v1.(values.UntypedArray)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
+			return
+		}
+		if len(want) != len(got) {
+			t.Fatalf("Compare values.TypedArray: mismatched lens: got %v, want %v", len(got), len(want))
+		}
+
+		for i := range want {
+			compareValues(t, got[i], want[i])
+		}
+	}
+}
+
+func compareBodies(t *testing.T, b1, b2 body.Body) {
+
+	switch want := b2.(type) {
+	case bodies.Handshake:
+		got, ok := b1.(bodies.Handshake)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+
+		if got.Login != want.Login {
+			t.Errorf("Compare Logins: got %v and want %v", got.Login, want.Login)
+		}
+
+		if !bytes.Equal(got.Hash[:], want.Hash[:]) {
+			t.Errorf("Compare Hashes: got % X and want % X", got.Hash, want.Hash)
+		}
+
+		if !slices.Equal(got.Compressions, want.Compressions) {
+			t.Errorf("Compare Compressions: got %v and want %v", got.Compressions, want.Compressions)
+		}
+	case bodies.HandshakeAnswer:
+		got, ok := b1.(bodies.HandshakeAnswer)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+
+		if !slices.Equal(got.Compressions, want.Compressions) {
+			t.Errorf("Compare Compressions: got %v and want %v", got.Compressions, want.Compressions)
+		}
+	case bodies.ErrorAnswer:
+		got, ok := b1.(bodies.ErrorAnswer)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+
+		if want.Err.TracebackID() != got.Err.TracebackID() {
+			t.Errorf("Compare Traceback ID: got % X and want % X", got.Err.TracebackID(), want.Err.TracebackID())
+		}
+	case bodies.Read:
+		got, ok := b1.(bodies.Read)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+
+		if !bytes.Equal([]byte(got), []byte(want)) {
+			t.Errorf("Compare Keys: got % X and want % X", got, want)
+		}
+
+	case bodies.ReadAnswer:
+		got, ok := b1.(bodies.ReadAnswer)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+
+		compareValues(t, got.Value, want.Value)
+
+	case bodies.Write:
+		got, ok := b1.(bodies.Write)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+
+		if !bytes.Equal([]byte(got.Key), []byte(want.Key)) {
+			t.Errorf("Compare Keys: got % X and want % X", got.Key, want.Key)
+		}
+
+		compareValues(t, got.Value, want.Value)
+	case bodies.WriteAnswer:
+		_, ok := b1.(bodies.WriteAnswer)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+	case bodies.Ping:
+		_, ok := b1.(bodies.Ping)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+	case bodies.PingAnswer:
+		_, ok := b1.(bodies.PingAnswer)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+	case bodies.Delete:
+		got, ok := b1.(bodies.Delete)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+
+		if !bytes.Equal([]byte(got), []byte(want)) {
+			t.Errorf("Compare Keys: got % X and want % X", got, want)
+		}
+	case bodies.DeleteAnswer:
+		_, ok := b1.(bodies.DeleteAnswer)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+
+	case bodies.Batch:
+		got, ok := b1.(bodies.Batch)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+
+		if got.InterruptAfterError != want.InterruptAfterError {
+			t.Errorf("Compare InterruptAfterError: got %v and want %v", got.InterruptAfterError, want.InterruptAfterError)
+		}
+
+		if got.IsSequentialExecution != want.IsSequentialExecution {
+			t.Errorf("Compare IsSequentialExecution: got %v and want %v", got.IsSequentialExecution, want.IsSequentialExecution)
+		}
+
+		if got.IsOneAnswer != want.IsOneAnswer {
+			t.Errorf("Compare IsOneAnswer: got %v and want %v", got.IsOneAnswer, want.IsOneAnswer)
+		}
+
+		if len(got.Requests) != len(want.Requests) {
+			t.Fatalf("Compare Batch: mismatched lens: got %v, want %v", len(got.Requests), len(want.Requests))
+		}
+
+		for i := range got.Requests {
+			if got.Requests[i].Number != want.Requests[i].Number {
+				t.Errorf("Compare Batch Request Numbers: got %v, want %v", got.Requests[i].Number, want.Requests[i].Number)
+			}
+
+			compareBodies(t, got.Requests[i].Body, want.Requests[i].Body)
+		}
+	case bodies.BatchAnswer:
+		got, ok := b1.(bodies.BatchAnswer)
+		if !ok {
+			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
+			return
+		}
+
+		if len(got) != len(want) {
+			t.Fatalf("Compare BatchAnswer: mismatched lens: got %v, want %v", len(got), len(want))
+		}
+
+		for i := range got {
+			if got[i].Number != want[i].Number {
+				t.Errorf("Compare Result Numbers: got %v, want %v", got[i].Number, want[i].Number)
+			}
+
+			compareBodies(t, got[i].Body, want[i].Body)
+		}
+	}
+}
 
 func TestDecoder_BySpecs(t *testing.T) {
 	tests := []struct {
@@ -103,6 +353,318 @@ func TestDecoder_BySpecs(t *testing.T) {
 				Body:      bodies.ReadAnswer{Value: values.String("some-data")},
 			},
 		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x0A,
+				0x00, 0x00, 0x00, 0x00, 0x29, 0x01, 0x02, 0x02,
+				0x00, 0x00, 0x00, 0x03, 0x03, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x01, 0x06, 0x00, 0x00,
+				0x00, 0x0B, 0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x20,
+				0x77, 0x6F, 0x72, 0x6C, 0x64, 0x05, 0x40, 0x00,
+				0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCD, 0x34, 0xE8,
+				0xE0, 0x75},
+			decoded: frame.Frame{
+				RequestID: fields.RequestID(10),
+				Body: bodies.ReadAnswer{Value: values.UntypedArray{
+					values.Int(1),
+					values.String("hello world"),
+					values.Float(2.1),
+				}},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x0A,
+				0xF1, 0x38, 0x9C, 0x1F, 0xA2, 0x2F, 0x40, 0x82,
+				0xA2, 0x79, 0xD2, 0x01, 0x7C, 0x60, 0xF8, 0x20,
+				0x88, 0xEE, 0xCC, 0xAA},
+			decoded: frame.Frame{
+				RequestID: fields.RequestID(1),
+				Body: bodies.ErrorAnswer{
+					Err: errs.NewErrorNotFoundWithTracebackID(
+						fields.Key("123"),
+						fields.TracebackID{0xF1, 0x38, 0x9C, 0x1F, 0xA2, 0x2F, 0x40, 0x82,
+							0xA2, 0x79, 0xD2, 0x01, 0x7C, 0x60, 0xF8, 0x20},
+					),
+				},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
+				0xA5, 0x18, 0xB2, 0xC1, 0xCC, 0x27, 0x49, 0x27,
+				0x94, 0x09, 0x6A, 0x10, 0x15, 0xDA, 0x67, 0xB1,
+				0x9C, 0x90, 0xb4, 0x33},
+			decoded: frame.Frame{
+				RequestID: fields.RequestID(1),
+				Body: bodies.ErrorAnswer{
+					Err: errs.NewErrorInternalErrorWithTracebackID(
+						nil,
+						fields.TracebackID{0xA5, 0x18, 0xB2, 0xC1, 0xCC, 0x27, 0x49, 0x27,
+							0x94, 0x09, 0x6A, 0x10, 0x15, 0xDA, 0x67, 0xB1},
+					),
+				},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x03, 0x00, 0x00, 0x00, 0x02,
+				0x00, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00,
+				0x04, 0x63, 0x6F, 0x64, 0x65, 0x06, 0x00, 0x00,
+				0x00, 0x05, 0x49, 0x44, 0x44, 0x51, 0x44, 0x38,
+				0x0A, 0x5A, 0x23},
+			decoded: frame.Frame{
+				RequestID: fields.RequestID(2),
+				Body: bodies.Write{
+					Key:   fields.Key("code"),
+					Value: values.String("IDDQD"),
+				},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x03, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x28, 0x00, 0x00, 0x00,
+				0x06, 0x76, 0x65, 0x63, 0x74, 0x6F, 0x72, 0x01,
+				0x00, 0x00, 0x00, 0x03, 0x03, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x03, 0xD7, 0x99, 0xDF,
+				0x3D},
+			decoded: frame.Frame{
+				RequestID: 1,
+				Body: bodies.Write{
+					Key: fields.Key("vector"),
+					Value: values.TypedArray{
+						ElemType: fields.Int,
+						Elems: []value.V{
+							values.Int(1),
+							values.Int(2),
+							values.Int(3),
+						},
+					},
+				},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x02,
+				0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x03, 0xA0,
+				0x05, 0x87, 0x3E},
+			decoded: frame.Frame{
+				RequestID: 2,
+				Body:      bodies.WriteAnswer{},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x02,
+				0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
+				0x77, 0x29, 0x53, 0x66, 0x99, 0x93, 0x4D, 0xC3,
+				0x9B, 0x99, 0x19, 0x24, 0x11, 0xEE, 0x5B, 0x8C,
+				0x9D, 0x90, 0x1B, 0x23},
+			decoded: frame.Frame{
+				RequestID: 2,
+				Body: bodies.ErrorAnswer{
+					Err: errs.NewErrorInternalErrorWithTracebackID(
+						nil,
+						fields.TracebackID{0x77, 0x29, 0x53, 0x66, 0x99, 0x93, 0x4D, 0xC3, 0x9B, 0x99, 0x19, 0x24, 0x11, 0xEE, 0x5B, 0x8C},
+					),
+				},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x04, 0x00, 0x00, 0x00, 0x03,
+				0x00, 0x00, 0x00, 0x00, 0x0B, 0x61, 0x6E, 0x6F,
+				0x74, 0x68, 0x65, 0x72, 0x2D, 0x6B, 0x65, 0x79,
+				0xF4, 0xC7, 0xFF, 0x81},
+			decoded: frame.Frame{
+				RequestID: 3,
+				Body:      bodies.Delete("another-key"),
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
+				0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x04, 0x3D,
+				0xF3, 0x9E, 0xF2},
+			decoded: frame.Frame{
+				RequestID: 3,
+				Body:      bodies.DeleteAnswer{},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
+				0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
+				0xCA, 0xD1, 0xC1, 0x02, 0xCA, 0xC5, 0x4D, 0xDF,
+				0x9B, 0x61, 0xEB, 0x00, 0x81, 0x8E, 0x25, 0xD1,
+				0x4F, 0x23, 0x68, 0x80},
+			decoded: frame.Frame{
+				RequestID: 3,
+				Body: bodies.ErrorAnswer{
+					Err: errs.NewErrorInternalErrorWithTracebackID(
+						nil,
+						fields.TracebackID{0xCA, 0xD1, 0xC1, 0x02, 0xCA, 0xC5, 0x4D, 0xDF,
+							0x9B, 0x61, 0xEB, 0x00, 0x81, 0x8E, 0x25, 0xD1},
+					),
+				},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x06, 0x00, 0x00, 0x00, 0x04,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0xA2, 0x1B, 0x87,
+				0x9B},
+			decoded: frame.Frame{
+				RequestID: 4,
+				Body:      bodies.Ping{},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x04,
+				0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x06, 0x26,
+				0x91, 0xEB, 0x01},
+			decoded: frame.Frame{
+				RequestID: 4,
+				Body:      bodies.PingAnswer{},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x04,
+				0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
+				0x3D, 0x8E, 0xD3, 0xBF, 0xB8, 0xD1, 0x47, 0x45,
+				0xA5, 0xDB, 0xF8, 0x50, 0x30, 0x90, 0x90, 0x2A,
+				0xC9, 0x04, 0x2A, 0x26},
+			decoded: frame.Frame{
+				RequestID: 4,
+				Body: bodies.ErrorAnswer{
+					Err: errs.NewErrorInternalErrorWithTracebackID(
+						nil,
+						fields.TracebackID{0x3D, 0x8E, 0xD3, 0xBF, 0xB8, 0xD1, 0x47, 0x45, 0xA5, 0xDB, 0xF8, 0x50, 0x30, 0x90, 0x90, 0x2A},
+					),
+				},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x05, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x32, 0x05, 0x00, 0x00,
+				0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00,
+				0x00, 0x00, 0x03, 0x6B, 0x65, 0x79, 0x00, 0x00,
+				0x00, 0x02, 0x03, 0x00, 0x00, 0x00, 0x18, 0x00,
+				0x00, 0x00, 0x0B, 0x61, 0x6E, 0x6F, 0x74, 0x68,
+				0x65, 0x72, 0x2D, 0x6B, 0x65, 0x79, 0x06, 0x00,
+				0x00, 0x00, 0x04, 0x64, 0x61, 0x74, 0x61, 0xDE,
+				0x84, 0x44, 0x1C},
+			decoded: frame.Frame{
+				RequestID: 1,
+				Body: bodies.Batch{
+					IsSequentialExecution: true,
+					InterruptAfterError:   false,
+					IsOneAnswer:           true,
+
+					Requests: []bodies.Request{
+						{
+							Number: 1,
+							Body:   bodies.Read("key"),
+						},
+						{
+							Number: 2,
+							Body: bodies.Write{
+								Key:   fields.Key("another-key"),
+								Value: values.String("data"),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x26, 0x01, 0x05, 0x00,
+				0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
+				0x00, 0x00, 0x0E, 0x01, 0x02, 0x06, 0x00, 0x00,
+				0x00, 0x07, 0x6D, 0x65, 0x73, 0x73, 0x61, 0x67,
+				0x65, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+				0x02, 0x01, 0x03, 0xB7, 0x2D, 0x2D, 0xF4},
+			decoded: frame.Frame{
+				RequestID: 1,
+				Body: bodies.BatchAnswer([]bodies.Result{
+					{
+						Number: 1,
+						Body: bodies.ReadAnswer{
+							Value: values.String("message"),
+						},
+					},
+					{
+						Number: 2,
+						Body:   bodies.WriteAnswer{},
+					},
+				},
+				),
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x3C, 0x01, 0x05, 0x00,
+				0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
+				0x00, 0x00, 0x13, 0x00, 0x00, 0x08, 0x38, 0xDD,
+				0x5C, 0x39, 0x24, 0xDB, 0x45, 0xA9, 0x85, 0x09,
+				0xFF, 0xE6, 0xC6, 0x5C, 0x7F, 0x42, 0x00, 0x00,
+				0x00, 0x02, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00,
+				0x0C, 0x49, 0x84, 0x98, 0xC5, 0xCF, 0x19, 0x40,
+				0xC9, 0x95, 0x38, 0x15, 0x5C, 0x27, 0xA3, 0xCF,
+				0xF1, 0x01, 0x50, 0x3D, 0x7B},
+			decoded: frame.Frame{
+				RequestID: 1,
+				Body: bodies.BatchAnswer([]bodies.Result{
+					{
+						Number: 1,
+						Body: bodies.ErrorAnswer{
+							Err: errs.NewErrorInternalErrorWithTracebackID(
+								nil,
+								fields.TracebackID{0x38, 0xDD, 0x5C, 0x39, 0x24, 0xDB, 0x45, 0xA9, 0x85, 0x09, 0xFF, 0xE6, 0xC6, 0x5C, 0x7F, 0x42},
+							),
+						},
+					},
+					{
+						Number: 2,
+						Body: bodies.ErrorAnswer{
+							Err: errs.NewErrorRequestInterruptedWithTracebackID(
+								fields.RequestID(1),
+								fields.TracebackID{0x49, 0x84, 0x98, 0xC5, 0xCF, 0x19, 0x40, 0xC9, 0x95, 0x38, 0x15, 0x5C, 0x27, 0xA3, 0xCF, 0xF1},
+							),
+						},
+					},
+				},
+				),
+			},
+		},
+		{
+			encoded: []byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
+				0xE5, 0x3A, 0x39, 0x93, 0x7B, 0x7A, 0x47, 0xEC,
+				0xB3, 0x82, 0x7C, 0x2B, 0x05, 0xE3, 0xD6, 0xDD,
+				0x53, 0x81, 0xF9, 0xD8},
+			decoded: frame.Frame{
+				RequestID: 1,
+				Body: bodies.ErrorAnswer{
+					Err: errs.NewErrorInternalErrorWithTracebackID(
+						nil,
+						fields.TracebackID{0xE5, 0x3A, 0x39, 0x93, 0x7B, 0x7A, 0x47, 0xEC, 0xB3, 0x82, 0x7C, 0x2B, 0x05, 0xE3, 0xD6, 0xDD},
+					),
+				},
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -133,69 +695,56 @@ func TestDecoder_BySpecs(t *testing.T) {
 					t.Fatalf("Compare Request IDs: got %v, want %v", f.RequestID, tt.decoded.RequestID)
 				}
 
-				switch want := tt.decoded.Body.(type) {
-				case bodies.Handshake:
-					got, ok := f.Body.(bodies.Handshake)
-					if !ok {
-						t.Errorf("Mismatched typed between got %v and want %v", f.Body, want)
-						return
-					}
+				compareBodies(t, f.Body, tt.decoded.Body)
 
-					if got.Login != want.Login {
-						t.Errorf("Compare Logins: got %v and want %v", got.Login, want.Login)
-					}
+			},
+		)
+	}
+}
 
-					if !bytes.Equal(got.Hash[:], want.Hash[:]) {
-						t.Errorf("Compare Hashes: got % X and want % X", got.Hash, want.Hash)
-					}
+func TestDecoder_Preamble(t *testing.T) {
+	tests := []struct {
+		p         []byte
+		wantError bool
+		version   fields.Version
+	}{
+		{[]byte{}, true, 0},
+		{[]byte{0x00}, true, 0},
+		{[]byte{0x0A}, true, 0},
+		{[]byte{0x0A, 0xDB}, true, 0},
+		{[]byte{0xDB, 0x0A}, true, 0},
+		{[]byte{0x11, 0xFF}, true, 0},
+		{[]byte{0x0A, 0xDB, 0x00}, false, 0},
+		{[]byte{0xDB, 0x0A, 0x00}, true, 0},
+		{[]byte{0x11, 0xFF, 0x00}, true, 0},
+		{[]byte{0x0A, 0xDB, 0x01}, false, 1},
+		{[]byte{0xDB, 0x0A, 0x01}, true, 0},
+		{[]byte{0x11, 0xFF, 0x01}, true, 0},
+		{[]byte{0x0A, 0xDB, 0xFF}, false, 255},
+		{[]byte{0xDB, 0x0A, 0xFF}, true, 0},
+		{[]byte{0x11, 0xFF, 0xFF}, true, 0},
+		{[]byte{0x0A, 0xDB, 0xFF, 0x01}, false, 255},
+		{[]byte{0xDB, 0x0A, 0xFF, 0x01}, true, 0},
+		{[]byte{0x11, 0xFF, 0xFF, 0x01}, true, 0},
+	}
 
-					if !slices.Equal(got.Compressions, want.Compressions) {
-						t.Errorf("Compare Compressions: got %v and want %v", got.Compressions, want.Compressions)
-					}
-				case bodies.HandshakeAnswer:
-					got, ok := f.Body.(bodies.HandshakeAnswer)
-					if !ok {
-						t.Errorf("Mismatched typed between got %v and want %v", f.Body, want)
-						return
-					}
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_Preamble_%v", i),
+			func(t *testing.T) {
+				decoder := NewDecoder(1024, nil)
+				reader := bufio.NewReader(bytes.NewReader(tt.p))
+				got, err := decoder.DecodePreamble(reader)
 
-					if !slices.Equal(got.Compressions, want.Compressions) {
-						t.Errorf("Compare Compressions: got %v and want %v", got.Compressions, want.Compressions)
-					}
-				case bodies.ErrorAnswer:
-					got, ok := f.Body.(bodies.ErrorAnswer)
-					if !ok {
-						t.Errorf("Mismatched typed between got %v and want %v", f.Body, want)
-						return
-					}
+				if err == nil == tt.wantError {
+					t.Fatalf("DecodePreamble: expected err %v got %v", tt.wantError, err)
+					return
+				}
 
-					if want.Err.TracebackID() != got.Err.TracebackID() {
-						t.Errorf("Compare Traceback ID: got % X and want % X", got.Err.TracebackID(), want.Err.TracebackID())
-					}
-				case bodies.Read:
-					got, ok := f.Body.(bodies.Read)
-					if !ok {
-						t.Errorf("Mismatched typed between got %v and want %v", f.Body, want)
-						return
-					}
-
-					if !bytes.Equal([]byte(got), []byte(want)) {
-						t.Errorf("Compare Keys: got % X and want % X", got, want)
-					}
-
-				case bodies.ReadAnswer:
-					got, ok := f.Body.(bodies.ReadAnswer)
-					if !ok {
-						t.Errorf("Mismatched typed between got %v and want %v", f.Body, want)
-						return
-					}
-
-					if got.Value != want.Value {
-						t.Errorf("Compare Values: got %v and want %v", got.Value, want.Value)
-					}
+				if got != tt.version {
+					t.Errorf("DecodePreamble: got %v version got %v version", got, tt.version)
 				}
 			},
 		)
 	}
-
 }
