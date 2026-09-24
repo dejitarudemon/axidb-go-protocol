@@ -1687,7 +1687,7 @@ func TestDecoder_EncodeDecodeEncode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestDecoder_EncodeDecodeEncode_%v", i),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.f.Size())
 
 				err := tt.f.Encode(&buf, tt.compressor)
@@ -1703,13 +1703,37 @@ func TestDecoder_EncodeDecodeEncode(t *testing.T) {
 					return
 				}
 
-				f, err := decoder.DecodeFrame(reader)
+				f1, err := decoder.DecodeFrame(reader)
 				if err != nil {
 					t.Fatalf("DecodeFrame: got err %v", err)
 					return
 				}
 
-				compareFrames(t, f, tt.f)
+				compareFrames(t, f1, tt.f)
+
+				buf.Clean()
+				buf.Preallocate(f1.Size())
+
+				err = f1.Encode(&buf, tt.compressor)
+				if err != nil {
+					t.Fatalf("EncodeFrame: got err %v", err)
+				}
+
+				reader = bufio.NewReader(bytes.NewReader(buf.Bytes()))
+
+				_, err = decoder.DecodePreamble(reader)
+				if err != nil {
+					t.Fatalf("DecodePreamble: got err %v", err)
+					return
+				}
+
+				f2, err := decoder.DecodeFrame(reader)
+				if err != nil {
+					t.Fatalf("DecodeFrame: got err %v", err)
+					return
+				}
+
+				compareFrames(t, f2, tt.f)
 			},
 		)
 	}
