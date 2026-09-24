@@ -1712,3 +1712,11 @@ func TestDecoder_EncodeDecodeEncode(t *testing.T) {
 		)
 	}
 }
+
+func FuzzDecoder_Preamble(f *testing.F) {
+	f.Add([]byte{0x0A, 0xDB, 0x01})
+	f.Fuzz(func(t *testing.T, a []byte) {
+		decoder := NewDecoder(1024, nil)
+		_, _ = decoder.DecodePreamble(bufio.NewReader(bytes.NewBuffer(a)))
+	})
+}
