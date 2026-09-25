@@ -30,6 +30,13 @@ func (r Result) Encode(buf buffer.Appender) {
 	}
 }
 
+func (r Result) IsResponseTo() fields.Command {
+	if r.Body == nil {
+		return fields.Command(0)
+	}
+	return r.Body.IsResponseTo()
+}
+
 func (r Result) IsValid() error {
 	if r.Body == nil {
 		return err.NewValidationError(
