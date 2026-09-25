@@ -32,7 +32,7 @@ func (s *Slice) Bytes() []byte {
 	s.mx.Lock()
 	defer s.mx.Unlock()
 
-	data := make([]byte, 0, len(s.data))
+	data := make([]byte, len(s.data))
 	copy(data, s.data)
 
 	return data
