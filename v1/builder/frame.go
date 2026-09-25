@@ -192,7 +192,7 @@ func (fb FrameBuilder) NewPingAnswer(requestID fields.RequestID) (frame.Frame, e
 
 	f := frame.Frame{
 		RequestID: requestID,
-		Body:      bodies.Ping{},
+		Body:      bodies.PingAnswer{},
 	}
 
 	if err := f.IsValid(); err != nil {
