@@ -46,62 +46,6 @@ var testsSpecs_batches = []struct {
 	},
 }
 
-// var testsSpecs_batch_answers = []struct {
-// 	b    *BatchResultsBuilder
-// 	want bodies.BatchAnswer
-// }{
-// 	{
-// 		b: NewBatchResultsBuilder().
-// 			AddError(1, errs.NewErrorInternalErrorWithTracebackID(
-// 				nil,
-// 				fields.TracebackID{0x38, 0xDD, 0x5C, 0x39, 0x24, 0xDB, 0x45, 0xA9, 0x85, 0x09, 0xFF, 0xE6, 0xC6, 0x5C, 0x7F, 0x42},
-// 			)).
-// 			AddError(2, errs.NewErrorRequestInterruptedWithTracebackID(
-// 				fields.RequestID(1),
-// 				fields.TracebackID{0x49, 0x84, 0x98, 0xC5, 0xCF, 0x19, 0x40, 0xC9, 0x95, 0x38, 0x15, 0x5C, 0x27, 0xA3, 0xCF, 0xF1},
-// 			)),
-// 		want: bodies.BatchAnswer([]bodies.Result{
-// 			{
-// 				Number: 1,
-// 				Body: bodies.ErrorAnswer{
-// 					Err: errs.NewErrorInternalErrorWithTracebackID(
-// 						nil,
-// 						fields.TracebackID{0x38, 0xDD, 0x5C, 0x39, 0x24, 0xDB, 0x45, 0xA9, 0x85, 0x09, 0xFF, 0xE6, 0xC6, 0x5C, 0x7F, 0x42},
-// 					),
-// 				},
-// 			},
-// 			{
-// 				Number: 2,
-// 				Body: bodies.ErrorAnswer{
-// 					Err: errs.NewErrorRequestInterruptedWithTracebackID(
-// 						fields.RequestID(1),
-// 						fields.TracebackID{0x49, 0x84, 0x98, 0xC5, 0xCF, 0x19, 0x40, 0xC9, 0x95, 0x38, 0x15, 0x5C, 0x27, 0xA3, 0xCF, 0xF1},
-// 					),
-// 				},
-// 			},
-// 		},
-// 		),
-// 	},
-// 	{
-// 		b: NewBatchResultsBuilder().
-// 			AddRead(1, values.String("message")).
-// 			AddWrite(2),
-// 		want: bodies.BatchAnswer([]bodies.Result{
-// 			{
-// 				Number: 1,
-// 				Body: bodies.ReadAnswer{
-// 					Value: values.String("message"),
-// 				},
-// 			},
-// 			{
-// 				Number: 2,
-// 				Body:   bodies.WriteAnswer{},
-// 			},
-// 		},
-// 		),
-// 	},
-// }
-
 func compareValues(t *testing.T, v1, v2 value.V) {
 	switch want := v2.(type) {
 	case values.Bytes:
