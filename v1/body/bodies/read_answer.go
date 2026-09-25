@@ -49,5 +49,5 @@ func (r ReadAnswer) IsValid() error {
 		)
 	}
 
-	return nil
+	return r.Value.IsValid()
 }
