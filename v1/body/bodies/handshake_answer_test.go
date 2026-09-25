@@ -90,7 +90,7 @@ func TestHandshakeAnswer_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestHandshakeAnswer_Encode %v", tt.h),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.h.Size())
 
 				tt.h.Encode(&buf)

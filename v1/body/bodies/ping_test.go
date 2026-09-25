@@ -41,7 +41,7 @@ func TestPing_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestPing_Encode %v", tt.p),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.p.Size())
 
 				tt.p.Encode(&buf)

@@ -64,7 +64,7 @@ func TestRequest_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestRequest_Encode %v", tt.r),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.r.Size())
 
 				tt.r.Encode(&buf)
@@ -191,7 +191,7 @@ func TestBatch_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestBatch_Encode %v", tt.b),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.b.Size())
 
 				tt.b.Encode(&buf)

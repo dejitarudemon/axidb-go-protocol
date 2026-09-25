@@ -42,7 +42,7 @@ func TestKey_Encode(k *testing.T) {
 		k.Run(
 			fmt.Sprintf("%v", tt.k),
 			func(k *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.k.Size())
 
 				tt.k.Encode(&buf)

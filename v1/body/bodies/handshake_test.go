@@ -24,7 +24,7 @@ func generateManyCompressions(size uint16) []fields.Compression {
 func encodeCompressions(fieldss []fields.Compression) []byte {
 	size := min(len(fieldss), MaxCompressionsPerOneHandshake)
 
-	buf := buffer.Mock{}
+	buf := buffer.Slice{}
 	buf.Preallocate((size + 1) * fields.CompressionFieldSize)
 
 	buf.AppendUint8(uint8(size))
@@ -162,7 +162,7 @@ func TestHandshake_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestHandshake_Encode %v", tt.h),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.h.Size())
 
 				tt.h.Encode(&buf)

@@ -79,7 +79,7 @@ func TestUntypedArray_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("%v", tt.c),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.c.Size())
 
 				tt.c.Encode(&buf)

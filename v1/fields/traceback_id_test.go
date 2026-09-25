@@ -42,7 +42,7 @@ func TestTracebackID_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("%v", tt.t),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.t.Size())
 
 				tt.t.Encode(&buf)
