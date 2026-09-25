@@ -21,11 +21,11 @@ func TestHandshakeAnswer_New(t *testing.T) {
 		},
 		{
 			NewHandshakeAnswer([]fields.Compression{0x01, 0x00, 0x02}),
-			HandshakeAnswer{[]fields.Compression{0x01, 0x00, 0x02}},
+			HandshakeAnswer{[]fields.Compression{0x01, 0x02}},
 		},
 		{
 			NewHandshakeAnswer([]fields.Compression{0x01, 0x00, 0x02, 0x01, 0x03}),
-			HandshakeAnswer{[]fields.Compression{0x01, 0x00, 0x02, 0x03}},
+			HandshakeAnswer{[]fields.Compression{0x01, 0x02, 0x03}},
 		},
 		{
 			NewHandshakeAnswer([]fields.Compression{0x01, 0x01}),
@@ -55,7 +55,7 @@ func TestHandshakeAnswer_Size(t *testing.T) {
 		{HandshakeAnswer{[]fields.Compression{0x00}}, 4},
 		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, 5},
 		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, 6},
-		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), 5},
+		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), 4},
 		{HandshakeAnswer{generateManyCompressions(1000)}, 258},
 	}
 
@@ -82,7 +82,7 @@ func TestHandshakeAnswer_Encode(t *testing.T) {
 		{HandshakeAnswer{[]fields.Compression{0x00}}, []byte{0x01, 0x00, 0x01, 0x00}},
 		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, []byte{0x01, 0x00, 0x02, 0x00, 0x01}},
 		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, []byte{0x01, 0x00, 0x03, 0x00, 0x01, 0x00}},
-		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), []byte{0x01, 0x00, 0x02, 0x00, 0x01}},
+		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), []byte{0x01, 0x00, 0x01, 0x01}},
 		{HandshakeAnswer{generated}, append([]byte{0x01, 0x00}, encodeCompressions(generated)...)},
 	}
 
