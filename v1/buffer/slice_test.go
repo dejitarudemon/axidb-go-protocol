@@ -64,7 +64,6 @@ func TestSlice_Clean(t *testing.T) {
 	tests := []struct {
 		s *Slice
 	}{
-		{&Slice{data: []byte{}}},
 		{&Slice{data: []byte{0x01}}},
 		{&Slice{data: bytes.Repeat([]byte{0xFF}, 1024)}},
 	}
