@@ -24,6 +24,10 @@ func TestChecksum_NewsEqual(t *testing.T) {
 				if tt.c1 != tt.c2 {
 					t.Errorf("NewChecksum: %v, NewChecsumWithParts: %v", tt.c1, tt.c2)
 				}
+
+				if !tt.c1.Equal(tt.c2) {
+					t.Errorf("failed to equal %v and %v", tt.c1, tt.c2)
+				}
 			},
 		)
 	}
