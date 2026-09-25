@@ -67,7 +67,7 @@ var testsSpecs_batch_answers = []struct {
 }
 
 func TestBatchResult_Equal_BySpecs(t *testing.T) {
-	for i, tt := range testsSpecs_batches {
+	for i, tt := range testsSpecs_batch_answers {
 		t.Run(
 			fmt.Sprintf("TestBatchResult_Equal_BySpecs %v", i),
 			func(t *testing.T) {
@@ -76,17 +76,17 @@ func TestBatchResult_Equal_BySpecs(t *testing.T) {
 					return
 				}
 
-				if len(tt.b.requests) != len(tt.want.Requests) {
-					t.Fatalf("mismatched lens beetween got %v and want %v", len(tt.b.requests), len(tt.want.Requests))
+				if len(tt.b.results) != len(tt.want) {
+					t.Fatalf("mismatched lens beetween got %v and want %v", len(tt.b.results), len(tt.want))
 					return
 				}
 
-				for i := range len(tt.b.requests) {
-					if tt.b.requests[i].Number != tt.want.Requests[i].Number {
-						t.Errorf("request number: got %v, want %v", tt.b.requests[i].Number, tt.want.Requests[i].Number)
+				for i := range len(tt.b.results) {
+					if tt.b.results[i].Number != tt.want[i].Number {
+						t.Errorf("request number: got %v, want %v", tt.b.results[i].Number, tt.want[i].Number)
 					}
 
-					compareBodies(t, tt.b.requests[i].Body, tt.want.Requests[i].Body)
+					compareBodies(t, tt.b.results[i].Body, tt.want[i].Body)
 				}
 			},
 		)
