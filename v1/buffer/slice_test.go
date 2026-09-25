@@ -24,7 +24,7 @@ func TestSlice_Preallocate(t *testing.T) {
 				slice.Preallocate(tt.want)
 
 				if cap(slice.data) != tt.want {
-					fmt.Errorf("preallocate failure: got %v cap want %v", cap(slice.data), tt.want)
+					t.Errorf("preallocate failure: got %v cap want %v", cap(slice.data), tt.want)
 				}
 			},
 		)
@@ -53,7 +53,7 @@ func TestSlice_PreallocateAfterPreallocate(t *testing.T) {
 				slice.Preallocate(tt.second)
 
 				if cap(slice.data) != tt.want {
-					fmt.Errorf("preallocate failure: got %v cap want %v", cap(slice.data), tt.want)
+					t.Errorf("preallocate failure: got %v cap want %v", cap(slice.data), tt.want)
 				}
 			},
 		)
@@ -76,11 +76,11 @@ func TestSlice_Clean(t *testing.T) {
 				tt.s.Clean()
 
 				if cap(tt.s.data) == 0 {
-					fmt.Errorf("clean failure: cap is 0")
+					t.Errorf("clean failure: cap is 0")
 				}
 
 				if len(tt.s.data) != 0 {
-					fmt.Errorf("clean failure: len is %v", len(tt.s.data))
+					t.Errorf("clean failure: len is %v", len(tt.s.data))
 				}
 			},
 		)
@@ -114,7 +114,7 @@ func TestSlice_Append(t *testing.T) {
 				slice.Append(tt.want)
 
 				if len(slice.data) != len(tt.want) {
-					fmt.Errorf("append failure: len is %v, want %v", len(slice.data), len(tt.want))
+					t.Errorf("append failure: len is %v, want %v", len(slice.data), len(tt.want))
 				}
 			},
 		)
@@ -150,7 +150,7 @@ func TestSlice_AppendString(t *testing.T) {
 				slice.AppendString(tt.want)
 
 				if len(slice.data) != len(tt.want) {
-					fmt.Errorf("append string failure: len is %v, want %v", len(slice.data), len(tt.want))
+					t.Errorf("append string failure: len is %v, want %v", len(slice.data), len(tt.want))
 				}
 			},
 		)
@@ -184,7 +184,7 @@ func TestSlice_AppendUint8(t *testing.T) {
 				slice.AppendUint8(tt.want)
 
 				if len(slice.data) != 1 {
-					fmt.Errorf("append uint8 failure: len is %v, want 1", len(slice.data))
+					t.Errorf("append uint8 failure: len is %v, want 1", len(slice.data))
 				}
 			},
 		)
@@ -218,7 +218,7 @@ func TestSlice_AppendUint16(t *testing.T) {
 				slice.AppendUint16(tt.want)
 
 				if len(slice.data) != 2 {
-					fmt.Errorf("append uint16 failure: len is %v, want 2", len(slice.data))
+					t.Errorf("append uint16 failure: len is %v, want 2", len(slice.data))
 				}
 			},
 		)
@@ -252,7 +252,7 @@ func TestSlice_AppendUint32(t *testing.T) {
 				slice.AppendUint32(tt.want)
 
 				if len(slice.data) != 4 {
-					fmt.Errorf("append uint32 failure: len is %v, want 4", len(slice.data))
+					t.Errorf("append uint32 failure: len is %v, want 4", len(slice.data))
 				}
 			},
 		)
@@ -286,7 +286,7 @@ func TestSlice_AppendUint64(t *testing.T) {
 				slice.AppendUint64(tt.want)
 
 				if len(slice.data) != 8 {
-					fmt.Errorf("append uint32 failure: len is %v, want 8", len(slice.data))
+					t.Errorf("append uint32 failure: len is %v, want 8", len(slice.data))
 				}
 			},
 		)
@@ -320,7 +320,7 @@ func TestSlice_Bytes(t *testing.T) {
 				slice.Append(tt.want)
 
 				if len(slice.Bytes()) != len(tt.want) {
-					fmt.Errorf("bytes() failure: len is %v, want %v", len(slice.Bytes()), len(tt.want))
+					t.Errorf("bytes() failure: len is %v, want %v", len(slice.Bytes()), len(tt.want))
 				}
 			},
 		)
@@ -346,7 +346,7 @@ func TestSlice_PreallocateOvercrowded(t *testing.T) {
 				slice.Append(tt.want)
 
 				if len(slice.Bytes()) != len(tt.want)*2 {
-					fmt.Errorf("preallocate overcrowded failure: len is %v, want %v", len(slice.Bytes()), len(tt.want)*2)
+					t.Errorf("preallocate overcrowded failure: len is %v, want %v", len(slice.Bytes()), len(tt.want)*2)
 				}
 			},
 		)
