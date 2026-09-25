@@ -730,3 +730,180 @@ func TestFrameBuilder_ErrorAnswer(t *testing.T) {
 		)
 	}
 }
+
+func TestFrameBuilder_Batch(t *testing.T) {
+	fb := NewFrameBuilder(1 << 10)
+
+	tests := []struct {
+		r       fields.RequestID
+		b       *BatchRequestsBuilder
+		want    frame.Frame
+		wantErr bool
+	}{
+		{
+			0,
+			NewBatchRequestsBuilder(),
+			frame.Frame{
+				Body: bodies.Batch{},
+			},
+			true,
+		},
+		{
+			1,
+			NewBatchRequestsBuilder(),
+			frame.Frame{
+				RequestID: 1,
+				Body:      bodies.Batch{},
+			},
+			true,
+		},
+		{
+			0,
+			NewBatchRequestsBuilder().
+				AddRead(fields.Key("qwerty")),
+			frame.Frame{
+				Body: bodies.Batch{Requests: []bodies.Request{{Number: fields.RequestNumber(0), Body: bodies.Read("qwerty")}}},
+			},
+			true,
+		},
+		{
+			1,
+			NewBatchRequestsBuilder().
+				AddRead(fields.Key("")),
+			frame.Frame{
+				RequestID: 1,
+				Body:      bodies.Batch{Requests: []bodies.Request{{Number: fields.RequestNumber(0), Body: bodies.Read("")}}},
+			},
+			true,
+		},
+		{
+			1,
+			NewBatchRequestsBuilder().
+				AddRead(fields.Key("qwerty")),
+			frame.Frame{
+				RequestID: 1,
+				Body:      bodies.Batch{Requests: []bodies.Request{{Number: fields.RequestNumber(0), Body: bodies.Read("qwerty")}}},
+			},
+			false,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestFrameBuilder_ErrorAnswer %v", i),
+			func(t *testing.T) {
+				f, err := fb.NewBatch(tt.r, *tt.b)
+				if err == nil == tt.wantErr {
+					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
+					return
+				}
+
+				if tt.wantErr {
+					return
+				}
+
+				if f.RequestID != tt.want.RequestID {
+					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
+				}
+
+				compareBodies(t, f.Body, tt.want.Body)
+			},
+		)
+	}
+}
+
+func TestFrameBuilder_AnswerBatch(t *testing.T) {
+	fb := NewFrameBuilder(1 << 10)
+
+	tests := []struct {
+		r       fields.RequestID
+		b       *BatchResultsBuilder
+		want    frame.Frame
+		wantErr bool
+	}{
+		{
+			0,
+			NewBatchResultsBuilder(),
+			frame.Frame{
+				Body: bodies.BatchAnswer{},
+			},
+			true,
+		},
+		{
+			1,
+			NewBatchResultsBuilder(),
+			frame.Frame{
+				RequestID: 1,
+				Body:      bodies.BatchAnswer{},
+			},
+			true,
+		},
+		{
+			0,
+			NewBatchResultsBuilder().
+				AddWrite(0),
+			frame.Frame{
+				Body: bodies.BatchAnswer{{Number: fields.RequestNumber(0), Body: bodies.WriteAnswer{}}},
+			},
+			true,
+		},
+		{
+			1,
+			NewBatchResultsBuilder().
+				AddRead(1, values.JSON("qwerty")),
+			frame.Frame{
+				RequestID: 1,
+				Body:      bodies.BatchAnswer{{Number: fields.RequestNumber(1), Body: bodies.ReadAnswer{Value: values.JSON("qwerty")}}},
+			},
+			true,
+		},
+		{
+			1,
+			NewBatchResultsBuilder().
+				AddRead(1, values.Int(123)),
+			frame.Frame{
+				RequestID: 1,
+				Body:      bodies.BatchAnswer{{Number: fields.RequestNumber(1), Body: bodies.ReadAnswer{Value: values.Int(123)}}},
+			},
+			false,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestFrameBuilder_BatchAnswer %v", i),
+			func(t *testing.T) {
+				f, err := fb.NewBatchAnswer(tt.r, *tt.b)
+				if err == nil == tt.wantErr {
+					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
+					return
+				}
+
+				if tt.wantErr {
+					return
+				}
+
+				if f.RequestID != tt.want.RequestID {
+					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
+				}
+
+				compareBodies(t, f.Body, tt.want.Body)
+			},
+		)
+	}
+}
+
+func TestFrameBuilder_LimitExceeded(t *testing.T) {
+	fb := NewFrameBuilder(1)
+
+	t.Run(
+		"TestFrameBuilder_LimitExceeded",
+		func(t *testing.T) {
+			_, err := fb.NewPingAnswer(1)
+			if err == nil {
+				t.Fatal("didn't gtt err")
+				return
+			}
+		},
+	)
+}
