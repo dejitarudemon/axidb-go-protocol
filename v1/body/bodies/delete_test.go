@@ -47,7 +47,7 @@ func TestDelete_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestDelete_Encode %v", tt.d),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.d.Size())
 
 				tt.d.Encode(&buf)

@@ -79,7 +79,7 @@ func TestUntypedArray_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("%v", tt.c),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.c.Size())
 
 				tt.c.Encode(&buf)
@@ -161,6 +161,9 @@ func TestUntypedArray_IsValid(t *testing.T) {
 		},
 		{
 			UntypedArray{Int(1), Bytes([]byte{0x01, 0x02, 0x03})}, false,
+		},
+		{
+			UntypedArray{Int(1), JSON([]byte{0x01, 0x02, 0x03})}, true,
 		},
 	}
 

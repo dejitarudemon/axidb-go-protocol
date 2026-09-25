@@ -9,6 +9,8 @@ import (
 
 const (
 	LoginLenFieldSize              = 4
+	HashFieldSize                  = 32
+	CompressionLenFieldSize        = 1
 	MaxCompressionsPerOneHandshake = 255
 )
 
@@ -33,7 +35,7 @@ func filter(compressions []fields.Compression) []fields.Compression {
 	used := make(map[fields.Compression]struct{}, len(compressions))
 
 	for _, compression := range compressions {
-		if _, ok := used[compression]; !ok {
+		if _, ok := used[compression]; !ok && compression != fields.None {
 			used[compression] = struct{}{}
 			filtered = append(filtered, compression)
 		}

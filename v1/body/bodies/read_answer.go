@@ -8,7 +8,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
-var _ body.Body = ReadAnswer{}
+var _ body.Answer = ReadAnswer{}
 
 type ReadAnswer struct {
 	Value value.V
@@ -16,20 +16,25 @@ type ReadAnswer struct {
 
 func (r ReadAnswer) Size() int {
 	if r.Value == nil {
-		return ResultFieldSize
+		return ResultFieldSize + r.IsResponseTo().Size()
 	}
 
-	return ResultFieldSize + r.Value.Type().Size() + r.Value.Size()
+	return ResultFieldSize + r.Value.Type().Size() + r.Value.Size() + r.IsResponseTo().Size()
 }
 
 func (r ReadAnswer) Encode(buf buffer.Appender) {
 	buf.Append(ResultOK)
+	r.IsResponseTo().Encode(buf)
 
 	if r.Value != nil {
 		r.Value.Type().Encode(buf)
 		r.Value.Encode(buf)
 	}
 
+}
+
+func (r ReadAnswer) IsResponseTo() fields.Command {
+	return fields.Read
 }
 
 func (r ReadAnswer) Command() fields.Command {
@@ -44,5 +49,5 @@ func (r ReadAnswer) IsValid() error {
 		)
 	}
 
-	return nil
+	return r.Value.IsValid()
 }

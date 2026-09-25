@@ -21,11 +21,11 @@ func TestHandshakeAnswer_New(t *testing.T) {
 		},
 		{
 			NewHandshakeAnswer([]fields.Compression{0x01, 0x00, 0x02}),
-			HandshakeAnswer{[]fields.Compression{0x01, 0x00, 0x02}},
+			HandshakeAnswer{[]fields.Compression{0x01, 0x02}},
 		},
 		{
 			NewHandshakeAnswer([]fields.Compression{0x01, 0x00, 0x02, 0x01, 0x03}),
-			HandshakeAnswer{[]fields.Compression{0x01, 0x00, 0x02, 0x03}},
+			HandshakeAnswer{[]fields.Compression{0x01, 0x02, 0x03}},
 		},
 		{
 			NewHandshakeAnswer([]fields.Compression{0x01, 0x01}),
@@ -50,13 +50,13 @@ func TestHandshakeAnswer_Size(t *testing.T) {
 		h    HandshakeAnswer
 		want int
 	}{
-		{HandshakeAnswer{}, 2},
-		{HandshakeAnswer{[]fields.Compression{}}, 2},
-		{HandshakeAnswer{[]fields.Compression{0x00}}, 3},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, 4},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, 5},
+		{HandshakeAnswer{}, 3},
+		{HandshakeAnswer{[]fields.Compression{}}, 3},
+		{HandshakeAnswer{[]fields.Compression{0x00}}, 4},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, 5},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, 6},
 		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), 4},
-		{HandshakeAnswer{generateManyCompressions(1000)}, 257},
+		{HandshakeAnswer{generateManyCompressions(1000)}, 258},
 	}
 
 	for _, tt := range tests {
@@ -77,20 +77,20 @@ func TestHandshakeAnswer_Encode(t *testing.T) {
 		h    HandshakeAnswer
 		want []byte
 	}{
-		{HandshakeAnswer{}, []byte{0x01, 0x00}},
-		{HandshakeAnswer{[]fields.Compression{}}, []byte{0x01, 0x00}},
-		{HandshakeAnswer{[]fields.Compression{0x00}}, []byte{0x01, 0x01, 0x00}},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, []byte{0x01, 0x02, 0x00, 0x01}},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, []byte{0x01, 0x03, 0x00, 0x01, 0x00}},
-		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), []byte{0x01, 0x02, 0x00, 0x01}},
-		{HandshakeAnswer{generated}, append([]byte{0x01}, encodeCompressions(generated)...)},
+		{HandshakeAnswer{}, []byte{0x01, 0x00, 0x00}},
+		{HandshakeAnswer{[]fields.Compression{}}, []byte{0x01, 0x00, 0x00}},
+		{HandshakeAnswer{[]fields.Compression{0x00}}, []byte{0x01, 0x00, 0x01, 0x00}},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, []byte{0x01, 0x00, 0x02, 0x00, 0x01}},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, []byte{0x01, 0x00, 0x03, 0x00, 0x01, 0x00}},
+		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), []byte{0x01, 0x00, 0x01, 0x01}},
+		{HandshakeAnswer{generated}, append([]byte{0x01, 0x00}, encodeCompressions(generated)...)},
 	}
 
 	for _, tt := range tests {
 		t.Run(
 			fmt.Sprintf("TestHandshakeAnswer_Encode %v", tt.h),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.h.Size())
 
 				tt.h.Encode(&buf)
@@ -155,6 +155,33 @@ func TestHandshakeAnswer_IsValid(t *testing.T) {
 			fmt.Sprintf("TestHandshakeAnswer_IsValid %v", tt.h),
 			func(t *testing.T) {
 				if got := tt.h.IsValid(); got == nil == tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
+func TestHandshakeAnswer_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		h    HandshakeAnswer
+		want fields.Command
+	}{
+		{HandshakeAnswer{}, fields.Handshake},
+		{HandshakeAnswer{[]fields.Compression{}}, fields.Handshake},
+		{HandshakeAnswer{[]fields.Compression{0x00}}, fields.Handshake},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, fields.Handshake},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, fields.Handshake},
+		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), fields.Handshake},
+		{HandshakeAnswer{generateManyCompressions(1000)}, fields.Handshake},
+		{NewHandshakeAnswer(generateManyCompressions(1000)), fields.Handshake},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0xFF}}, fields.Handshake},
+	}
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestHandshakeAnswer_IsResponseTo %v", tt.h),
+			func(t *testing.T) {
+				if got := tt.h.IsResponseTo(); got != tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},

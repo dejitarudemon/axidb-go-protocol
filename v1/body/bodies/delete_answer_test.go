@@ -14,7 +14,7 @@ func TestDeleteAnswer_Size(t *testing.T) {
 		d    DeleteAnswer
 		want int
 	}{
-		{DeleteAnswer{}, 1},
+		{DeleteAnswer{}, 2},
 	}
 
 	for _, tt := range tests {
@@ -34,14 +34,14 @@ func TestDeleteAnswer_Encode(t *testing.T) {
 		d    DeleteAnswer
 		want []byte
 	}{
-		{DeleteAnswer{}, []byte{0x01}},
+		{DeleteAnswer{}, []byte{0x01, 0x04}},
 	}
 
 	for _, tt := range tests {
 		t.Run(
 			fmt.Sprintf("TestDeleteAnswer_Encode %v", tt.d),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.d.Size())
 
 				tt.d.Encode(&buf)
@@ -89,6 +89,26 @@ func TestDeleteAnswer_IsValid(t *testing.T) {
 			fmt.Sprintf("TestDeleteAnswer_IsValid %v", tt.d),
 			func(t *testing.T) {
 				if got := tt.d.IsValid(); got == nil == tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
+func TestDeleteAnswer_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		d    DeleteAnswer
+		want fields.Command
+	}{
+		{DeleteAnswer{}, fields.Delete},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDeleteAnswer_IsResponseTo %v", tt.d),
+			func(t *testing.T) {
+				if got := tt.d.IsResponseTo(); got != tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},

@@ -21,7 +21,7 @@ func TestBatchReques_Size(t *testing.T) {
 		{Request{2, Read("key")}, 12},
 		{Request{3, Delete("another-key")}, 20},
 		{Request{4, Write{fields.Key("key"), nil}}, 16},
-		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.Lz4}}}, 52},
+		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.S2}}}, 52},
 		{Request{6, Ping{}}, 9},
 		{Request{7, Batch{}}, 14},
 	}
@@ -49,7 +49,7 @@ func TestRequest_Encode(t *testing.T) {
 		{Request{2, Read("key")}, []byte{0x00, 0x00, 0x00, 0x02, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79}},
 		{Request{3, Delete("another-key")}, []byte{0x00, 0x00, 0x00, 0x03, 0x04, 0x00, 0x00, 0x00, 0x0B, 0x61, 0x6E, 0x6F, 0x74, 0x68, 0x65, 0x72, 0x2D, 0x6B, 0x65, 0x79}},
 		{Request{4, Write{[]byte("key"), nil}}, []byte{0x00, 0x00, 0x00, 0x04, 0x03, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79}},
-		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.Lz4}}}, []byte{
+		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.S2}}}, []byte{
 			0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x2B, 0x00, 0x00, 0x00, 0x04, 0x75, 0x73, 0x65,
 			0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -64,7 +64,7 @@ func TestRequest_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestRequest_Encode %v", tt.r),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.r.Size())
 
 				tt.r.Encode(&buf)
@@ -90,7 +90,7 @@ func TestRequest_IsValid(t *testing.T) {
 		{Request{2, Read("key")}, false},
 		{Request{3, Delete("another-key")}, false},
 		{Request{4, Write{[]byte("key"), nil}}, true},
-		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.Lz4}}}, true},
+		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.S2}}}, true},
 		{Request{6, Ping{}}, true},
 		{Request{7, Batch{}}, true},
 		{Request{8, Write{[]byte("key"), values.Int(1)}}, false},
@@ -191,7 +191,7 @@ func TestBatch_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestBatch_Encode %v", tt.b),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.b.Size())
 
 				tt.b.Encode(&buf)

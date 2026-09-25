@@ -41,7 +41,7 @@
 
 В основном формате кадра Headers представлен одним Version Len. Versions представлены как Body.
 
-Для Checksum используется алгоритм `CRC32/XFER`. Checksum покрывает Version Len и Version N.
+Для Checksum используется алгоритм `CRC32/XFER`. Checksum покрывает весь кадр, не считая себя.
 
 **Примечание автора**: дублирование версий допускается, но крайне нежелательно. При дубле версий узел должен игнорировать их.
 
@@ -752,20 +752,6 @@ Hex-версия: 00 00 00 15 7B 22 74 68 69 73 22 3A 22 69 73 20 65 78 61 6D 70
 
 Структура Details: -
 
-#### Unknown Error Code
-
-Код: 18
-
-Примеры:
-1. Сервер вернул неизвестную ошибку не из настоящей спецификации.
-
-Причина: код ошибки не из официального списка.
-
-Особенности: -
-
-Как исправить: переотправить запрос с корректным номером ошибки.
-
-Структура Details: -
 
 ### Сжатие
 
@@ -775,7 +761,7 @@ Hex-версия: 00 00 00 15 7B 22 74 68 69 73 22 3A 22 69 73 20 65 78 61 6D 70
 | --- | -------- |
 | 0   | -        |
 | 1   | zstd     |
-| 2   | lz4      |
+| 2   | s2       |
 Иные коды резервные, и могут быть использованы в частной реализации настоящего протокола, или будут дополняться в настоящей версии.
 
 ### Headers
@@ -827,7 +813,7 @@ Hex-версия: 00 00 00 15 7B 22 74 68 69 73 22 3A 22 69 73 20 65 78 61 6D 70
 
 ### CheckSum
 
-Используется для проверки Headers и Body на целостность. Используемый алгоритм - Castagnoli (CRC-32C). Если Body сжато, проверяется до обратного преобразования согласно алгоритму сжатия.
+Используется для проверки кадра на целостность. Используемый алгоритм - Castagnoli (CRC-32C). Если Body сжато, проверяется до обратного преобразования согласно алгоритму сжатия.
 
 ### Алгоритм рукопожатия
 
@@ -862,20 +848,22 @@ Hex-версия: 00 00 00 15 7B 22 74 68 69 73 22 3A 22 69 73 20 65 78 61 6D 70
 
 **Примечание автора**: сервер может поддерживать анонимные соединения. В таком случае Login Len становится равным 0, а Hash заполнятеся нулевыми байтами.
 
-Пример Handshake-запроса c поддерживаемыми протоколами Zstd и Lz4:
+Пример Handshake-запроса c поддерживаемыми протоколами Zstd и S2:
 
 ```text
 Hex-версия:
 
-0A DB 01 00 00 00 00 00 00 00 00 00 03 02 01 02 63 8F 96 50
+0A DB 01 00 00 00 00 00 00 00 00 00 2B 00 00 00 04 75 73 65 72 01 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 01 02 7A 39 15 BF
 
 Расшифровка:
 	Version: 1
 	Command: Handshake
 	Request ID: 0
 	Compression: -
-	Supported compression algorythms: Zstd, Lz4
-	CheckSum: 63 8F 96 50
+	Login: user
+	Hash: 0x01 0x02 0x00 ... 0x00
+	Supported compression algorythms: Zstd, S2
+	CheckSum: 7A 39 15 BF
 ```
 
 #### Ответ сервера
@@ -896,7 +884,7 @@ Hex-версия:
 В Body сервер передает данные согласно следующему формату:
 
 ```text
-| 01 | Supported Compressions Len | Compression 1 | Compression 2 | ... | Compression N |
+| 01 | 00 | Supported Compressions Len | Compression 1 | Compression 2 | ... | Compression N |
 ```
 
 Где:
@@ -908,8 +896,7 @@ Hex-версия:
 
 ```text
 Hex-версия:
-
-0A DB 01 01 00 00 00 00 00 00 00 00 02 01 01 01 77 66 37 0A
+0A DB 01 01 00 00 00 00 00 00 00 00 04 01 00 01 01 1B 08 33 19
 
 Расшифровка:
 	Version: 1
@@ -917,8 +904,9 @@ Hex-версия:
 	Request ID: 0
 	Compression: -
 	Result: OK
+	Responded To: Handshake
 	Supported compression algorythms: Zstd
-	CheckSum: 77 66 37 0A
+	CheckSum: 1B 08 33 19
 ```
 
 2. Запрос с проблемами
@@ -949,7 +937,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 00 00 00 00 00 14 00 00 02 6B AE 36 80 76 95 47 42 92 AF 0A 6F EC 33 98 25 00 0E 87 11 EA
+0A DB 01 01 00 00 00 00 00 00 00 00 14 00 00 02 6B AE 36 80 76 95 47 42 92 AF 0A 6F EC 33 98 25 00 F0 8E 28 51
 
 Расшифровка:
 	Version: 1
@@ -962,7 +950,7 @@ Hex-версия:
 		Traceback ID: 6bae3680-7695-4742-92af-0a6fec339825
 		Details:
     		Expected Command: Handshake
-	CheckSum: 0E 87 11 EA
+	CheckSum: F0 8E 28 51
 ```
 
 ### Алгоритм чтения данных
@@ -993,7 +981,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 02 00 00 00 01 00 00 00 00 08 73 6F 6D 65 2D 6B 65 79 82 CD BA 0B
+0A DB 01 02 00 00 00 01 00 00 00 00 08 73 6F 6D 65 2D 6B 65 79 E1 5A 14 00
 
 Расшифровка:
 	Version: 1
@@ -1001,7 +989,7 @@ Hex-версия:
 	Request ID: 1
 	Compression: -
 	Key: some-key
-	CheckSum: 82 CD BA 0B
+	CheckSum: E1 5A 14 00
 ```
 
 #### Ответ сервера
@@ -1022,7 +1010,7 @@ Hex-версия:
 В Body сервер передает данные согласно следующему формату:
 
 ```text
-| 01 | Value Type (1 byte) | Value |
+| 01 | 02 | Value Type (1 byte) | Value |
 ```
 
 Где:
@@ -1035,7 +1023,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 01 00 00 00 00 0F 01 06 00 00 00 09 73 6F 6D 65 2D 64 61 74 61 7F 4B F8 F9
+0A DB 01 01 00 00 00 01 00 00 00 00 10 01 02 06 00 00 00 09 73 6F 6D 65 2D 64 61 74 61 5E 79 B8 83
 
 Расшифровка:
 	Version: 1
@@ -1043,10 +1031,11 @@ Hex-версия:
 	Request ID: 1
 	Compression: -
 	Result: OK
+	Responded To: Read
 	Data:
 		Type: string
 		Value: some-data
-	CheckSum: 7F 4B F8 F9
+	CheckSum: 5E 79 B8 83
 ```
 
 Пример Answer-запроса без сжатия с Request ID = 10 и значением (Value) = {1, "hello world", 2.1}:
@@ -1054,7 +1043,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 0A 00 00 00 00 28 01 02 00 00 00 03 03 00 00 00 00 00 00 00 01 06 00 00 00 0B 68 65 6C 6C 6F 20 77 6F 72 6C 64 05 40 00 CC CC CC CC CC CD 10 6D AC 66
+0A DB 01 01 00 00 00 0A 00 00 00 00 29 01 02 02 00 00 00 03 03 00 00 00 00 00 00 00 01 06 00 00 00 0B 68 65 6C 6C 6F 20 77 6F 72 6C 64 05 40 00 CC CC CC CC CC CD 34 E8 E0 75
 
 Расшифровка:
 	Version: 1
@@ -1062,6 +1051,7 @@ Hex-версия:
 	Request ID: 10
 	Compression: -
 	Result: OK
+	Respond To: Read
 	Data:
 		Type: untyped array
 		Value:
@@ -1074,7 +1064,7 @@ Hex-версия:
 			3:
 				Type: float
 				Value: 2.1
-	CheckSum: 10 6D AC 66
+	CheckSum: 34 E8 E0 75
 ```
 
 2. Правильный запроc, данных нет.
@@ -1089,7 +1079,7 @@ Hex-версия:
 В Body сервер передает данные согласно следующему формату:
 
 ```text
-| 00 0A 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+| 00 | 00 0A | TracebackID (16 bytes) |
 ```
 
 что соответствует сообщению с ошибкой ([Not Found](#not-found)) и Traceback. 
@@ -1099,7 +1089,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 01 00 00 00 00 13 00 00 0A 1E A7 B3 FC 3E 92 4D 58 AF F0 1D 32 51 24 73 5A A8 84 82 17
+0A DB 01 01 00 00 00 01 00 00 00 00 13 00 00 0A F1 38 9C 1F A2 2F 40 82 A2 79 D2 01 7C 60 F8 20 88 EE CC AA
 
 Расшифровка:
 	Version: 1
@@ -1109,9 +1099,9 @@ Hex-версия:
 	Result: NOT OK
 	Error: 
 		Not Found
-		Traceback ID: 1ea7b3fc-3e92-4d58-aff0-1d325124735a
+		Traceback ID: f1389c1f-a22f-4082-a279-d2017c60f820
 		Details: -
-	CheckSum: A8 84 82 17
+	CheckSum: 88 EE CC AA
 ```
 
 3. Неправильный запрос или внутренняя ошибка.
@@ -1140,7 +1130,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 01 00 00 00 00 13 00 00 08 A5 18 B2 C1 CC 27 49 27 94 09 6A 10 15 DA 67 B1 C6 F8 60 7E
+0A DB 01 01 00 00 00 01 00 00 00 00 13 00 00 08 A5 18 B2 C1 CC 27 49 27 94 09 6A 10 15 DA 67 B1 9C 90 B4 33
 
 Расшифровка:
 	Version: 1
@@ -1152,7 +1142,7 @@ Hex-версия:
 		Internal Error
 		Traceback ID: a518b2c1-cc27-4927-9409-6a1015da67b1
 		Details: -
-	CheckSum: C6 F8 60 7E
+	CheckSum: 9C 90 B4 33
 ```
 
 ### Алгоритм записи данных
@@ -1184,7 +1174,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 03 00 00 00 02 00 00 00 00 12 00 00 00 04 63 6F 64 65 06 00 00 00 05 49 44 44 51 44 54 53 E8 E8
+0A DB 01 03 00 00 00 02 00 00 00 00 12 00 00 00 04 63 6F 64 65 06 00 00 00 05 49 44 44 51 44 38 0A 5A 23
 
 Расшифровка:
 	Version: 1
@@ -1195,7 +1185,7 @@ Hex-версия:
 	Data:
 		Type: string
 		Value: IDDQD
-	CheckSum: 54 53 E8 E8
+	CheckSum: 38 0A 5A 23
 ```
 
 Пример Write-запроса без сжатия с Request ID = 1, ключом (Key) = "vector" и значением (Value) = {1, 2, 3}:
@@ -1203,7 +1193,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 03 00 00 00 01 00 00 00 00 28 00 00 00 06 76 65 63 74 6F 72 01 00 00 00 03 03 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 03 62 6B 35 97
+0A DB 01 03 00 00 00 01 00 00 00 00 28 00 00 00 06 76 65 63 74 6F 72 01 00 00 00 03 03 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 03 D7 99 DF 3D
 
 Расшифровка:
 	Version: 1
@@ -1215,7 +1205,7 @@ Hex-версия:
 		Type: typed array
 		Element Type: Int
 		Value: 1, 2, 3
-	CheckSum: 62 6B 35 97
+	CheckSum: D7 99 DF 3D
 ```
 
 #### Ответ сервера
@@ -1236,7 +1226,7 @@ Hex-версия:
 В Body сервер передает данные согласно следующему формату:
 
 ```text
-| 01 |
+| 01 | 03 |
 ```
 
 Пример Answer-запроса с Request ID = 2:
@@ -1244,7 +1234,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 02 00 00 00 00 01 01 0C 6F 03 DD
+0A DB 01 01 00 00 00 02 00 00 00 00 02 01 03 A0 05 87 3E
 
 Расшифровка:
 	Version: 1
@@ -1252,7 +1242,8 @@ Hex-версия:
 	Request ID: 2
 	Compression: -
 	Result: OK
-	CheckSum: 0C 6F 03 DD
+	Respond To: Write
+	CheckSum: A0 05 87 3E
 ```
 
 2. Неправильный запрос или внутренняя ошибка
@@ -1281,7 +1272,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 02 00 00 00 00 13 00 00 08 77 29 53 66 99 93 4D C3 9B 99 19 24 11 EE 5B 8C C7 F8 CF 6E
+0A DB 01 01 00 00 00 02 00 00 00 00 13 00 00 08 77 29 53 66 99 93 4D C3 9B 99 19 24 11 EE 8C 9D 90 1B 23
 
 Расшифровка:
 	Version: 1
@@ -1293,7 +1284,7 @@ Hex-версия:
 		Internal Error
 		Traceback ID: 77295366-9993-4dc3-9b99-192411ee5b8c 
 		Details: -
-	CheckSum: C7 F8 CF 6E
+	CheckSum: 9D 90 1B 23
 ```
 
 ### Алгоритм удаления данных
@@ -1324,7 +1315,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 04 00 00 00 03 00 00 00 00 0B 61 6E 6F 74 68 65 72 2D 6B 65 79 10 49 12 D9
+0A DB 01 04 00 00 00 03 00 00 00 00 0B 61 6E 6F 74 68 65 72 2D 6B 65 79 F4 C7 FF 81
 
 Расшифровка:
 	Version: 1
@@ -1332,7 +1323,7 @@ Hex-версия:
 	Request ID: 3
 	Compression: -
 	Key: another-key
-	CheckSum: 10 49 12 D9
+	CheckSum: F4 C7 FF 81
 ```
 
 #### Ответ сервера
@@ -1355,7 +1346,7 @@ Hex-версия:
 В Body сервер передает данные согласно следующему формату:
 
 ```text
-| 01 |
+| 01 | 04 |
 ```
 
 Пример Answer-запроса с Request ID = 3:
@@ -1363,7 +1354,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 03 00 00 00 00 01 01 64 6C 2F 15
+0A DB 01 01 00 00 00 03 00 00 00 00 02 01 04 3D F3 9E F2
 
 Расшифровка:
 	Version: 1
@@ -1371,7 +1362,8 @@ Hex-версия:
 	Request ID: 3
 	Compression: -
 	Result: OK
-	CheckSum: 64 6C 2F 15
+	Respond To: Delete
+	CheckSum: 3D F3 9E F2
 ```
 
 2. Неправильный запрос или внутренняя ошибка
@@ -1400,7 +1392,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 03 00 00 00 00 13 00 00 08 CA D1 C1 02 CA C5 4D DF 9B 61 EB 00 81 8E 25 D1 15 4B BC CD
+0A DB 01 01 00 00 00 03 00 00 00 00 13 00 00 08 CA D1 C1 02 CA C5 4D DF 9B 61 EB 00 81 8E 25 D1 4F 23 68 80
 
 Расшифровка:
 	Version: 1
@@ -1412,7 +1404,7 @@ Hex-версия:
 		Internal Error
 		Traceback ID: cad1c102-cac5-4ddf-9b61-eb00818e25d1
 		Details: -
-	CheckSum: 15 4B BC CD
+	CheckSum: 4F 23 68 80
 ```
 
 ### Алгоритм проверки сетевой доступности
@@ -1433,14 +1425,14 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 06 00 00 00 04 00 00 00 00 00 E1 05 33 20
+0A DB 01 06 00 00 00 04 00 00 00 00 00 A2 1B 87 9B
 
 Расшифровка:
 	Version: 1
 	Command: Ping
 	Request ID: 4
 	Compression: -
-	CheckSum: E1 05 33 20
+	CheckSum: A2 1B 87 9B
 ```
 
 #### Ответ на запрос
@@ -1461,7 +1453,7 @@ Hex-версия:
 В Body сервер/клиент передает данные согласно следующему формату:
 
 ```text
-| 01 |
+| 01 | 06 |
 ```
 
 Пример Answer-запроса с Request ID = 4:
@@ -1469,14 +1461,15 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 04 00 00 00 00 01 01 79 89 9F 9C
+0A DB 01 01 00 00 00 04 00 00 00 00 02 01 06 26 91 EB 01
 
 Расшифровка:
 	Version: 1
 	Command: Answer
 	Request ID: 4
 	Compression: -
-	CheckSum: 79 89 9F 9C
+	Respond To: Ping
+	CheckSum: 26 91 EB 01
 ```
 
 2. Неправильный запрос или внутренняя ошибка
@@ -1505,7 +1498,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 04 00 00 00 00 13 00 00 08 3D 8E D3 BF B8 D1 47 45 A5 DB F8 50 30 90 90 2A 93 6C FE 6B
+0A DB 01 01 00 00 00 04 00 00 00 00 13 00 00 08 3D 8E D3 BF B8 D1 47 45 A5 DB F8 50 30 90 90 2A C9 04 2A 26
 
 Расшифровка:
 	Version: 1
@@ -1588,7 +1581,7 @@ Headers:
 ```text
 Hex-версия:
 
-0A DB 01 05 00 00 00 01 00 00 00 00 32 05 00 00 00 02 00 00 00 01 02 00 00 00 03 6B 65 79 00 00 00 02 03 00 00 00 18 00 00 00 0B 61 6E 6F 74 68 65 72 2D 6B 65 79 06 00 00 00 04 64 61 74 61 0B 5B F9 A9
+0A DB 01 05 00 00 00 01 00 00 00 00 32 05 00 00 00 02 00 00 00 01 02 00 00 00 03 6B 65 79 00 00 00 02 03 00 00 00 18 00 00 00 0B 61 6E 6F 74 68 65 72 2D 6B 65 79 06 00 00 00 04 64 61 74 61 DE 84 44 1C
 
 Расшифровка:
 	Version: 1
@@ -1609,7 +1602,7 @@ Hex-версия:
 			Data:
 				Type: string
 				Value: data
-	CheckSum: 0B 5B F9 A9
+	CheckSum: DE 84 44 1C
 ```
 
 #### Ответ сервера
@@ -1628,7 +1621,7 @@ Hex-версия:
 - `Body Len` - зависит от реальной длины Body
 
 ```text
-| 01 | Results Len (4 bytes) | Result 1 | Result 2 | ... | Result N |
+| 01 | 05 | Results Len (4 bytes) | Result 1 | Result 2 | ... | Result N |
 ```
 
 Где:
@@ -1661,7 +1654,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 01 00 00 00 00 23 01 00 00 00 02 00 00 00 01 00 00 00 0D 01 06 00 00 00 07 6D 65 73 73 61 67 65 00 00 00 02 00 00 00 01 01 09 9D 1F 29
+0A DB 01 01 00 00 00 01 00 00 00 00 26 01 05 00 00 00 02 00 00 00 01 00 00 00 0E 01 02 06 00 00 00 07 6D 65 73 73 61 67 65 00 00 00 02 00 00 00 02 01 03 B7 2D 2D F4
 
 Расшифровка:
 	Version: 1
@@ -1669,17 +1662,20 @@ Hex-версия:
 	Request ID: 1
 	Compression: -
 	Result: OK
+	Respond To: Batch
 	Batch:
 		Request:
 			Number: 1
 			Result: OK
+			Respond To: Read
 			Data:
 				Type: string
 				Value: message
-			Request:
-				Number: 2
-				Result: OK
-	CheckSum: 09 9D 1F 29
+		Request:
+			Number: 2
+			Result: OK
+			Respond To: Write
+	CheckSum: B7 2D 2D F4
 ```
 
 Пример Answer-запроса без сжатия на запрос с Request ID = 32 и установленными флагами:
@@ -1691,7 +1687,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 20 00 00 00 00 3B 01 00 00 00 02 00 00 00 01 00 00 00 13 00 00 08 DA E1 2F 25 35 1B 48 75 99 DE 1D F5 2A 76 3F 96 00 00 00 02 00 00 00 13 00 00 0C 77 A5 7D 8E CC 20 40 7F 8C 65 5E 94 5F E2 A8 91 9F CC 5C CC
+0A DB 01 01 00 00 00 01 00 00 00 00 3C 01 05 00 00 00 02 00 00 00 01 00 00 00 13 00 00 08 38 DD 5C 39 24 DB 45 A9 85 09 FF E6 C6 5C 7F 42 00 00 00 02 00 00 00 13 00 00 0C 49 84 98 C5 CF 19 40 C9 95 38 15 5C 27 A3 CF F1 01 50 3D 7B
 
 Расшифровка:
 	Version: 1
@@ -1699,22 +1695,23 @@ Hex-версия:
 	Request ID: 32
 	Compression: -
 	Result: OK
+	Respond To: Batch
 	Batch:
 		Request:
 			Number: 1
 			Result: NOT OK
 			Error:
 				Internal Error
-				Traceback ID: dae12f25-351b-4875-99de-1df52a763f96
+				Traceback ID: 38dd5c39-24db-45a9-8509-ffe6c65c7f42
 				Details: -
 		Request:
 			Number: 2
 			Result: NOT OK
 				Error:
 					Request Interrupted
-					Traceback ID: 77a57d8e-cc20-407f-8c65-5e945fe2a891
+					Traceback ID: 498498c5-cf19-40c9-9538-155c27a3cff1
 					Details: -
-	CheckSum: 9F CC 5C CC
+	CheckSum: 01 50 3D 7B
 ```
 
 2. Неправильный запроc. Батч не принят на обработку.
@@ -1741,7 +1738,7 @@ Hex-версия:
 ```text
 Hex-версия:
 
-0A DB 01 01 00 00 00 01 00 00 00 00 13 00 00 08 E5 3A 39 93 7B 7A 47 EC B3 82 7C 2B 05 E3 D6 DD 09 E9 2D 95
+0A DB 01 01 00 00 00 01 00 00 00 00 13 00 00 08 E5 3A 39 93 7B 7A 47 EC B3 82 7C 2B 05 E3 D6 DD 53 81 F9 D8
 
 Расшифровка:
 	Version: 1
@@ -1753,7 +1750,7 @@ Hex-версия:
 		Internal Error
 		Traceback ID: e53a3993-7b7a-47ec-b382-7c2b05e3d6dd
 		Details: -
-	CheckSum: 09 E9 2D 95
+	CheckSum: 53 81 F9 D8
 ```
 
 ### Таймауты и heartbeat

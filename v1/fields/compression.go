@@ -19,7 +19,7 @@ type Compression uint8
 const (
 	None Compression = iota
 	Zstd
-	Lz4
+	S2
 )
 
 /*
@@ -49,8 +49,8 @@ func (c Compression) String() string {
 		return "None"
 	case Zstd:
 		return "Zstd"
-	case Lz4:
-		return "Lz4"
+	case S2:
+		return "S2"
 	}
 
 	return fmt.Sprintf("Unknown (%d)", c)
@@ -62,7 +62,7 @@ func IsValid предназначена для проверки кода сжа�
  1. Код находится в пределах 0-2.
 */
 func (c Compression) IsValid() bool {
-	return c <= Lz4
+	return c <= S2
 }
 
 /*

@@ -13,12 +13,12 @@ var _ err.ProtocolError = ErrorBodyLimitIsExceeded{}
 const CurrentBodyLimitFieldSize = 4
 
 type ErrorBodyLimitIsExceeded struct {
-	got         fields.BodyLimit
+	got         uint32
 	limit       fields.BodyLimit
 	tracebackID fields.TracebackID
 }
 
-func NewErrorBodyLimitIsExceeded(got, limit fields.BodyLimit) ErrorBodyLimitIsExceeded {
+func NewErrorBodyLimitIsExceeded(got uint32, limit fields.BodyLimit) ErrorBodyLimitIsExceeded {
 	return ErrorBodyLimitIsExceeded{
 		got:         got,
 		limit:       limit,
@@ -26,7 +26,7 @@ func NewErrorBodyLimitIsExceeded(got, limit fields.BodyLimit) ErrorBodyLimitIsEx
 	}
 }
 
-func NewErrorBodyLimitIsExceededWithTracebackID(got, limit fields.BodyLimit, tracebackID fields.TracebackID) ErrorBodyLimitIsExceeded {
+func NewErrorBodyLimitIsExceededWithTracebackID(got uint32, limit fields.BodyLimit, tracebackID fields.TracebackID) ErrorBodyLimitIsExceeded {
 	return ErrorBodyLimitIsExceeded{
 		got:         got,
 		limit:       limit,
@@ -57,7 +57,7 @@ func (e ErrorBodyLimitIsExceeded) Error() string {
 }
 
 func (e ErrorBodyLimitIsExceeded) IsValid() error {
-	if e.got <= e.limit {
+	if fields.BodyLimit(e.got) <= e.limit {
 		return err.NewValidationError(
 			"got is not greater than limit",
 			"error", "ErrorBodyLimitIsExceeded",

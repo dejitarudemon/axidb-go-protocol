@@ -9,7 +9,7 @@ import (
 
 type Result struct {
 	Number fields.RequestNumber
-	Body   body.Body
+	Body   body.Answer
 }
 
 func (r Result) Size() int {
@@ -28,6 +28,13 @@ func (r Result) Encode(buf buffer.Appender) {
 	} else {
 		buf.AppendUint32(0)
 	}
+}
+
+func (r Result) IsResponseTo() fields.Command {
+	if r.Body == nil {
+		return fields.Command(0)
+	}
+	return r.Body.IsResponseTo()
 }
 
 func (r Result) IsValid() error {
@@ -55,12 +62,12 @@ func (r Result) IsValid() error {
 	)
 }
 
-var _ body.Body = BatchAnswer{}
+var _ body.Answer = BatchAnswer{}
 
 type BatchAnswer []Result
 
 func (b BatchAnswer) Size() int {
-	size := RequestsLenFieldSize + ResultFieldSize
+	size := RequestsLenFieldSize + ResultFieldSize + b.IsResponseTo().Size()
 
 	for _, r := range b {
 		size += r.Size()
@@ -71,6 +78,7 @@ func (b BatchAnswer) Size() int {
 
 func (b BatchAnswer) Encode(buf buffer.Appender) {
 	buf.Append(ResultOK)
+	b.IsResponseTo().Encode(buf)
 	buf.AppendUint32(uint32(len(b)))
 
 	for _, r := range b {
@@ -80,6 +88,10 @@ func (b BatchAnswer) Encode(buf buffer.Appender) {
 
 func (b BatchAnswer) Command() fields.Command {
 	return fields.Answer
+}
+
+func (b BatchAnswer) IsResponseTo() fields.Command {
+	return fields.Batch
 }
 
 func (b BatchAnswer) IsValid() error {

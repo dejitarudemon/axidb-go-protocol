@@ -1,6 +1,8 @@
 package bodies
 
 import (
+	"sort"
+
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
@@ -8,8 +10,13 @@ import (
 )
 
 const (
-	FlagsFieldSize       = 1
-	RequestsLenFieldSize = 4
+	FlagsFieldSize          = 1
+	RequestsLenFieldSize    = 4
+	RequestBodyLenFieldSize = 4
+
+	IsSequentialExecution = 0b1
+	InterruptAfterError   = 0b10
+	IsOneAnswer           = 0b100
 )
 
 type Request struct {
@@ -19,9 +26,9 @@ type Request struct {
 
 func (r Request) Size() int {
 	if r.Body == nil {
-		return fields.RequestNumberFieldSize + fields.CommandFieldSize + fields.RequestNumberFieldSize
+		return RequestBodyLenFieldSize + fields.CommandFieldSize + fields.RequestNumberFieldSize
 	}
-	return fields.RequestNumberFieldSize + fields.CommandFieldSize + fields.RequestNumberFieldSize + r.Body.Size()
+	return RequestBodyLenFieldSize + fields.CommandFieldSize + fields.RequestNumberFieldSize + r.Body.Size()
 }
 
 func (r Request) Encode(buf buffer.Appender) {
@@ -77,15 +84,15 @@ func (b Batch) encodeFlags() uint8 {
 	encoded := uint8(0)
 
 	if b.IsSequentialExecution {
-		encoded |= 0b1
+		encoded |= IsSequentialExecution
 	}
 
 	if b.InterruptAfterError {
-		encoded |= 0b10
+		encoded |= InterruptAfterError
 	}
 
 	if b.IsOneAnswer {
-		encoded |= 0b100
+		encoded |= IsOneAnswer
 	}
 
 	return encoded
@@ -142,4 +149,10 @@ func (b Batch) IsValid() error {
 	}
 
 	return nil
+}
+
+func (b *Batch) Sort() {
+	sort.Slice(b.Requests, func(i, j int) bool {
+		return b.Requests[i].Number < b.Requests[j].Number
+	})
 }

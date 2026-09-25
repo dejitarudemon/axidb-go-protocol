@@ -15,7 +15,7 @@ func TestProhibitedCompression_Size(t *testing.T) {
 		want int
 	}{
 		{ErrorProhibitedCompression{fields.None, fields.Handshake, generateNewTracebackID()}, 18},
-		{ErrorProhibitedCompression{fields.Lz4, fields.Read, generateNewTracebackID()}, 18},
+		{ErrorProhibitedCompression{fields.S2, fields.Read, generateNewTracebackID()}, 18},
 		{ErrorProhibitedCompression{fields.Zstd, fields.Write, generateNewTracebackID()}, 18},
 		{ErrorProhibitedCompression{fields.Compression(4), fields.Delete, generateNewTracebackID()}, 18},
 		{ErrorProhibitedCompression{fields.None, fields.Command(4), generateNewTracebackID()}, 18},
@@ -42,7 +42,7 @@ func TestProhibitedCompression_Code(t *testing.T) {
 		want fields.Error
 	}{
 		{ErrorProhibitedCompression{fields.None, fields.Handshake, generateNewTracebackID()}, fields.ProhibitedCompression},
-		{ErrorProhibitedCompression{fields.Lz4, fields.Read, generateNewTracebackID()}, fields.ProhibitedCompression},
+		{ErrorProhibitedCompression{fields.S2, fields.Read, generateNewTracebackID()}, fields.ProhibitedCompression},
 		{ErrorProhibitedCompression{fields.Zstd, fields.Write, generateNewTracebackID()}, fields.ProhibitedCompression},
 		{ErrorProhibitedCompression{fields.Compression(4), fields.Delete, generateNewTracebackID()}, fields.ProhibitedCompression},
 		{ErrorProhibitedCompression{fields.None, fields.Command(4), generateNewTracebackID()}, fields.ProhibitedCompression},
@@ -73,7 +73,7 @@ func TestProhibitedCompression_TracebackID(t *testing.T) {
 			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
 		},
 		{
-			ErrorProhibitedCompression{fields.Lz4, fields.Read, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
+			ErrorProhibitedCompression{fields.S2, fields.Read, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
 			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
 		},
 		{
@@ -124,7 +124,7 @@ func TestProhibitedCompression_IsValid(t *testing.T) {
 			true,
 		},
 		{
-			ErrorProhibitedCompression{fields.Lz4, fields.Read, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
+			ErrorProhibitedCompression{fields.S2, fields.Read, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
 			true,
 		},
 		{
@@ -152,7 +152,7 @@ func TestProhibitedCompression_IsValid(t *testing.T) {
 			true,
 		},
 		{
-			ErrorProhibitedCompression{fields.Lz4, fields.Handshake, generateNewTracebackID()},
+			ErrorProhibitedCompression{fields.S2, fields.Handshake, generateNewTracebackID()},
 			false,
 		},
 		{
@@ -195,7 +195,7 @@ func TestProhibitedCompression_Encode(t *testing.T) {
 			[]byte{0x00, 0x0B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
 		},
 		{
-			ErrorProhibitedCompression{fields.Lz4, fields.Read, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
+			ErrorProhibitedCompression{fields.S2, fields.Read, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
 			[]byte{0x00, 0x0B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
 		},
 		{
@@ -228,7 +228,7 @@ func TestProhibitedCompression_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("Test Size: %v", tt),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.e.Size())
 
 				tt.e.Encode(&buf)

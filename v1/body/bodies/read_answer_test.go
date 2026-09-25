@@ -15,10 +15,10 @@ func TestReadAnswer_Size(t *testing.T) {
 		r    ReadAnswer
 		want int
 	}{
-		{ReadAnswer{}, 1},
-		{ReadAnswer{values.Int(0)}, 10},
-		{ReadAnswer{values.Bytes("data")}, 10},
-		{ReadAnswer{values.String("some-data")}, 15},
+		{ReadAnswer{}, 2},
+		{ReadAnswer{values.Int(0)}, 11},
+		{ReadAnswer{values.Bytes("data")}, 11},
+		{ReadAnswer{values.String("some-data")}, 16},
 		{
 			ReadAnswer{
 				values.UntypedArray{
@@ -27,7 +27,7 @@ func TestReadAnswer_Size(t *testing.T) {
 					values.String("hello world"),
 					values.Float(2.1),
 				},
-			}, 40,
+			}, 41,
 		},
 	}
 
@@ -48,10 +48,10 @@ func TestReadAnswer_Encode(t *testing.T) {
 		r    ReadAnswer
 		want []byte
 	}{
-		{ReadAnswer{}, []byte{0x01}},
-		{ReadAnswer{values.Int(0)}, []byte{0x01, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
-		{ReadAnswer{values.Bytes("data")}, []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x04, 0x64, 0x61, 0x74, 0x61}},
-		{ReadAnswer{values.String("some-data")}, []byte{0x01, 0x06, 0x00, 0x00, 0x00, 0x09, 0x73, 0x6F, 0x6D, 0x65, 0x2D, 0x64, 0x61, 0x74, 0x61}},
+		{ReadAnswer{}, []byte{0x01, 0x02}},
+		{ReadAnswer{values.Int(0)}, []byte{0x01, 0x02, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+		{ReadAnswer{values.Bytes("data")}, []byte{0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x04, 0x64, 0x61, 0x74, 0x61}},
+		{ReadAnswer{values.String("some-data")}, []byte{0x01, 0x02, 0x06, 0x00, 0x00, 0x00, 0x09, 0x73, 0x6F, 0x6D, 0x65, 0x2D, 0x64, 0x61, 0x74, 0x61}},
 		{
 			ReadAnswer{
 				values.UntypedArray{
@@ -62,10 +62,11 @@ func TestReadAnswer_Encode(t *testing.T) {
 				},
 			},
 			[]byte{
-				0x01, 0x02, 0x00, 0x00, 0x00, 0x03, 0x03, 0x00, 0x00, 0x00,
-				0x00, 0x00, 0x00, 0x00, 0x01, 0x06, 0x00, 0x00, 0x00, 0x0B,
-				0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x77, 0x6F, 0x72, 0x6C,
-				0x64, 0x05, 0x40, 0x00, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCD,
+				0x01, 0x02, 0x02, 0x00, 0x00, 0x00, 0x03, 0x03, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x06, 0x00, 0x00, 0x00,
+				0x0B, 0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x77, 0x6F, 0x72,
+				0x6C, 0x64, 0x05, 0x40, 0x00, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
+				0xCD,
 			},
 		},
 	}
@@ -74,7 +75,7 @@ func TestReadAnswer_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("TestReadAnswer_Encode %v", tt.r),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.r.Size())
 
 				tt.r.Encode(&buf)
@@ -151,6 +152,39 @@ func TestReadAnswer_IsValid(t *testing.T) {
 			fmt.Sprintf("TestReadAnswer_IsValid %v", tt.r),
 			func(t *testing.T) {
 				if got := tt.r.IsValid(); got == nil == tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
+func TestReadAnswer_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		r    ReadAnswer
+		want fields.Command
+	}{
+		{ReadAnswer{}, fields.Read},
+		{ReadAnswer{values.Int(0)}, fields.Read},
+		{ReadAnswer{values.Bytes("data")}, fields.Read},
+		{ReadAnswer{values.String("some-data")}, fields.Read},
+		{
+			ReadAnswer{
+				values.UntypedArray{
+
+					values.Int(1),
+					values.String("hello world"),
+					values.Float(2.1),
+				},
+			}, fields.Read,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestRead_IsResponseTo %v", tt.r),
+			func(t *testing.T) {
+				if got := tt.r.IsResponseTo(); got != tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},

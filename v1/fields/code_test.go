@@ -31,7 +31,6 @@ func TestError_Size(t *testing.T) {
 		{InvalidRequestID, 2},
 		{Unauthorized, 2},
 		{RestrictedRequest, 2},
-		{UnknownErrorError, 2},
 		{Error(19), 2},
 		{Error(255), 2},
 		{Error(65535), 2},
@@ -72,7 +71,6 @@ func TestError_Encode(t *testing.T) {
 		{InvalidRequestID, []byte{0x00, 0x0F}},
 		{Unauthorized, []byte{0x00, 0x10}},
 		{RestrictedRequest, []byte{0x00, 0x11}},
-		{UnknownErrorError, []byte{0x00, 0x12}},
 		{Error(19), []byte{0x00, 0x13}},
 		{Error(255), []byte{0x00, 0xFF}},
 		{Error(65535), []byte{0xFF, 0xFF}},
@@ -82,7 +80,7 @@ func TestError_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("%v", tt.e),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.e.Size())
 
 				tt.e.Encode(&buf)
@@ -122,7 +120,6 @@ func TestError_String(t *testing.T) {
 		{InvalidRequestID, "Invalid Request ID"},
 		{Unauthorized, "Unauthorized"},
 		{RestrictedRequest, "Restricted Request"},
-		{UnknownErrorError, "Unknown Error Error"},
 		{Error(19), "Unknown (19)"},
 		{Error(255), "Unknown (255)"},
 		{Error(65535), "Unknown (65535)"},
@@ -162,7 +159,6 @@ func TestError_IsValid(t *testing.T) {
 		{InvalidRequestID, true},
 		{Unauthorized, true},
 		{RestrictedRequest, true},
-		{UnknownErrorError, true},
 		{Error(19), false},
 		{Error(255), false},
 		{Error(65535), false},

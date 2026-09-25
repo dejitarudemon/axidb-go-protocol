@@ -14,7 +14,7 @@ func TestPingAnswer_Size(t *testing.T) {
 		p    PingAnswer
 		want int
 	}{
-		{PingAnswer{}, 1},
+		{PingAnswer{}, 2},
 	}
 
 	for _, tt := range tests {
@@ -34,14 +34,14 @@ func TestPingAnswer_Encode(t *testing.T) {
 		p    PingAnswer
 		want []byte
 	}{
-		{PingAnswer{}, []byte{0x01}},
+		{PingAnswer{}, []byte{0x01, 0x06}},
 	}
 
 	for _, tt := range tests {
 		t.Run(
 			fmt.Sprintf("TestPingAnswer_Encode %v", tt.p),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.p.Size())
 
 				tt.p.Encode(&buf)
@@ -89,6 +89,26 @@ func TestPingAnswer_IsValid(t *testing.T) {
 			fmt.Sprintf("TestPingAnswer_IsValid %v", tt.p),
 			func(t *testing.T) {
 				if got := tt.p.IsValid(); got == nil == tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
+func TestPingAnswer_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		p    PingAnswer
+		want fields.Command
+	}{
+		{PingAnswer{}, fields.Ping},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestPingAnswer_IsResponseTo %v", tt.p),
+			func(t *testing.T) {
+				if got := tt.p.IsResponseTo(); got != tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},

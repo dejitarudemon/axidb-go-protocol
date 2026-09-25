@@ -41,7 +41,6 @@ const (
 	InvalidRequestID
 	Unauthorized
 	RestrictedRequest
-	UnknownErrorError
 )
 
 /*
@@ -97,8 +96,6 @@ func (e Error) String() string {
 		return "Unauthorized"
 	case RestrictedRequest:
 		return "Restricted Request"
-	case UnknownErrorError:
-		return "Unknown Error Error"
 	}
 
 	return fmt.Sprintf("Unknown (%d)", e)
@@ -116,5 +113,5 @@ func IsValid возвращает true, если код ошибки валид�
 В противном случае false.
 */
 func (e Error) IsValid() bool {
-	return e <= UnknownErrorError
+	return e <= RestrictedRequest
 }

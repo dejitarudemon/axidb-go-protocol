@@ -160,7 +160,7 @@ func TestTypedArray_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("%v", tt.c),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.c.Size())
 
 				tt.c.Encode(&buf)
@@ -321,6 +321,15 @@ func TestTypedArray_IsValid(t *testing.T) {
 			TypedArray{
 				ElemType: fields.Int,
 				Elems:    []value.V{nil},
+			},
+			true,
+		},
+		{
+			TypedArray{
+				ElemType: fields.JSON,
+				Elems: []value.V{
+					JSON([]byte{0x01, 0x02, 0x03}),
+				},
 			},
 			true,
 		},

@@ -14,7 +14,7 @@ func TestWriteAnswer_Size(t *testing.T) {
 		w    WriteAnswer
 		want int
 	}{
-		{WriteAnswer{}, 1},
+		{WriteAnswer{}, 2},
 	}
 
 	for _, tt := range tests {
@@ -34,14 +34,14 @@ func TestWriteAnswer_Encode(t *testing.T) {
 		w    WriteAnswer
 		want []byte
 	}{
-		{WriteAnswer{}, []byte{0x01}},
+		{WriteAnswer{}, []byte{0x01, 0x03}},
 	}
 
 	for _, tt := range tests {
 		t.Run(
 			fmt.Sprintf("TestWriteAnswer_Encode %v", tt.w),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.w.Size())
 
 				tt.w.Encode(&buf)
@@ -89,6 +89,25 @@ func TestWriteAnswer_IsValid(t *testing.T) {
 			fmt.Sprintf("TestWriteAnswer_IsValid %v", tt.w),
 			func(t *testing.T) {
 				if got := tt.w.IsValid(); got == nil == tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+func TestWriteAnswer_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		w    WriteAnswer
+		want fields.Command
+	}{
+		{WriteAnswer{}, fields.Write},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestWriteAnswer_IsResponseTo %v", tt.w),
+			func(t *testing.T) {
+				if got := tt.w.IsResponseTo(); got != tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},

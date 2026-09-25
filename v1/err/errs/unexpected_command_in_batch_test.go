@@ -231,7 +231,7 @@ func TestUnexpectedCommandInBatch_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("Test Size: %v", tt),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.e.Size())
 
 				tt.e.Encode(&buf)

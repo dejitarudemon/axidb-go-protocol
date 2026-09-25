@@ -56,7 +56,7 @@ func TestJSON_Encode(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("%v", tt.c),
 			func(t *testing.T) {
-				buf := buffer.Mock{}
+				buf := buffer.Slice{}
 				buf.Preallocate(tt.c.Size())
 
 				tt.c.Encode(&buf)
@@ -110,6 +110,7 @@ func TestJSON_IsValid(t *testing.T) {
 		{JSON(json3), false},
 		{JSON([]byte{}), true},
 		{JSON([]byte{0x00, 0x01, 0x02}), true},
+		{JSON(bytes.Repeat([]byte{0xFF}, 64)), true},
 	}
 
 	for _, tt := range tests {

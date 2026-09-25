@@ -7,7 +7,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
-var _ body.Body = HandshakeAnswer{}
+var _ body.Answer = HandshakeAnswer{}
 
 type HandshakeAnswer struct {
 	Compressions []fields.Compression
@@ -22,11 +22,12 @@ func NewHandshakeAnswer(compressions []fields.Compression) HandshakeAnswer {
 func (h HandshakeAnswer) Size() int {
 	size := min(len(h.Compressions), MaxCompressionsPerOneHandshake)
 
-	return ResultFieldSize + fields.CompressionFieldSize + size*fields.CompressionFieldSize
+	return ResultFieldSize + fields.CompressionFieldSize + size*fields.CompressionFieldSize + h.IsResponseTo().Size()
 }
 
 func (h HandshakeAnswer) Encode(buf buffer.Appender) {
 	buf.Append(ResultOK)
+	h.IsResponseTo().Encode(buf)
 	buf.AppendUint8(uint8(min(len(h.Compressions), MaxCompressionsPerOneHandshake)))
 
 	for i, compression := range h.Compressions {
@@ -40,6 +41,10 @@ func (h HandshakeAnswer) Encode(buf buffer.Appender) {
 
 func (h HandshakeAnswer) Command() fields.Command {
 	return fields.Answer
+}
+
+func (h HandshakeAnswer) IsResponseTo() fields.Command {
+	return fields.Handshake
 }
 
 // Не проверяем Compression на валидность, т.к. по спеке могут быть кастомные алгоритмы.
