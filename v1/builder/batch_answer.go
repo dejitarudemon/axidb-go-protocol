@@ -11,6 +11,10 @@ type BatchResultsBuilder struct {
 	results []bodies.Result
 }
 
+func NewBatchResultsBuilder() *BatchResultsBuilder {
+	return &BatchResultsBuilder{}
+}
+
 func (b *BatchResultsBuilder) AddRead(number fields.RequestNumber, value value.V) *BatchResultsBuilder {
 	b.results = append(b.results, bodies.Result{Number: number, Body: bodies.ReadAnswer{Value: value}})
 
