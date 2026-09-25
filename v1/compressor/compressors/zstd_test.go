@@ -83,3 +83,34 @@ func TestZstd_EncodeDecode(t *testing.T) {
 	}
 
 }
+
+func TestZstd_ZipBomb(t *testing.T) {
+	tests := []struct {
+		z    Zstd
+		data []byte
+	}{
+		{Zstd{limit: 1<<20 - 1}, randomBytes(1 << 20)},
+		{Zstd{limit: 1 << 12}, randomBytes(1 << 13)},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestZstd_ZipBomb %v", i),
+			func(t *testing.T) {
+				compressed, err := tt.z.Compress(tt.data)
+
+				if err != nil {
+					t.Fatalf("encode: got err: %v", err)
+					return
+				}
+
+				_, err = tt.z.Decompress(compressed)
+
+				if err == nil {
+					t.Fatalf("decode: got nil err")
+					return
+				}
+			},
+		)
+	}
+}
