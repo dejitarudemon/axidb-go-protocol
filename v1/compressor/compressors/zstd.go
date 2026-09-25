@@ -34,7 +34,10 @@ func (z Zstd) Compress(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer writer.Close()
+
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
 
 	return writer.EncodeAll(data, nil), nil
 }
