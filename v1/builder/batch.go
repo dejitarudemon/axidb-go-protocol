@@ -30,7 +30,7 @@ func (b *BatchRequestsBuilder) InterruptAfterError(v bool) *BatchRequestsBuilder
 	return b
 }
 
-func (b *BatchRequestsBuilder) IsOneAnswer(v bool) *BatchRequestsBuilder {
+func (b *BatchRequestsBuilder) OneAnswer(v bool) *BatchRequestsBuilder {
 	b.isOneAnswer = v
 	return b
 }
