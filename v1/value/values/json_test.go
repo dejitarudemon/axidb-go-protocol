@@ -110,6 +110,7 @@ func TestJSON_IsValid(t *testing.T) {
 		{JSON(json3), false},
 		{JSON([]byte{}), true},
 		{JSON([]byte{0x00, 0x01, 0x02}), true},
+		{JSON(bytes.Repeat([]byte{0xFF}, 64)), true},
 	}
 
 	for _, tt := range tests {

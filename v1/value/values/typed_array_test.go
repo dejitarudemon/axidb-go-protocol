@@ -324,6 +324,15 @@ func TestTypedArray_IsValid(t *testing.T) {
 			},
 			true,
 		},
+		{
+			TypedArray{
+				ElemType: fields.JSON,
+				Elems: []value.V{
+					JSON([]byte{0x01, 0x02, 0x03}),
+				},
+			},
+			true,
+		},
 	}
 
 	for _, tt := range tests {

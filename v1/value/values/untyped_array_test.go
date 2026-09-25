@@ -162,6 +162,9 @@ func TestUntypedArray_IsValid(t *testing.T) {
 		{
 			UntypedArray{Int(1), Bytes([]byte{0x01, 0x02, 0x03})}, false,
 		},
+		{
+			UntypedArray{Int(1), JSON([]byte{0x01, 0x02, 0x03})}, true,
+		},
 	}
 
 	for _, tt := range tests {
