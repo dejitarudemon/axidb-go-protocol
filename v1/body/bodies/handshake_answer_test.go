@@ -161,3 +161,30 @@ func TestHandshakeAnswer_IsValid(t *testing.T) {
 		)
 	}
 }
+
+func TestHandshakeAnswer_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		h    HandshakeAnswer
+		want fields.Command
+	}{
+		{HandshakeAnswer{}, fields.Handshake},
+		{HandshakeAnswer{[]fields.Compression{}}, fields.Handshake},
+		{HandshakeAnswer{[]fields.Compression{0x00}}, fields.Handshake},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, fields.Handshake},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, fields.Handshake},
+		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), fields.Handshake},
+		{HandshakeAnswer{generateManyCompressions(1000)}, fields.Handshake},
+		{NewHandshakeAnswer(generateManyCompressions(1000)), fields.Handshake},
+		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0xFF}}, fields.Handshake},
+	}
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestHandshakeAnswer_IsResponseTo %v", tt.h),
+			func(t *testing.T) {
+				if got := tt.h.IsResponseTo(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}

@@ -95,3 +95,23 @@ func TestDeleteAnswer_IsValid(t *testing.T) {
 		)
 	}
 }
+
+func TestDeleteAnswer_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		d    DeleteAnswer
+		want fields.Command
+	}{
+		{DeleteAnswer{}, fields.Delete},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDeleteAnswer_IsResponseTo %v", tt.d),
+			func(t *testing.T) {
+				if got := tt.d.IsResponseTo(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}

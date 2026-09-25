@@ -95,3 +95,22 @@ func TestWriteAnswer_IsValid(t *testing.T) {
 		)
 	}
 }
+func TestWriteAnswer_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		w    WriteAnswer
+		want fields.Command
+	}{
+		{WriteAnswer{}, fields.Write},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestWriteAnswer_IsResponseTo %v", tt.w),
+			func(t *testing.T) {
+				if got := tt.w.IsResponseTo(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}

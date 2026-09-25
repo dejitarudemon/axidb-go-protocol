@@ -158,3 +158,36 @@ func TestReadAnswer_IsValid(t *testing.T) {
 		)
 	}
 }
+
+func TestReadAnswer_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		r    ReadAnswer
+		want fields.Command
+	}{
+		{ReadAnswer{}, fields.Read},
+		{ReadAnswer{values.Int(0)}, fields.Read},
+		{ReadAnswer{values.Bytes("data")}, fields.Read},
+		{ReadAnswer{values.String("some-data")}, fields.Read},
+		{
+			ReadAnswer{
+				values.UntypedArray{
+
+					values.Int(1),
+					values.String("hello world"),
+					values.Float(2.1),
+				},
+			}, fields.Read,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestRead_IsResponseTo %v", tt.r),
+			func(t *testing.T) {
+				if got := tt.r.IsResponseTo(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}

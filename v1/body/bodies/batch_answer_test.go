@@ -94,6 +94,31 @@ func TestResult_IsValid(t *testing.T) {
 	}
 }
 
+func TestResult_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		r    Result
+		want fields.Command
+	}{
+		{Result{6, WriteAnswer{}}, fields.Write},
+		{Result{6, ReadAnswer{}}, fields.Read},
+		{Result{6, DeleteAnswer{}}, fields.Delete},
+		{Result{6, HandshakeAnswer{}}, fields.Handshake},
+		{Result{6, BatchAnswer{}}, fields.Batch},
+		{Result{6, PingAnswer{}}, fields.Ping},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestResult_IsResponseTo %v", tt.r),
+			func(t *testing.T) {
+				if got := tt.r.IsResponseTo(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
 func TestBatchAnswer_Size(t *testing.T) {
 	tests := []struct {
 		b    BatchAnswer
@@ -286,6 +311,46 @@ func TestBatchAnswer_IsValid(t *testing.T) {
 			fmt.Sprintf("TestBatchAnswer_IsValid %v", tt.b),
 			func(t *testing.T) {
 				if got := tt.b.IsValid(); got == nil == tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
+
+func TestBatchAnswer_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		b    BatchAnswer
+		want fields.Command
+	}{
+		{BatchAnswer{}, fields.Batch},
+		{BatchAnswer{}, fields.Batch},
+		{BatchAnswer{{}}, fields.Batch},
+		{BatchAnswer{{0, nil}}, fields.Batch},
+		{BatchAnswer{{0, WriteAnswer{}}}, fields.Batch},
+		{BatchAnswer{
+			{0, WriteAnswer{}},
+			{0, DeleteAnswer{}},
+		}, fields.Batch},
+		{BatchAnswer{
+			{0, WriteAnswer{}},
+			{1, DeleteAnswer{}},
+		}, fields.Batch},
+		{BatchAnswer{
+			{1, ReadAnswer{Value: values.String("message")}},
+			{2, WriteAnswer{}},
+		}, fields.Batch},
+		{BatchAnswer{
+			{1, ErrorAnswer{errs.NewErrorInternalErrorWithTracebackID(errors.New(""), [16]byte{0xDA, 0xE1, 0x2F, 0x25, 0x35, 0x1B, 0x48, 0x75, 0x99, 0xDE, 0x1D, 0xF5, 0x2A, 0x76, 0x3F, 0x96})}},
+			{2, ErrorAnswer{errs.NewErrorRequestInterruptedWithTracebackID(2, [16]byte{0x77, 0xA5, 0x7D, 0x8E, 0xCC, 0x20, 0x40, 0x7F, 0x8C, 0x65, 0x5E, 0x94, 0x5F, 0xE2, 0xA8, 0x91})}},
+		}, fields.Batch},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestBatchAnswer_IsResponseTo %v", tt.b),
+			func(t *testing.T) {
+				if got := tt.b.IsResponseTo(); got != tt.want {
 					t.Fatalf("got %v, want %v", got, tt.want)
 				}
 			},

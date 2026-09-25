@@ -95,3 +95,23 @@ func TestPingAnswer_IsValid(t *testing.T) {
 		)
 	}
 }
+
+func TestPingAnswer_IsResponseTo(t *testing.T) {
+	tests := []struct {
+		p    PingAnswer
+		want fields.Command
+	}{
+		{PingAnswer{}, fields.Ping},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestPingAnswer_IsResponseTo %v", tt.p),
+			func(t *testing.T) {
+				if got := tt.p.IsResponseTo(); got != tt.want {
+					t.Fatalf("got %v, want %v", got, tt.want)
+				}
+			},
+		)
+	}
+}
