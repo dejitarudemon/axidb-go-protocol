@@ -1,6 +1,8 @@
 package bodies
 
 import (
+	"sort"
+
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
@@ -147,4 +149,10 @@ func (b Batch) IsValid() error {
 	}
 
 	return nil
+}
+
+func (b *Batch) Sort() {
+	sort.Slice(b.Requests, func(i, j int) bool {
+		return b.Requests[i].Number < b.Requests[j].Number
+	})
 }
