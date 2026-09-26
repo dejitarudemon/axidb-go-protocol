@@ -14,6 +14,7 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor/compressors"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
@@ -666,28 +667,28 @@ var testsRoundTrip = []struct {
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
 		}}},
 		nil,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
 		}}},
 		nil,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 1, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Read("key")},
 		}}},
 		nil,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 1, Body: bodies.Delete("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Delete("key")},
 		}}},
 		nil,
 	},
@@ -697,35 +698,35 @@ var testsRoundTrip = []struct {
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
 		})},
 		nil,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
 		})},
 		nil,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 0, Body: bodies.DeleteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.DeleteAnswer{}},
 		})},
 		nil,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 1, Body: bodies.DeleteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 1, Body: bodies.DeleteAnswer{}},
 		})},
 		nil,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
 		})},
 		nil,
 	},
@@ -997,35 +998,35 @@ var testsRoundTrip = []struct {
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
 		})},
 		zstd,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
 		})},
 		zstd,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 0, Body: bodies.DeleteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.DeleteAnswer{}},
 		})},
 		zstd,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 1, Body: bodies.DeleteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 1, Body: bodies.DeleteAnswer{}},
 		})},
 		zstd,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
 		})},
 		zstd,
 	},
@@ -1297,35 +1298,35 @@ var testsRoundTrip = []struct {
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
 		})},
 		s2,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
 		})},
 		s2,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 0, Body: bodies.DeleteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 0, Body: bodies.DeleteAnswer{}},
 		})},
 		s2,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 1, Body: bodies.DeleteAnswer{}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 1, Body: bodies.DeleteAnswer{}},
 		})},
 		s2,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			bodies.Result{Number: 0, Body: bodies.WriteAnswer{}},
-			bodies.Result{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
+			{Number: 0, Body: bodies.WriteAnswer{}},
+			{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
 		})},
 		s2,
 	},
@@ -1734,6 +1735,92 @@ func TestDecoder_EncodeDecodeEncode(t *testing.T) {
 				}
 
 				compareFrames(t, f2, tt.f)
+			},
+		)
+	}
+}
+
+func TestDecoder_WithUnexpectedPayload(t *testing.T) {
+	tests := []struct {
+		e []byte
+	}{
+		{
+			[]byte{
+				0x0A, 0xDB, 0x01, 0x06, 0x00, 0x00, 0x00, 0x04,
+				0x00, 0x00, 0x00, 0x00, 0x03, 0xC0, 0xFF, 0xEE,
+				0x83, 0x2C, 0x45, 0x52,
+			},
+		},
+		{
+			[]byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x15, 0x01, 0x02, 0x06,
+				0x00, 0x00, 0x00, 0x09, 0x73, 0x6F, 0x6D, 0x65,
+				0x2D, 0x64, 0x61, 0x74, 0x61, 0x76, 0x69, 0x72,
+				0x75, 0x73, 0xD2, 0x19, 0xB2, 0xFB,
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_WithUnexpectedPayload_%v", i),
+			func(t *testing.T) {
+				d := NewDecoder(1<<10, nil)
+				reader := bufio.NewReader(bytes.NewReader(tt.e))
+
+				_, er := d.DecodeFrame(reader)
+				if er == nil {
+					t.Fatal("expected err, got nil")
+				}
+
+				if _, ok := er.(err.TrailledError); !ok {
+					t.Fatalf("expected TrailledError, got %v", er)
+				}
+			},
+		)
+	}
+}
+
+func TestDecoder_WithWrongChecksum(t *testing.T) {
+	tests := []struct {
+		e []byte
+	}{
+		{
+			[]byte{
+				0x0A, 0xDB, 0x01, 0x06, 0x00, 0x00, 0x00, 0x04,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x83, 0x2C, 0x45,
+				0x52,
+			},
+		},
+		{
+			[]byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x26, 0x01, 0x05, 0x00,
+				0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
+				0x00, 0x00, 0x0E, 0x01, 0x02, 0x06, 0x00, 0x00,
+				0x00, 0x07, 0x6D, 0x65, 0x73, 0x73, 0x61, 0x67,
+				0x65, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+				0x02, 0x01, 0x03, 0xAA, 0xAA, 0xAA, 0xAA,
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_WithWrongChecksum_%v", i),
+			func(t *testing.T) {
+				d := NewDecoder(1<<10, nil)
+				reader := bufio.NewReader(bytes.NewReader(tt.e))
+
+				_, er := d.DecodeFrame(reader)
+				if er == nil {
+					t.Fatal("expected err, got nil")
+				}
+
+				if _, ok := er.(errs.ErrorMismatchedChecksum); !ok {
+					t.Fatalf("expected ErrorMismatchedChecksum, got %v", er)
+				}
 			},
 		)
 	}
