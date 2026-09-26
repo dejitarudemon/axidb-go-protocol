@@ -1867,6 +1867,33 @@ func TestDecoder_ZipBomb(t *testing.T) {
 	}
 }
 
+func TestDecoder_WithNilReader(t *testing.T) {
+	t.Run(
+		"TestDecoder_WithNilReader",
+		func(t *testing.T) {
+			d := NewDecoder(1, nil)
+
+			_, e := d.DecodePreamble(nil)
+			if e == nil {
+				t.Error("DecodePreamble: expected err, got nil")
+			}
+
+			if _, ok := e.(err.DecodeError); !ok {
+				t.Errorf("DecodePreamble: expected DecodeError, got %v", e)
+			}
+
+			_, e = d.DecodeFrame(nil)
+			if e == nil {
+				t.Error("DecodeFrame: expected err, got nil")
+			}
+
+			if _, ok := e.(err.DecodeError); !ok {
+				t.Errorf("DecodeFrame: expected DecodeError, got %v", e)
+			}
+		},
+	)
+}
+
 func FuzzDecoder_Preamble(f *testing.F) {
 	f.Add([]byte{0x0A, 0xDB, 0x01})
 	f.Fuzz(func(t *testing.T, a []byte) {
