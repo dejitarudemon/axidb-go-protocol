@@ -273,3 +273,18 @@ func TestSlice_BytesReturnsCopy(t *testing.T) {
 		})
 	}
 }
+
+func TestSlice_RawAliasesBuffer(t *testing.T) {
+	s := Slice{}
+	s.Append([]byte{0x01, 0x02})
+
+	raw := s.Raw()
+	if !bytes.Equal(raw, []byte{0x01, 0x02}) {
+		t.Fatalf("Raw() = % X, want 01 02", raw)
+	}
+
+	raw[0] = 0xFF
+	if got := s.Raw(); !bytes.Equal(got, []byte{0xFF, 0x02}) {
+		t.Errorf("buffer after mutating Raw() = % X, want FF 02", got)
+	}
+}

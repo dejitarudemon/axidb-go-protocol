@@ -64,7 +64,7 @@ func (f Frame) Encode(buf buffer.Buffer) error {
 	f.Version().Encode(buf)
 	fields.VersionLen(f.Body.Size()).Encode(buf)
 	f.Body.Encode(buf)
-	fields.NewChecksum(buf.Bytes()).Encode(buf)
+	fields.NewChecksum(buf.Raw()).Encode(buf)
 
 	return nil
 }
