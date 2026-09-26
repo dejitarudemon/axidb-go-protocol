@@ -30,7 +30,8 @@ go get github.com/dejitarudemon/axidb-go-protocol@latest
 ### Фишки протокола
 
 - **Hello v0** — узлы пересекают списки версий до любой рабочей команды. Версия 0 сама по себе не рабочая.
-- **Один кадр на поток** — magic `0A DB`, big-endian, длина известна из заголовка. `DecodePreamble` смотрит версию и не сдвигает курсор.
+- **Версии на лету** — каждый кадр несёт свой байт Version. `DecodePreamble` выбирает декодер на кадр, не сдвигая курсор: на одном TCP можно Hello v0, затем v1 и снова сменить версию из согласованного набора.
+- **Один кадр на поток** — magic `0A DB`, big-endian, длина известна из заголовка.
 - **Контрольные суммы** — CRC-32/XFER на Hello, CRC-32C (Castagnoli) на v1. Сумма покрывает кадр без себя; при сжатии проверяется до распаковки.
 - **Асинхронность** — `RequestID` multiplexит запросы на одном TCP. `0` зарезервирован для Handshake.
 - **Типизированные значения** — bytes, массивы, int/uint, float64, UTF-8, JSON.
@@ -228,7 +229,8 @@ go get github.com/dejitarudemon/axidb-go-protocol@latest
 ### Protocol features
 
 - **Hello v0** — nodes intersect version lists before any working command. Version 0 is not a working version.
-- **One frame on a stream** — magic `0A DB`, big-endian, length taken from the header. `DecodePreamble` peeks the version and does not consume bytes.
+- **Versions on the fly** — each frame carries its own Version byte. `DecodePreamble` picks the decoder per frame without consuming bytes: Hello v0, then v1, then another agreed version on the same TCP connection.
+- **One frame on a stream** — magic `0A DB`, big-endian, length taken from the header.
 - **Checksums** — CRC-32/XFER on Hello, CRC-32C (Castagnoli) on v1. The sum covers the frame except itself; with compression it is checked before decompress.
 - **Asynchrony** — `RequestID` multiplexes requests on one TCP connection. `0` is reserved for Handshake.
 - **Typed values** — bytes, arrays, int/uint, float64, UTF-8, JSON.

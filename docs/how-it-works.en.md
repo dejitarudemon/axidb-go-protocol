@@ -53,7 +53,7 @@ Byte order is big-endian.
 
 The checksum is Castagnoli (CRC-32C) over the whole frame except itself. If the body is compressed, the sum is checked **before** decompression. The receiver reads exactly `Body Len + 4` bytes after the headers.
 
-`DecodePreamble` peeks at the first three bytes and does not advance the cursor. The `Version` byte selects the decoder: `v0` or `v1`.
+`DecodePreamble` peeks at the first three bytes and does not advance the cursor. The `Version` byte selects the decoder: `v0` or `v1`. The version can change on every frame: Hello is v0, then working commands use v1 or another agreed version on the same connection.
 
 ## Asynchrony
 
