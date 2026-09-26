@@ -31,6 +31,10 @@ type Buffer interface {
 	// Clean discards buffered bytes while keeping allocated capacity.
 	Clean()
 
+	// Raw returns the buffered bytes.
+	// The slice aliases the buffer and is invalid after the next mutation.
+	Raw() []byte
+
 	// Bytes returns a copy of the buffered bytes.
 	Bytes() []byte
 }

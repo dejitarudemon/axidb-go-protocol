@@ -63,7 +63,7 @@ func (f Frame) encodeWithCompression(buf buffer.Buffer, compressor compressor.Co
 
 	f.Body.Encode(&temp)
 
-	compressed, err := compressor.Compress(temp.Bytes())
+	compressed, err := compressor.Compress(temp.Raw())
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (f Frame) encodeWithCompression(buf buffer.Buffer, compressor compressor.Co
 	buf.AppendUint32(uint32(len(compressed)))
 	buf.Append(compressed)
 
-	fields.NewChecksum(buf.Bytes()).Encode(buf)
+	fields.NewChecksum(buf.Raw()).Encode(buf)
 
 	return nil
 }
@@ -89,7 +89,7 @@ func (f Frame) encodeWithoutCompression(buf buffer.Buffer) {
 	buf.AppendUint32(uint32(f.Body.Size()))
 	f.Body.Encode(buf)
 
-	fields.NewChecksum(buf.Bytes()).Encode(buf)
+	fields.NewChecksum(buf.Raw()).Encode(buf)
 }
 
 // Encode writes the wire encoding of the frame into buf.

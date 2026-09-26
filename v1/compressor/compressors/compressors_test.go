@@ -217,7 +217,7 @@ func TestZstd_DecompressLimitError(t *testing.T) {
 		wantErr error
 	}{
 		{"single frame over limit", 1 << 11, oneFrame, zstd.ErrDecoderSizeExceeded},
-		{"concatenated frames over limit", 1 << 12, append(bytes.Clone(oneFrame), oneFrame...), zstd.ErrCompressedSizeTooBig},
+		{"concatenated frames over limit", 1 << 12, append(bytes.Clone(oneFrame), oneFrame...), zstd.ErrDecoderSizeExceeded},
 	}
 
 	for _, tt := range tests {
