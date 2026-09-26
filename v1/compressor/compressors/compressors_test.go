@@ -207,7 +207,6 @@ func TestZstd_DecompressLimitError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("zstd.NewWriter(): got err: %v", err)
 	}
-	defer frame.Close()
 
 	oneFrame := frame.EncodeAll(randomBytes(3<<10), nil)
 
@@ -232,6 +231,10 @@ func TestZstd_DecompressLimitError(t *testing.T) {
 				t.Errorf("Decompress(): got err %v, want %v", err, tt.wantErr)
 			}
 		})
+	}
+
+	if err := frame.Close(); err != nil {
+		log.Fatalf("failed to close Zstd Writer: %v", err)
 	}
 }
 
