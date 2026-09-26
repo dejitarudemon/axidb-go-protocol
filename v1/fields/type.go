@@ -6,22 +6,13 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 )
 
-/*
-type Type предназначен для хранения
-кода типа, его валидации и кодирования в сообщение.
-*/
+// Type is a protocol v1 value type code.
 type Type uint8
 
-/*
-FieldSize представляет размер в байтах,
-отведенный для хранения кода типа в сообщении.
-*/
+// TypeFieldSize is the encoded size in bytes of a [Type].
 const TypeFieldSize = 1
 
-/*
-Константы, представляющие типов данных,
-используемые в спецификации протокола v1.
-*/
+// Value type codes defined by protocol v1.
 const (
 	Bytes Type = iota
 	TypedArray
@@ -33,21 +24,12 @@ const (
 	JSON
 )
 
-/*
-func Encode предназначена для кодирования кода типа данных
-в сообщении.
-
-Принимааемые параметры:
-  - buf buffer.Appender - буфер для хранения закодированного значения.
-*/
+// Encode writes the wire encoding of the type code into buf.
 func (t Type) Encode(buf buffer.Appender) {
 	buf.AppendUint8(uint8(t))
 }
 
-/*
-func String предназначена для вывода человекочитаемого названия
-типа данных, представленного конкретным кодом.
-*/
+// String returns a human-readable type name.
 func (t Type) String() string {
 	switch t {
 	case Bytes:
@@ -71,18 +53,12 @@ func (t Type) String() string {
 	return fmt.Sprintf("Unknown (%d)", t)
 }
 
-/*
-func IsValid предназначена для проверки кода типа данных.
-Проверки:
- 1. Код находится в пределах 0-7.
-*/
+// IsValid reports whether t is a known value type code (0 through [JSON]).
 func (t Type) IsValid() bool {
 	return t <= JSON
 }
 
-/*
-func Size возвращает размер кода типа данных в байтах.
-*/
+// Size returns the encoded size in bytes.
 func (t Type) Size() int {
 	return TypeFieldSize
 }

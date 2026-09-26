@@ -1,166 +1,29 @@
 package errs
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
-func TestMalformedValue_Size(t *testing.T) {
+func TestErrorMalformedValue(t *testing.T) {
 	tests := []struct {
-		e    ErrorMalformedValue
-		want int
+		name    string
+		msg     string
+		id      fields.TracebackID
+		want    []byte
+		wantErr bool
 	}{
-		{ErrorMalformedValue{"", generateNewTracebackID()}, 18},
-		{ErrorMalformedValue{"a", generateNewTracebackID()}, 19},
-		{ErrorMalformedValue{"ф", generateNewTracebackID()}, 20},
-		{ErrorMalformedValue{}, 18},
+		{"empty message", "", tracebackIDOne, encoded(9, tracebackIDOne), false},
+		{"ascii message", "a", tracebackIDOne, encoded(9, tracebackIDOne, 'a'), false},
+		{"multibyte message", "ф", tracebackIDMax, encoded(9, tracebackIDMax, 0xD1, 0x84), false},
+		{"zero value", "", fields.TracebackID{}, encoded(9, fields.TracebackID{}), false},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestMalformedValue_Code(t *testing.T) {
-	tests := []struct {
-		e    ErrorMalformedValue
-		want fields.Error
-	}{
-		{ErrorMalformedValue{"", generateNewTracebackID()}, fields.MalformedValue},
-		{ErrorMalformedValue{"a", generateNewTracebackID()}, fields.MalformedValue},
-		{ErrorMalformedValue{"ф", generateNewTracebackID()}, fields.MalformedValue},
-		{ErrorMalformedValue{}, fields.MalformedValue},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Code: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Code(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestMalformedValue_TracebackID(t *testing.T) {
-	tests := []struct {
-		e    ErrorMalformedValue
-		want [16]byte
-	}{
-		{
-			ErrorMalformedValue{"", fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorMalformedValue{"a", fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
-		},
-		{
-			ErrorMalformedValue{"ф", fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03},
-		},
-		{
-			ErrorMalformedValue{},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test TracebackID: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.TracebackID(); !bytes.Equal(got[:], tt.want[:]) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestMalformedValue_IsValid(t *testing.T) {
-	tests := []struct {
-		e    ErrorMalformedValue
-		want bool
-	}{
-		{
-			ErrorMalformedValue{"", fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			false,
-		},
-		{
-			ErrorMalformedValue{"a", fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			false,
-		},
-		{
-			ErrorMalformedValue{"ф", fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			false,
-		},
-		{
-			ErrorMalformedValue{},
-			false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test IsValid: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestMalformedValue_Encode(t *testing.T) {
-	tests := []struct {
-		e    ErrorMalformedValue
-		want []byte
-	}{
-		{
-			ErrorMalformedValue{"", fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[]byte{0x00, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorMalformedValue{"a", fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[]byte{0x00, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x61},
-		},
-		{
-			ErrorMalformedValue{"ф", fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[]byte{0x00, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xD1, 0x84},
-		},
-		{
-			ErrorMalformedValue{},
-			[]byte{0x00, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.e.Size())
-
-				tt.e.Encode(&buf)
-
-				if got := buf.Bytes(); !bytes.Equal(got, tt.want) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			e := NewErrorMalformedValueWithTracebackID(tt.msg, tt.id)
+			assertProtocolError(t, e, fields.MalformedValue, tt.id, tt.want, tt.wantErr)
+		})
 	}
 }

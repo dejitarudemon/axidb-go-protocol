@@ -9,29 +9,34 @@ import (
 
 var _ body.Answer = HandshakeAnswer{}
 
+// HandshakeAnswer is a successful reply to [fields.Handshake] listing accepted compressions.
 type HandshakeAnswer struct {
+	// Compressions lists compression algorithms the server accepts.
 	Compressions []fields.Compression
 }
 
+// NewHandshakeAnswer returns a HandshakeAnswer after dropping [fields.None] and duplicate compression codes.
 func NewHandshakeAnswer(compressions []fields.Compression) HandshakeAnswer {
 	return HandshakeAnswer{
 		Compressions: filter(compressions),
 	}
 }
 
+// Size returns the encoded body size in bytes.
 func (h HandshakeAnswer) Size() int {
 	size := min(len(h.Compressions), MaxCompressionsPerOneHandshake)
 
 	return ResultFieldSize + fields.CompressionFieldSize + size*fields.CompressionFieldSize + h.IsResponseTo().Size()
 }
 
+// Encode writes the wire encoding of the body into buf.
 func (h HandshakeAnswer) Encode(buf buffer.Appender) {
 	buf.Append(ResultOK)
 	h.IsResponseTo().Encode(buf)
 	buf.AppendUint8(uint8(min(len(h.Compressions), MaxCompressionsPerOneHandshake)))
 
 	for i, compression := range h.Compressions {
-		if i > MaxCompressionsPerOneHandshake {
+		if i >= MaxCompressionsPerOneHandshake {
 			break
 		}
 
@@ -39,15 +44,19 @@ func (h HandshakeAnswer) Encode(buf buffer.Appender) {
 	}
 }
 
+// Command returns [fields.Answer].
 func (h HandshakeAnswer) Command() fields.Command {
 	return fields.Answer
 }
 
+// IsResponseTo returns [fields.Handshake].
 func (h HandshakeAnswer) IsResponseTo() fields.Command {
 	return fields.Handshake
 }
 
-// Не проверяем Compression на валидность, т.к. по спеке могут быть кастомные алгоритмы.
+// IsValid reports whether the body satisfies protocol rules.
+// Compression codes are not checked because custom algorithms are allowed.
+// The compression list must not exceed [MaxCompressionsPerOneHandshake].
 func (h HandshakeAnswer) IsValid() error {
 	if len(h.Compressions) > MaxCompressionsPerOneHandshake {
 		return err.NewValidationError(

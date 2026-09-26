@@ -1,190 +1,84 @@
 package bodies
 
 import (
-	"bytes"
-	"fmt"
 	"slices"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
 )
 
-func TestHandshakeAnswer_New(t *testing.T) {
+func TestHandshakeAnswer(t *testing.T) {
 	tests := []struct {
-		h    HandshakeAnswer
-		want HandshakeAnswer
+		name    string
+		b       HandshakeAnswer
+		want    []byte
+		wantErr bool
 	}{
+		{"empty", HandshakeAnswer{}, []byte{0x01, 0x00, 0x00}, false},
+		{"empty compressions", HandshakeAnswer{[]fields.Compression{}}, []byte{0x01, 0x00, 0x00}, false},
+		{"none", HandshakeAnswer{[]fields.Compression{fields.None}}, []byte{0x01, 0x00, 0x01, 0x00}, false},
+		{"two compressions", HandshakeAnswer{[]fields.Compression{fields.None, fields.Zstd}}, []byte{0x01, 0x00, 0x02, 0x00, 0x01}, false},
+		{"repeated compressions", HandshakeAnswer{[]fields.Compression{fields.None, fields.Zstd, fields.None}}, []byte{0x01, 0x00, 0x03, 0x00, 0x01, 0x00}, false},
+		{"custom compression", HandshakeAnswer{[]fields.Compression{fields.None, fields.Zstd, 0xFF}}, []byte{0x01, 0x00, 0x03, 0x00, 0x01, 0xFF}, false},
 		{
-			NewHandshakeAnswer(nil),
-			HandshakeAnswer{nil},
+			"max compressions",
+			HandshakeAnswer{generateManyCompressions(MaxCompressionsPerOneHandshake)},
+			append([]byte{0x01, 0x00}, encodeCompressions(generateManyCompressions(MaxCompressionsPerOneHandshake))...),
+			false,
 		},
 		{
+			"too many compressions",
+			HandshakeAnswer{generateManyCompressions(1000)},
+			append([]byte{0x01, 0x00}, encodeCompressions(generateManyCompressions(1000))...),
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertAnswer(t, tt.b, fields.Handshake, tt.want, tt.wantErr)
+		})
+	}
+}
+
+func TestNewHandshakeAnswer(t *testing.T) {
+	tests := []struct {
+		name string
+		got  HandshakeAnswer
+		want HandshakeAnswer
+	}{
+		{"nil compressions", NewHandshakeAnswer(nil), HandshakeAnswer{}},
+		{
+			"drops none",
 			NewHandshakeAnswer([]fields.Compression{0x01, 0x00, 0x02}),
 			HandshakeAnswer{[]fields.Compression{0x01, 0x02}},
 		},
 		{
+			"drops none and duplicates",
 			NewHandshakeAnswer([]fields.Compression{0x01, 0x00, 0x02, 0x01, 0x03}),
 			HandshakeAnswer{[]fields.Compression{0x01, 0x02, 0x03}},
 		},
 		{
+			"drops duplicates",
 			NewHandshakeAnswer([]fields.Compression{0x01, 0x01}),
 			HandshakeAnswer{[]fields.Compression{0x01}},
+		},
+		{
+			"drops duplicates beyond limit",
+			NewHandshakeAnswer(generateManyCompressions(1000)),
+			HandshakeAnswer{generateManyCompressions(254)},
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestHandshakeAnswer_New %v", tt.h),
-			func(t *testing.T) {
-				if !slices.Equal(tt.h.Compressions, tt.want.Compressions) {
-					t.Errorf("fields: got '%v', want '%v'", tt.h.Compressions, tt.want.Compressions)
-				}
-			},
-		)
-	}
-}
+		t.Run(tt.name, func(t *testing.T) {
+			if !slices.Equal(tt.got.Compressions, tt.want.Compressions) {
+				t.Errorf("Compressions = %v, want %v", tt.got.Compressions, tt.want.Compressions)
+			}
 
-func TestHandshakeAnswer_Size(t *testing.T) {
-	tests := []struct {
-		h    HandshakeAnswer
-		want int
-	}{
-		{HandshakeAnswer{}, 3},
-		{HandshakeAnswer{[]fields.Compression{}}, 3},
-		{HandshakeAnswer{[]fields.Compression{0x00}}, 4},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, 5},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, 6},
-		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), 4},
-		{HandshakeAnswer{generateManyCompressions(1000)}, 258},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestHandshakeAnswer_Size %v", tt.h),
-			func(t *testing.T) {
-				if got := tt.h.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestHandshakeAnswer_Encode(t *testing.T) {
-	generated := generateManyCompressions(1000)
-	tests := []struct {
-		h    HandshakeAnswer
-		want []byte
-	}{
-		{HandshakeAnswer{}, []byte{0x01, 0x00, 0x00}},
-		{HandshakeAnswer{[]fields.Compression{}}, []byte{0x01, 0x00, 0x00}},
-		{HandshakeAnswer{[]fields.Compression{0x00}}, []byte{0x01, 0x00, 0x01, 0x00}},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, []byte{0x01, 0x00, 0x02, 0x00, 0x01}},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, []byte{0x01, 0x00, 0x03, 0x00, 0x01, 0x00}},
-		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), []byte{0x01, 0x00, 0x01, 0x01}},
-		{HandshakeAnswer{generated}, append([]byte{0x01, 0x00}, encodeCompressions(generated)...)},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestHandshakeAnswer_Encode %v", tt.h),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.h.Size())
-
-				tt.h.Encode(&buf)
-
-				got := buf.Bytes()
-
-				if len(got) != len(tt.want) {
-					t.Fatalf("got %v want %v", len(got), len(tt.want))
-				}
-
-				if !bytes.Equal(got, tt.want) {
-					t.Fatalf("got %q, want %q", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestHandshakeAnswer_Command(t *testing.T) {
-	tests := []struct {
-		h    HandshakeAnswer
-		want fields.Command
-	}{
-		{HandshakeAnswer{}, fields.Answer},
-		{HandshakeAnswer{[]fields.Compression{}}, fields.Answer},
-		{HandshakeAnswer{[]fields.Compression{0x00}}, fields.Answer},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, fields.Answer},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, fields.Answer},
-		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), fields.Answer},
-		{HandshakeAnswer{generateManyCompressions(1000)}, fields.Answer},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestHandshakeAnswer_Command %v", tt.h),
-			func(t *testing.T) {
-				if got := tt.h.Command(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestHandshakeAnswer_IsValid(t *testing.T) {
-	tests := []struct {
-		h    HandshakeAnswer
-		want bool
-	}{
-		{HandshakeAnswer{}, false},
-		{HandshakeAnswer{[]fields.Compression{}}, false},
-		{HandshakeAnswer{[]fields.Compression{0x00}}, false},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, false},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, false},
-		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), false},
-		{HandshakeAnswer{generateManyCompressions(1000)}, true},
-		{NewHandshakeAnswer(generateManyCompressions(1000)), false},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0xFF}}, false},
-	}
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestHandshakeAnswer_IsValid %v", tt.h),
-			func(t *testing.T) {
-				if got := tt.h.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestHandshakeAnswer_IsResponseTo(t *testing.T) {
-	tests := []struct {
-		h    HandshakeAnswer
-		want fields.Command
-	}{
-		{HandshakeAnswer{}, fields.Handshake},
-		{HandshakeAnswer{[]fields.Compression{}}, fields.Handshake},
-		{HandshakeAnswer{[]fields.Compression{0x00}}, fields.Handshake},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01}}, fields.Handshake},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0x00}}, fields.Handshake},
-		{NewHandshakeAnswer([]fields.Compression{0x00, 0x01, 0x00}), fields.Handshake},
-		{HandshakeAnswer{generateManyCompressions(1000)}, fields.Handshake},
-		{NewHandshakeAnswer(generateManyCompressions(1000)), fields.Handshake},
-		{HandshakeAnswer{[]fields.Compression{0x00, 0x01, 0xFF}}, fields.Handshake},
-	}
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestHandshakeAnswer_IsResponseTo %v", tt.h),
-			func(t *testing.T) {
-				if got := tt.h.IsResponseTo(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+			testutil.AssertSameEncoding(t, tt.got, tt.want)
+			testutil.AssertErr(t, tt.got.IsValid(), false)
+		})
 	}
 }

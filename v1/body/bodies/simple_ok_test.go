@@ -1,46 +1,28 @@
 package bodies
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
 )
 
-func TestSimpleOK_Size(t *testing.T) {
+func TestSimpleOK(t *testing.T) {
 	tests := []struct {
-		s    simpleOK
-		want int
+		name     string
+		s        simpleOK
+		wantSize int
+		wantErr  bool
 	}{
-		{simpleOK{}, 2},
+		{"empty", simpleOK{}, 2, false},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSimpleOK_Size %v", tt.s),
-			func(t *testing.T) {
-				if got := tt.s.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.Size(); got != tt.wantSize {
+				t.Errorf("Size() = %v, want %v", got, tt.wantSize)
+			}
 
-func TestSimpleOK_IsValid(t *testing.T) {
-	tests := []struct {
-		s    simpleOK
-		want bool
-	}{
-		{simpleOK{}, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSimpleOK_IsValid %v", tt.s),
-			func(t *testing.T) {
-				if got := tt.s.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+			testutil.AssertErr(t, tt.s.IsValid(), tt.wantErr)
+		})
 	}
 }

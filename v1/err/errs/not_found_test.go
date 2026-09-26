@@ -1,166 +1,29 @@
 package errs
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
-func TestNotFound_Size(t *testing.T) {
+func TestErrorNotFound(t *testing.T) {
 	tests := []struct {
-		e    ErrorNotFound
-		want int
+		name    string
+		key     fields.Key
+		id      fields.TracebackID
+		want    []byte
+		wantErr bool
 	}{
-		{ErrorNotFound{nil, generateNewTracebackID()}, 18},
-		{ErrorNotFound{[]byte(""), generateNewTracebackID()}, 18},
-		{ErrorNotFound{[]byte("key"), generateNewTracebackID()}, 18},
-		{ErrorNotFound{}, 18},
+		{"nil key", nil, tracebackIDOne, encoded(10, tracebackIDOne), true},
+		{"empty key", fields.Key(""), tracebackIDOne, encoded(10, tracebackIDOne), true},
+		{"key", fields.Key("key"), tracebackIDMax, encoded(10, tracebackIDMax), false},
+		{"zero value", nil, fields.TracebackID{}, encoded(10, fields.TracebackID{}), true},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestNotFound_Code(t *testing.T) {
-	tests := []struct {
-		e    ErrorNotFound
-		want fields.Error
-	}{
-		{ErrorNotFound{nil, generateNewTracebackID()}, fields.NotFound},
-		{ErrorNotFound{[]byte(""), generateNewTracebackID()}, fields.NotFound},
-		{ErrorNotFound{[]byte("key"), generateNewTracebackID()}, fields.NotFound},
-		{ErrorNotFound{}, fields.NotFound},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Code: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Code(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestNotFound_TracebackID(t *testing.T) {
-	tests := []struct {
-		e    ErrorNotFound
-		want [16]byte
-	}{
-		{
-			ErrorNotFound{nil, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorNotFound{[]byte(""), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
-		},
-		{
-			ErrorNotFound{[]byte("key"), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03},
-		},
-		{
-			ErrorNotFound{},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test TracebackID: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.TracebackID(); !bytes.Equal(got[:], tt.want[:]) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestNotFound_IsValid(t *testing.T) {
-	tests := []struct {
-		e    ErrorNotFound
-		want bool
-	}{
-		{
-			ErrorNotFound{nil, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			true,
-		},
-		{
-			ErrorNotFound{[]byte(""), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			true,
-		},
-		{
-			ErrorNotFound{[]byte("key"), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			false,
-		},
-		{
-			ErrorNotFound{},
-			true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test IsValid: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestNotFound_Encode(t *testing.T) {
-	tests := []struct {
-		e    ErrorNotFound
-		want []byte
-	}{
-		{
-			ErrorNotFound{nil, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[]byte{0x00, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorNotFound{[]byte(""), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[]byte{0x00, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
-		},
-		{
-			ErrorNotFound{[]byte("key"), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[]byte{0x00, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03},
-		},
-		{
-			ErrorNotFound{},
-			[]byte{0x00, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.e.Size())
-
-				tt.e.Encode(&buf)
-
-				if got := buf.Bytes(); !bytes.Equal(got, tt.want) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			e := NewErrorNotFoundWithTracebackID(tt.key, tt.id)
+			assertProtocolError(t, e, fields.NotFound, tt.id, tt.want, tt.wantErr)
+		})
 	}
 }

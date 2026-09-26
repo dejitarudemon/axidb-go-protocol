@@ -1,167 +1,30 @@
 package errs
 
 import (
-	"bytes"
-	"fmt"
 	"math"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
-func TestRequestInterrupted_Size(t *testing.T) {
+func TestErrorRequestInterrupted(t *testing.T) {
 	tests := []struct {
-		e    ErrorRequestInterrupted
-		want int
+		name        string
+		interrupted fields.RequestID
+		id          fields.TracebackID
+		want        []byte
+		wantErr     bool
 	}{
-		{ErrorRequestInterrupted{0, generateNewTracebackID()}, 18},
-		{ErrorRequestInterrupted{1, generateNewTracebackID()}, 18},
-		{ErrorRequestInterrupted{math.MaxUint32, generateNewTracebackID()}, 18},
-		{ErrorRequestInterrupted{}, 18},
+		{"zero request id", 0, tracebackIDOne, encoded(12, tracebackIDOne), false},
+		{"request id", 1, tracebackIDOne, encoded(12, tracebackIDOne), false},
+		{"max request id", math.MaxUint32, tracebackIDMax, encoded(12, tracebackIDMax), false},
+		{"zero value", 0, fields.TracebackID{}, encoded(12, fields.TracebackID{}), false},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestRequestInterrupted_Code(t *testing.T) {
-	tests := []struct {
-		e    ErrorRequestInterrupted
-		want fields.Error
-	}{
-		{ErrorRequestInterrupted{0, generateNewTracebackID()}, fields.RequestInterrupted},
-		{ErrorRequestInterrupted{1, generateNewTracebackID()}, fields.RequestInterrupted},
-		{ErrorRequestInterrupted{math.MaxUint32, generateNewTracebackID()}, fields.RequestInterrupted},
-		{ErrorRequestInterrupted{}, fields.RequestInterrupted},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Code: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Code(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestRequestInterrupted_TracebackID(t *testing.T) {
-	tests := []struct {
-		e    ErrorRequestInterrupted
-		want [16]byte
-	}{
-		{
-			ErrorRequestInterrupted{0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorRequestInterrupted{1, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
-		},
-		{
-			ErrorRequestInterrupted{math.MaxUint32, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03},
-		},
-		{
-			ErrorRequestInterrupted{},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test TracebackID: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.TracebackID(); !bytes.Equal(got[:], tt.want[:]) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestRequestInterrupted_IsValid(t *testing.T) {
-	tests := []struct {
-		e    ErrorRequestInterrupted
-		want bool
-	}{
-		{
-			ErrorRequestInterrupted{0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			false,
-		},
-		{
-			ErrorRequestInterrupted{1, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			false,
-		},
-		{
-			ErrorRequestInterrupted{math.MaxUint32, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			false,
-		},
-		{
-			ErrorRequestInterrupted{},
-			false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test IsValid: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestRequestInterrupted_Encode(t *testing.T) {
-	tests := []struct {
-		e    ErrorRequestInterrupted
-		want []byte
-	}{
-		{
-			ErrorRequestInterrupted{0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[]byte{0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorRequestInterrupted{1, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[]byte{0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
-		},
-		{
-			ErrorRequestInterrupted{math.MaxUint32, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[]byte{0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03},
-		},
-		{
-			ErrorRequestInterrupted{},
-			[]byte{0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.e.Size())
-
-				tt.e.Encode(&buf)
-
-				if got := buf.Bytes(); !bytes.Equal(got, tt.want) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			e := NewErrorRequestInterruptedWithTracebackID(tt.interrupted, tt.id)
+			assertProtocolError(t, e, fields.RequestInterrupted, tt.id, tt.want, tt.wantErr)
+		})
 	}
 }

@@ -6,43 +6,25 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 )
 
-/*
-type Compression предназначен для хранения
-кода сжатия, его валидации и кодирования в сообщение.
-*/
+// Compression is a protocol v1 body compression algorithm code.
 type Compression uint8
 
-/*
-Константы, представляющие алгоритмы сжатия,
-используемые в спецификации протокола v1.
-*/
+// Compression algorithms defined by protocol v1.
 const (
 	None Compression = iota
 	Zstd
 	S2
 )
 
-/*
-CompressionFieldSize представляет размер в байтах,
-отведенный для хранения кода сжатия в сообщении.
-*/
+// CompressionFieldSize is the encoded size in bytes of a [Compression] code.
 const CompressionFieldSize = 1
 
-/*
-func Encode предназначена для кодирования кода сжатия
-в сообщении.
-
-Принимааемые параметры:
-  - buf buffer.Appender - буфер для хранения закодированного значения.
-*/
+// Encode writes the wire encoding of the compression code into buf.
 func (c Compression) Encode(buf buffer.Appender) {
 	buf.AppendUint8(uint8(c))
 }
 
-/*
-func String предназначена для вывода человекочитаемого названия
-алгоритма сжатия, представленного конкретным кодом.
-*/
+// String returns a human-readable compression name.
 func (c Compression) String() string {
 	switch c {
 	case None:
@@ -56,18 +38,12 @@ func (c Compression) String() string {
 	return fmt.Sprintf("Unknown (%d)", c)
 }
 
-/*
-func IsValid предназначена для проверки кода сжатия.
-Проверки:
- 1. Код находится в пределах 0-2.
-*/
+// IsValid reports whether c is a known compression code (0 through [S2]).
 func (c Compression) IsValid() bool {
 	return c <= S2
 }
 
-/*
-func Size возвращает размер кода сжатия в байтах.
-*/
+// Size returns the encoded size in bytes.
 func (c Compression) Size() int {
 	return CompressionFieldSize
 }

@@ -1,909 +1,341 @@
 package builder
 
 import (
-	"fmt"
 	"math"
 	"slices"
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body/bodies"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
-func TestFrameBuilder_Ping(t *testing.T) {
+func TestFrameBuilder(t *testing.T) {
 	fb := NewFrameBuilder(1 << 10)
+	internalErr := errs.NewErrorInternalErrorWithTracebackID(nil, fields.TracebackID{})
+	tooManyZstd := slices.Repeat([]fields.Compression{fields.Zstd}, int(bodies.MaxCompressionsPerOneHandshake)+1)
+	almostTooManyZstd := slices.Repeat([]fields.Compression{fields.Zstd}, int(bodies.MaxCompressionsPerOneHandshake)-1)
 
 	tests := []struct {
-		r       fields.RequestID
+		name    string
+		build   func() (frame.Frame, error)
 		want    frame.Frame
 		wantErr bool
 	}{
 		{
-			0,
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.Ping{},
-			},
-			true,
+			name:  "handshake empty",
+			build: func() (frame.Frame, error) { return fb.NewHandshake("", [32]byte{}, nil) },
+			want:  frame.Frame{RequestID: 0, Body: bodies.Handshake{}},
 		},
 		{
-			1,
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Ping{},
-			},
-			false,
+			name:  "handshake with login",
+			build: func() (frame.Frame, error) { return fb.NewHandshake("user", [32]byte{}, nil) },
+			want:  frame.Frame{RequestID: 0, Body: bodies.Handshake{Login: "user"}},
 		},
 		{
-			math.MaxUint32,
-			frame.Frame{
-				RequestID: math.MaxUint32,
-				Body:      bodies.Ping{},
+			name:  "handshake deduplicates compressions",
+			build: func() (frame.Frame, error) { return fb.NewHandshake("", [32]byte{}, tooManyZstd) },
+			want:  frame.Frame{RequestID: 0, Body: bodies.Handshake{Compressions: []fields.Compression{fields.Zstd}}},
+		},
+		{
+			name:  "handshake answer empty",
+			build: func() (frame.Frame, error) { return fb.NewHandshakeAnswer(nil) },
+			want:  frame.Frame{RequestID: 0, Body: bodies.HandshakeAnswer{}},
+		},
+		{
+			name:  "handshake answer deduplicates compressions",
+			build: func() (frame.Frame, error) { return fb.NewHandshakeAnswer(tooManyZstd) },
+			want:  frame.Frame{RequestID: 0, Body: bodies.HandshakeAnswer{Compressions: []fields.Compression{fields.Zstd}}},
+		},
+		{
+			name:  "handshake answer deduplicates few compressions",
+			build: func() (frame.Frame, error) { return fb.NewHandshakeAnswer(almostTooManyZstd) },
+			want:  frame.Frame{RequestID: 0, Body: bodies.HandshakeAnswer{Compressions: []fields.Compression{fields.Zstd}}},
+		},
+
+		{
+			name:    "ping zero request id",
+			build:   func() (frame.Frame, error) { return fb.NewPing(0) },
+			wantErr: true,
+		},
+		{
+			name:  "ping",
+			build: func() (frame.Frame, error) { return fb.NewPing(1) },
+			want:  frame.Frame{RequestID: 1, Body: bodies.Ping{}},
+		},
+		{
+			name:  "ping max request id",
+			build: func() (frame.Frame, error) { return fb.NewPing(math.MaxUint32) },
+			want:  frame.Frame{RequestID: math.MaxUint32, Body: bodies.Ping{}},
+		},
+		{
+			name:    "ping answer zero request id",
+			build:   func() (frame.Frame, error) { return fb.NewPingAnswer(0) },
+			wantErr: true,
+		},
+		{
+			name:  "ping answer",
+			build: func() (frame.Frame, error) { return fb.NewPingAnswer(1) },
+			want:  frame.Frame{RequestID: 1, Body: bodies.PingAnswer{}},
+		},
+
+		{
+			name:    "read zero request id and empty key",
+			build:   func() (frame.Frame, error) { return fb.NewRead(0, fields.Key("")) },
+			wantErr: true,
+		},
+		{
+			name:    "read zero request id",
+			build:   func() (frame.Frame, error) { return fb.NewRead(0, fields.Key("key")) },
+			wantErr: true,
+		},
+		{
+			name:    "read empty key",
+			build:   func() (frame.Frame, error) { return fb.NewRead(1, fields.Key("")) },
+			wantErr: true,
+		},
+		{
+			name:  "read",
+			build: func() (frame.Frame, error) { return fb.NewRead(1, fields.Key("key")) },
+			want:  frame.Frame{RequestID: 1, Body: bodies.Read("key")},
+		},
+		{
+			name:    "read answer zero request id",
+			build:   func() (frame.Frame, error) { return fb.NewReadAnswer(0, nil) },
+			wantErr: true,
+		},
+		{
+			name:    "read answer nil value",
+			build:   func() (frame.Frame, error) { return fb.NewReadAnswer(1, nil) },
+			wantErr: true,
+		},
+		{
+			name:    "read answer invalid json",
+			build:   func() (frame.Frame, error) { return fb.NewReadAnswer(1, values.JSON("-")) },
+			wantErr: true,
+		},
+		{
+			name:  "read answer",
+			build: func() (frame.Frame, error) { return fb.NewReadAnswer(1, values.Int(3)) },
+			want:  frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Int(3)}},
+		},
+
+		{
+			name:    "write zero request id",
+			build:   func() (frame.Frame, error) { return fb.NewWrite(0, fields.Key(""), nil) },
+			wantErr: true,
+		},
+		{
+			name:    "write empty key",
+			build:   func() (frame.Frame, error) { return fb.NewWrite(1, fields.Key(""), nil) },
+			wantErr: true,
+		},
+		{
+			name:    "write nil value",
+			build:   func() (frame.Frame, error) { return fb.NewWrite(1, fields.Key("key"), nil) },
+			wantErr: true,
+		},
+		{
+			name:    "write invalid json",
+			build:   func() (frame.Frame, error) { return fb.NewWrite(1, fields.Key("key"), values.JSON("-")) },
+			wantErr: true,
+		},
+		{
+			name:  "write",
+			build: func() (frame.Frame, error) { return fb.NewWrite(1, fields.Key("key"), values.Int(3)) },
+			want:  frame.Frame{RequestID: 1, Body: bodies.Write{Key: fields.Key("key"), Value: values.Int(3)}},
+		},
+		{
+			name:    "write answer zero request id",
+			build:   func() (frame.Frame, error) { return fb.NewWriteAnswer(0) },
+			wantErr: true,
+		},
+		{
+			name:  "write answer",
+			build: func() (frame.Frame, error) { return fb.NewWriteAnswer(1) },
+			want:  frame.Frame{RequestID: 1, Body: bodies.WriteAnswer{}},
+		},
+
+		{
+			name:    "delete zero request id and empty key",
+			build:   func() (frame.Frame, error) { return fb.NewDelete(0, fields.Key("")) },
+			wantErr: true,
+		},
+		{
+			name:    "delete zero request id",
+			build:   func() (frame.Frame, error) { return fb.NewDelete(0, fields.Key("key")) },
+			wantErr: true,
+		},
+		{
+			name:    "delete empty key",
+			build:   func() (frame.Frame, error) { return fb.NewDelete(1, fields.Key("")) },
+			wantErr: true,
+		},
+		{
+			name:  "delete",
+			build: func() (frame.Frame, error) { return fb.NewDelete(1, fields.Key("key")) },
+			want:  frame.Frame{RequestID: 1, Body: bodies.Delete("key")},
+		},
+		{
+			name:    "delete answer zero request id",
+			build:   func() (frame.Frame, error) { return fb.NewDeleteAnswer(0) },
+			wantErr: true,
+		},
+		{
+			name:  "delete answer",
+			build: func() (frame.Frame, error) { return fb.NewDeleteAnswer(1) },
+			want:  frame.Frame{RequestID: 1, Body: bodies.DeleteAnswer{}},
+		},
+
+		{
+			name:    "error answer nil error",
+			build:   func() (frame.Frame, error) { return fb.NewErrAnswer(0, nil) },
+			wantErr: true,
+		},
+		{
+			name:    "error answer nil error with request id",
+			build:   func() (frame.Frame, error) { return fb.NewErrAnswer(1, nil) },
+			wantErr: true,
+		},
+		{
+			name:  "error answer zero request id",
+			build: func() (frame.Frame, error) { return fb.NewErrAnswer(0, internalErr) },
+			want:  frame.Frame{RequestID: 0, Body: bodies.ErrorAnswer{Err: internalErr}},
+		},
+		{
+			name:  "error answer",
+			build: func() (frame.Frame, error) { return fb.NewErrAnswer(1, internalErr) },
+			want:  frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: internalErr}},
+		},
+
+		{
+			name:    "batch zero request id and no requests",
+			build:   func() (frame.Frame, error) { return fb.NewBatch(0, *NewBatchRequestsBuilder()) },
+			wantErr: true,
+		},
+		{
+			name:    "batch no requests",
+			build:   func() (frame.Frame, error) { return fb.NewBatch(1, *NewBatchRequestsBuilder()) },
+			wantErr: true,
+		},
+		{
+			name: "batch zero request id",
+			build: func() (frame.Frame, error) {
+				return fb.NewBatch(0, *NewBatchRequestsBuilder().AddRead(fields.Key("qwerty")))
 			},
-			false,
+			wantErr: true,
+		},
+		{
+			name:    "batch invalid request",
+			build:   func() (frame.Frame, error) { return fb.NewBatch(1, *NewBatchRequestsBuilder().AddRead(fields.Key(""))) },
+			wantErr: true,
+		},
+		{
+			name: "batch",
+			build: func() (frame.Frame, error) {
+				return fb.NewBatch(1, *NewBatchRequestsBuilder().OneAnswer(true).AddRead(fields.Key("qwerty")))
+			},
+			want: frame.Frame{RequestID: 1, Body: bodies.Batch{
+				IsOneAnswer: true,
+				Requests:    []bodies.Request{{Number: 0, Body: bodies.Read("qwerty")}},
+			}},
+		},
+		{
+			name:    "batch answer zero request id and no results",
+			build:   func() (frame.Frame, error) { return fb.NewBatchAnswer(0, *NewBatchResultsBuilder()) },
+			wantErr: true,
+		},
+		{
+			name:    "batch answer no results",
+			build:   func() (frame.Frame, error) { return fb.NewBatchAnswer(1, *NewBatchResultsBuilder()) },
+			wantErr: true,
+		},
+		{
+			name:    "batch answer zero request id",
+			build:   func() (frame.Frame, error) { return fb.NewBatchAnswer(0, *NewBatchResultsBuilder().AddWrite(0)) },
+			wantErr: true,
+		},
+		{
+			name: "batch answer invalid result",
+			build: func() (frame.Frame, error) {
+				return fb.NewBatchAnswer(1, *NewBatchResultsBuilder().AddRead(1, values.JSON("qwerty")))
+			},
+			wantErr: true,
+		},
+		{
+			name: "batch answer",
+			build: func() (frame.Frame, error) {
+				return fb.NewBatchAnswer(1, *NewBatchResultsBuilder().AddRead(1, values.Int(123)))
+			},
+			want: frame.Frame{RequestID: 1, Body: bodies.BatchAnswer{{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}}}},
 		},
 	}
 
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_Ping %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewPing(tt.r)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_Read(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		r       fields.RequestID
-		k       fields.Key
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			0,
-			fields.Key(""),
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.Read(""),
-			},
-			true,
-		},
-		{
-			0,
-			fields.Key("key"),
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.Read("key"),
-			},
-			true,
-		},
-		{
-			1,
-			fields.Key(""),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Read(""),
-			},
-			true,
-		},
-		{
-			1,
-			fields.Key("key"),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Read("key"),
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_Read %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewRead(tt.r, tt.k)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_Delete(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		r       fields.RequestID
-		k       fields.Key
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			0,
-			fields.Key(""),
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.Delete(""),
-			},
-			true,
-		},
-		{
-			0,
-			fields.Key("key"),
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.Delete("key"),
-			},
-			true,
-		},
-		{
-			1,
-			fields.Key(""),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Delete(""),
-			},
-			true,
-		},
-		{
-			1,
-			fields.Key("key"),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Delete("key"),
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_Delete %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewDelete(tt.r, tt.k)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_Write(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		r       fields.RequestID
-		k       fields.Key
-		v       value.V
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			0,
-			fields.Key(""),
-			nil,
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.Write{},
-			},
-			true,
-		},
-		{
-			1,
-			fields.Key(""),
-			nil,
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Write{},
-			},
-			true,
-		},
-		{
-			1,
-			fields.Key("key"),
-			nil,
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Write{Key: fields.Key("key")},
-			},
-			true,
-		},
-		{
-			1,
-			fields.Key("key"),
-			values.JSON("-"),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Write{Key: fields.Key("key"), Value: values.JSON("-")},
-			},
-			true,
-		},
-		{
-			1,
-			fields.Key("key"),
-			values.Int(3),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Write{Key: fields.Key("key"), Value: values.Int(3)},
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_Write %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewWrite(tt.r, tt.k, tt.v)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_Handshake(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		l       string
-		h       [32]byte
-		c       []fields.Compression
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			"",
-			[32]byte{},
-			nil,
-			frame.Frame{
-				Body: bodies.Handshake{},
-			},
-			false,
-		},
-		{
-			"user",
-			[32]byte{},
-			nil,
-			frame.Frame{
-				Body: bodies.Handshake{Login: "user"},
-			},
-			false,
-		},
-		{
-			"user",
-			[32]byte{},
-			nil,
-			frame.Frame{
-				Body: bodies.Handshake{Login: "user"},
-			},
-			false,
-		},
-		{
-			"",
-			[32]byte{},
-			slices.Repeat([]fields.Compression{fields.Zstd}, int(bodies.MaxCompressionsPerOneHandshake)+1),
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.Handshake{Compressions: []fields.Compression{fields.Zstd}},
-			},
-			false,
-		},
-		{
-			"",
-			[32]byte{},
-			slices.Repeat([]fields.Compression{fields.Zstd}, int(bodies.MaxCompressionsPerOneHandshake)+1),
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.Handshake{Compressions: []fields.Compression{fields.Zstd}},
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_Handshake %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewHandshake(tt.l, tt.h, tt.c)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_WriteAnswer(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		r       fields.RequestID
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			0,
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.WriteAnswer{},
-			},
-			true,
-		},
-		{
-			1,
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.WriteAnswer{},
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_WriteAnswer %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewWriteAnswer(tt.r)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_DeleteAnswer(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		r       fields.RequestID
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			0,
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.DeleteAnswer{},
-			},
-			true,
-		},
-		{
-			1,
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.DeleteAnswer{},
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_DeleteAnswer %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewDeleteAnswer(tt.r)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_PingAnswer(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		r       fields.RequestID
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			0,
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.PingAnswer{},
-			},
-			true,
-		},
-		{
-			1,
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.PingAnswer{},
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_PingAnswer %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewPingAnswer(tt.r)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_ReadAnswer(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		r       fields.RequestID
-		v       value.V
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			0,
-			nil,
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.ReadAnswer{},
-			},
-			true,
-		},
-		{
-			1,
-			nil,
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.ReadAnswer{},
-			},
-			true,
-		},
-		{
-			1,
-			values.JSON("-"),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.ReadAnswer{Value: values.JSON("-")},
-			},
-			true,
-		},
-		{
-			1,
-			values.Int(3),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.ReadAnswer{Value: values.Int(3)},
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_ReadAnswer %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewReadAnswer(tt.r, tt.v)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_HandshakeAnswer(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		c       []fields.Compression
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			nil,
-			frame.Frame{
-				Body: bodies.HandshakeAnswer{},
-			},
-			false,
-		},
-		{
-			slices.Repeat([]fields.Compression{fields.Zstd}, int(bodies.MaxCompressionsPerOneHandshake)+1),
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.HandshakeAnswer{Compressions: []fields.Compression{fields.Zstd}},
-			},
-			false,
-		},
-		{
-			slices.Repeat([]fields.Compression{fields.Zstd}, int(bodies.MaxCompressionsPerOneHandshake)-1),
-			frame.Frame{
-				RequestID: 0,
-				Body:      bodies.HandshakeAnswer{Compressions: []fields.Compression{fields.Zstd}},
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_HandshakeAnswer %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewHandshakeAnswer(tt.c)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_ErrorAnswer(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		r       fields.RequestID
-		e       err.ProtocolError
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			0,
-			nil,
-			frame.Frame{
-				Body: bodies.ErrorAnswer{},
-			},
-			true,
-		},
-		{
-			1,
-			nil,
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.ErrorAnswer{},
-			},
-			true,
-		},
-		{
-			0,
-			errs.NewErrorInternalErrorWithTracebackID(nil, fields.TracebackID{}),
-			frame.Frame{
-				Body: bodies.ErrorAnswer{Err: errs.NewErrorInternalErrorWithTracebackID(nil, fields.TracebackID{})},
-			},
-			false,
-		},
-		{
-			1,
-			errs.NewErrorInternalErrorWithTracebackID(nil, fields.TracebackID{}),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.ErrorAnswer{Err: errs.NewErrorInternalErrorWithTracebackID(nil, fields.TracebackID{})},
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_ErrorAnswer %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewErrAnswer(tt.r, tt.e)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_Batch(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		r       fields.RequestID
-		b       *BatchRequestsBuilder
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			0,
-			NewBatchRequestsBuilder(),
-			frame.Frame{
-				Body: bodies.Batch{},
-			},
-			true,
-		},
-		{
-			1,
-			NewBatchRequestsBuilder(),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Batch{},
-			},
-			true,
-		},
-		{
-			0,
-			NewBatchRequestsBuilder().
-				AddRead(fields.Key("qwerty")),
-			frame.Frame{
-				Body: bodies.Batch{Requests: []bodies.Request{{Number: fields.RequestNumber(0), Body: bodies.Read("qwerty")}}},
-			},
-			true,
-		},
-		{
-			1,
-			NewBatchRequestsBuilder().
-				AddRead(fields.Key("")),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Batch{Requests: []bodies.Request{{Number: fields.RequestNumber(0), Body: bodies.Read("")}}},
-			},
-			true,
-		},
-		{
-			1,
-			NewBatchRequestsBuilder().
-				AddRead(fields.Key("qwerty")),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.Batch{Requests: []bodies.Request{{Number: fields.RequestNumber(0), Body: bodies.Read("qwerty")}}},
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_ErrorAnswer %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewBatch(tt.r, *tt.b)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
-	}
-}
-
-func TestFrameBuilder_AnswerBatch(t *testing.T) {
-	fb := NewFrameBuilder(1 << 10)
-
-	tests := []struct {
-		r       fields.RequestID
-		b       *BatchResultsBuilder
-		want    frame.Frame
-		wantErr bool
-	}{
-		{
-			0,
-			NewBatchResultsBuilder(),
-			frame.Frame{
-				Body: bodies.BatchAnswer{},
-			},
-			true,
-		},
-		{
-			1,
-			NewBatchResultsBuilder(),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.BatchAnswer{},
-			},
-			true,
-		},
-		{
-			0,
-			NewBatchResultsBuilder().
-				AddWrite(0),
-			frame.Frame{
-				Body: bodies.BatchAnswer{{Number: fields.RequestNumber(0), Body: bodies.WriteAnswer{}}},
-			},
-			true,
-		},
-		{
-			1,
-			NewBatchResultsBuilder().
-				AddRead(1, values.JSON("qwerty")),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.BatchAnswer{{Number: fields.RequestNumber(1), Body: bodies.ReadAnswer{Value: values.JSON("qwerty")}}},
-			},
-			true,
-		},
-		{
-			1,
-			NewBatchResultsBuilder().
-				AddRead(1, values.Int(123)),
-			frame.Frame{
-				RequestID: 1,
-				Body:      bodies.BatchAnswer{{Number: fields.RequestNumber(1), Body: bodies.ReadAnswer{Value: values.Int(123)}}},
-			},
-			false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrameBuilder_BatchAnswer %v", i),
-			func(t *testing.T) {
-				f, err := fb.NewBatchAnswer(tt.r, *tt.b)
-				if err == nil == tt.wantErr {
-					t.Fatalf("want err: %v, but got %v", tt.wantErr, err)
-					return
-				}
-
-				if tt.wantErr {
-					return
-				}
-
-				if f.RequestID != tt.want.RequestID {
-					t.Errorf("request ID: got %v, want %v", f.RequestID, tt.want.RequestID)
-				}
-
-				compareBodies(t, f.Body, tt.want.Body)
-			},
-		)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, e := tt.build()
+			testutil.AssertErr(t, e, tt.wantErr)
+
+			if tt.wantErr {
+				return
+			}
+
+			if got.RequestID != tt.want.RequestID {
+				t.Errorf("RequestID = %v, want %v", got.RequestID, tt.want.RequestID)
+			}
+
+			testutil.AssertSameEncoding(t, got.Body, tt.want.Body)
+		})
 	}
 }
 
 func TestFrameBuilder_LimitExceeded(t *testing.T) {
 	fb := NewFrameBuilder(1)
+	internalErr := errs.NewErrorInternalErrorWithTracebackID(nil, fields.TracebackID{})
 
-	t.Run(
-		"TestFrameBuilder_LimitExceeded",
-		func(t *testing.T) {
-			_, err := fb.NewPingAnswer(1)
-			if err == nil {
-				t.Fatal("didn't gtt err")
-				return
+	tests := []struct {
+		name  string
+		build func() (frame.Frame, error)
+	}{
+		{"handshake", func() (frame.Frame, error) { return fb.NewHandshake("", [32]byte{}, nil) }},
+		{"handshake answer", func() (frame.Frame, error) { return fb.NewHandshakeAnswer(nil) }},
+		{"ping", func() (frame.Frame, error) { return fb.NewPing(1) }},
+		{"ping answer", func() (frame.Frame, error) { return fb.NewPingAnswer(1) }},
+		{"read", func() (frame.Frame, error) { return fb.NewRead(1, fields.Key("key")) }},
+		{"read answer", func() (frame.Frame, error) { return fb.NewReadAnswer(1, values.Int(1)) }},
+		{"write", func() (frame.Frame, error) { return fb.NewWrite(1, fields.Key("key"), values.Int(1)) }},
+		{"write answer", func() (frame.Frame, error) { return fb.NewWriteAnswer(1) }},
+		{"delete", func() (frame.Frame, error) { return fb.NewDelete(1, fields.Key("key")) }},
+		{"delete answer", func() (frame.Frame, error) { return fb.NewDeleteAnswer(1) }},
+		{"error answer", func() (frame.Frame, error) { return fb.NewErrAnswer(1, internalErr) }},
+		{"batch", func() (frame.Frame, error) {
+			return fb.NewBatch(1, *NewBatchRequestsBuilder().AddRead(fields.Key("key")))
+		}},
+		{"batch answer", func() (frame.Frame, error) { return fb.NewBatchAnswer(1, *NewBatchResultsBuilder().AddWrite(0)) }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, e := tt.build(); e == nil {
+				t.Error("got nil err, want frame size error")
 			}
-		},
-	)
+		})
+	}
+}
+
+func TestFrameBuilder_BatchIsCopied(t *testing.T) {
+	fb := NewFrameBuilder(1 << 10)
+	b := NewBatchRequestsBuilder().AddRead(fields.Key("key"))
+
+	f, e := fb.NewBatch(1, *b)
+	if e != nil {
+		t.Fatalf("NewBatch() = %v", e)
+	}
+
+	b.requests[0].Body = bodies.Read("changed")
+
+	testutil.AssertSameEncoding(t, f.Body, bodies.Batch{Requests: []bodies.Request{{Number: 0, Body: bodies.Read("key")}}})
 }

@@ -1,166 +1,29 @@
 package errs
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
-func TestUnsupportedVersion_Size(t *testing.T) {
+func TestErrorUnsupportedVersion(t *testing.T) {
 	tests := []struct {
-		e    ErrorUnsupportedVersion
-		want int
+		name    string
+		got     fields.Version
+		id      fields.TracebackID
+		want    []byte
+		wantErr bool
 	}{
-		{ErrorUnsupportedVersion{0, generateNewTracebackID()}, 18},
-		{ErrorUnsupportedVersion{1, generateNewTracebackID()}, 18},
-		{ErrorUnsupportedVersion{255, generateNewTracebackID()}, 18},
-		{ErrorUnsupportedVersion{}, 18},
+		{"zero version", 0, tracebackIDOne, encoded(1, tracebackIDOne), false},
+		{"current version", 1, tracebackIDOne, encoded(1, tracebackIDOne), false},
+		{"max one-byte version", 255, tracebackIDMax, encoded(1, tracebackIDMax), false},
+		{"zero value", 0, fields.TracebackID{}, encoded(1, fields.TracebackID{}), false},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestUnsupportedVersion_Code(t *testing.T) {
-	tests := []struct {
-		e    ErrorUnsupportedVersion
-		want fields.Error
-	}{
-		{ErrorUnsupportedVersion{0, generateNewTracebackID()}, fields.UnsupportedVersion},
-		{ErrorUnsupportedVersion{1, generateNewTracebackID()}, fields.UnsupportedVersion},
-		{ErrorUnsupportedVersion{255, generateNewTracebackID()}, fields.UnsupportedVersion},
-		{ErrorUnsupportedVersion{}, fields.UnsupportedVersion},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Code: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Code(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestUnsupportedVersion_TracebackID(t *testing.T) {
-	tests := []struct {
-		e    ErrorUnsupportedVersion
-		want [16]byte
-	}{
-		{
-			ErrorUnsupportedVersion{0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorUnsupportedVersion{1, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
-		},
-		{
-			ErrorUnsupportedVersion{255, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03},
-		},
-		{
-			ErrorUnsupportedVersion{},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test TracebackID: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.TracebackID(); !bytes.Equal(got[:], tt.want[:]) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestUnsupportedVersion_IsValid(t *testing.T) {
-	tests := []struct {
-		e    ErrorUnsupportedVersion
-		want bool
-	}{
-		{
-			ErrorUnsupportedVersion{0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			false,
-		},
-		{
-			ErrorUnsupportedVersion{1, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			false,
-		},
-		{
-			ErrorUnsupportedVersion{255, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			false,
-		},
-		{
-			ErrorUnsupportedVersion{},
-			false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test IsValid: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestUnsupportedVersion_Encode(t *testing.T) {
-	tests := []struct {
-		e    ErrorUnsupportedVersion
-		want []byte
-	}{
-		{
-			ErrorUnsupportedVersion{0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[]byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorUnsupportedVersion{1, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[]byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
-		},
-		{
-			ErrorUnsupportedVersion{255, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[]byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03},
-		},
-		{
-			ErrorUnsupportedVersion{},
-			[]byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.e.Size())
-
-				tt.e.Encode(&buf)
-
-				if got := buf.Bytes(); !bytes.Equal(got, tt.want) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			e := NewErrorUnsupportedVersionWithTracebackID(tt.got, tt.id)
+			assertProtocolError(t, e, fields.UnsupportedVersion, tt.id, tt.want, tt.wantErr)
+		})
 	}
 }

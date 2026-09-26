@@ -1,209 +1,37 @@
 package errs
 
 import (
-	"bytes"
-	"fmt"
 	"math"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
-func TestRestrictedRequest_Size(t *testing.T) {
+func TestErrorRestrictedRequest(t *testing.T) {
 	tests := []struct {
-		e    ErrorRestrictedRequest
-		want int
+		name      string
+		userID    fields.Key
+		source    fields.Key
+		key       fields.Key
+		command   fields.Command
+		requestID fields.RequestID
+		id        fields.TracebackID
+		want      []byte
+		wantErr   bool
 	}{
-		{ErrorRestrictedRequest{nil, nil, nil, fields.Handshake, 0, generateNewTracebackID()}, 18},
-		{ErrorRestrictedRequest{[]byte{}, nil, nil, fields.Answer, 0, generateNewTracebackID()}, 18},
-		{ErrorRestrictedRequest{nil, []byte{}, nil, fields.Read, 0, generateNewTracebackID()}, 18},
-		{ErrorRestrictedRequest{nil, nil, []byte{}, fields.Write, 0, generateNewTracebackID()}, 18},
-		{ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, 1, generateNewTracebackID()}, 18},
-		{ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, math.MaxUint32, generateNewTracebackID()}, 18},
-		{ErrorRestrictedRequest{}, 18},
+		{"nil keys", nil, nil, nil, fields.Handshake, 0, tracebackIDOne, encoded(17, tracebackIDOne), false},
+		{"empty id", fields.Key{}, nil, nil, fields.Answer, 0, tracebackIDOne, encoded(17, tracebackIDOne), false},
+		{"empty source", nil, fields.Key{}, nil, fields.Read, 0, tracebackIDOne, encoded(17, tracebackIDOne), false},
+		{"empty key", nil, nil, fields.Key{}, fields.Write, 0, tracebackIDOne, encoded(17, tracebackIDOne), false},
+		{"full request", fields.Key("user"), fields.Key("192.168.1.1"), fields.Key("key"), fields.Delete, 1, tracebackIDOne, encoded(17, tracebackIDOne), false},
+		{"max request id", fields.Key("user"), fields.Key("192.168.1.1"), fields.Key("key"), fields.Delete, math.MaxUint32, tracebackIDMax, encoded(17, tracebackIDMax), false},
+		{"zero value", nil, nil, nil, fields.Handshake, 0, fields.TracebackID{}, encoded(17, fields.TracebackID{}), false},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestRestrictedRequest_Code(t *testing.T) {
-	tests := []struct {
-		e    ErrorRestrictedRequest
-		want fields.Error
-	}{
-		{ErrorRestrictedRequest{nil, nil, nil, fields.Handshake, 0, generateNewTracebackID()}, fields.RestrictedRequest},
-		{ErrorRestrictedRequest{[]byte{}, nil, nil, fields.Answer, 0, generateNewTracebackID()}, fields.RestrictedRequest},
-		{ErrorRestrictedRequest{nil, []byte{}, nil, fields.Read, 0, generateNewTracebackID()}, fields.RestrictedRequest},
-		{ErrorRestrictedRequest{nil, nil, []byte{}, fields.Write, 0, generateNewTracebackID()}, fields.RestrictedRequest},
-		{ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, 1, generateNewTracebackID()}, fields.RestrictedRequest},
-		{ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, math.MaxUint32, generateNewTracebackID()}, fields.RestrictedRequest},
-		{ErrorRestrictedRequest{}, fields.RestrictedRequest},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Code: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Code(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestRestrictedRequest_TracebackID(t *testing.T) {
-	tests := []struct {
-		e    ErrorRestrictedRequest
-		want [16]byte
-	}{
-		{
-			ErrorRestrictedRequest{nil, nil, nil, fields.Handshake, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorRestrictedRequest{[]byte{}, nil, nil, fields.Answer, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
-		},
-		{
-			ErrorRestrictedRequest{nil, []byte{}, nil, fields.Read, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03},
-		},
-		{
-			ErrorRestrictedRequest{nil, nil, []byte{}, fields.Write, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04},
-		},
-		{
-			ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, 1, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05},
-		},
-		{
-			ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, math.MaxUint32, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06},
-		},
-		{
-			ErrorRestrictedRequest{},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test TracebackID: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.TracebackID(); !bytes.Equal(got[:], tt.want[:]) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestRestrictedRequest_IsValid(t *testing.T) {
-	tests := []struct {
-		e    ErrorRestrictedRequest
-		want bool
-	}{
-		{
-			ErrorRestrictedRequest{nil, nil, nil, fields.Handshake, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			false,
-		},
-		{
-			ErrorRestrictedRequest{[]byte{}, nil, nil, fields.Answer, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			false,
-		},
-		{
-			ErrorRestrictedRequest{nil, []byte{}, nil, fields.Read, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			false,
-		},
-		{
-			ErrorRestrictedRequest{nil, nil, []byte{}, fields.Write, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04})},
-			false,
-		},
-		{
-			ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, 1, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05})},
-			false,
-		},
-		{
-			ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, math.MaxUint32, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06})},
-			false,
-		},
-		{
-			ErrorRestrictedRequest{},
-			false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test IsValid: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestRestrictedRequest_Encode(t *testing.T) {
-	tests := []struct {
-		e    ErrorRestrictedRequest
-		want []byte
-	}{
-		{
-			ErrorRestrictedRequest{nil, nil, nil, fields.Handshake, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[]byte{0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorRestrictedRequest{[]byte{}, nil, nil, fields.Answer, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[]byte{0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
-		},
-		{
-			ErrorRestrictedRequest{nil, []byte{}, nil, fields.Read, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[]byte{0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03},
-		},
-		{
-			ErrorRestrictedRequest{nil, nil, []byte{}, fields.Write, 0, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04})},
-			[]byte{0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04},
-		},
-		{
-			ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, 1, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05})},
-			[]byte{0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05},
-		},
-		{
-			ErrorRestrictedRequest{[]byte("user"), []byte("192.168.1.1"), []byte("key"), fields.Delete, math.MaxUint32, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06})},
-			[]byte{0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06},
-		},
-		{
-			ErrorRestrictedRequest{},
-			[]byte{0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.e.Size())
-
-				tt.e.Encode(&buf)
-
-				if got := buf.Bytes(); !bytes.Equal(got, tt.want) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			e := NewErrorRestrictedRequestWithTracebackID(tt.userID, tt.source, tt.key, tt.command, tt.requestID, tt.id)
+			assertProtocolError(t, e, fields.RestrictedRequest, tt.id, tt.want, tt.wantErr)
+		})
 	}
 }

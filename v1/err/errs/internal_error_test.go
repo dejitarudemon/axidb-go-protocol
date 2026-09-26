@@ -1,175 +1,51 @@
 package errs
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
-func TestInternalError_Size(t *testing.T) {
+func TestErrorInternalError(t *testing.T) {
 	tests := []struct {
-		e    ErrorInternalError
-		want int
+		name    string
+		err     error
+		id      fields.TracebackID
+		want    []byte
+		wantErr bool
 	}{
-		{ErrorInternalError{nil, generateNewTracebackID()}, 18},
-		{ErrorInternalError{errors.New(""), generateNewTracebackID()}, 18},
-		{ErrorInternalError{errors.New("some-error"), generateNewTracebackID()}, 18},
-		{ErrorInternalError{}, 18},
+		{"nil source", nil, tracebackIDOne, encoded(8, tracebackIDOne), true},
+		{"empty source", errors.New(""), tracebackIDOne, encoded(8, tracebackIDOne), false},
+		{"source", errors.New("some-error"), tracebackIDMax, encoded(8, tracebackIDMax), false},
+		{"protocol error source", NewErrorUnsupportedCommand(fields.Command(10)), tracebackIDOne, encoded(8, tracebackIDOne), true},
+		{"invalid protocol error source", NewErrorUnsupportedCommand(fields.Read), tracebackIDOne, encoded(8, tracebackIDOne), true},
+		{"zero value", nil, fields.TracebackID{}, encoded(8, fields.TracebackID{}), true},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			e := NewErrorInternalErrorWithTracebackID(tt.err, tt.id)
+			assertProtocolError(t, e, fields.InternalError, tt.id, tt.want, tt.wantErr)
+		})
 	}
 }
 
-func TestInternalError_Command(t *testing.T) {
+func TestErrorInternalError_Unwrap(t *testing.T) {
 	tests := []struct {
-		e    ErrorInternalError
-		want fields.Error
+		name string
+		err  error
 	}{
-		{ErrorInternalError{nil, generateNewTracebackID()}, fields.InternalError},
-		{ErrorInternalError{errors.New(""), generateNewTracebackID()}, fields.InternalError},
-		{ErrorInternalError{errors.New("some-error"), generateNewTracebackID()}, fields.InternalError},
-		{ErrorInternalError{}, fields.InternalError},
+		{"nil source", nil},
+		{"source", errors.New("some-error")},
+		{"protocol error source", NewErrorUnsupportedCommand(fields.Command(10))},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Command: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.Code(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestInternalError_TracebackID(t *testing.T) {
-	tests := []struct {
-		e    ErrorInternalError
-		want [16]byte
-	}{
-		{
-			ErrorInternalError{nil, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorInternalError{errors.New(""), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
-		},
-		{
-			ErrorInternalError{errors.New("some-error"), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03},
-		},
-		{
-			ErrorInternalError{},
-			[16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test TracebackID: %v", tt),
-			func(t *testing.T) {
-				if got := tt.e.TracebackID(); !bytes.Equal(got[:], tt.want[:]) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestInternalError_IsValid(t *testing.T) {
-	tests := []struct {
-		e    ErrorInternalError
-		want bool
-	}{
-		{
-			ErrorInternalError{nil, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			true,
-		},
-		{
-			ErrorInternalError{errors.New(""), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			false,
-		},
-		{
-			ErrorInternalError{errors.New("some-error"), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			false,
-		},
-		{
-			ErrorInternalError{},
-			true,
-		},
-		{
-			ErrorInternalError{NewErrorUnsupportedCommand(fields.Command(10)), generateNewTracebackID()},
-			true,
-		},
-		{
-			ErrorInternalError{NewErrorUnsupportedCommand(fields.Read), generateNewTracebackID()},
-			true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test IsValid: %v", tt.e),
-			func(t *testing.T) {
-				if got := tt.e.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestInternalError_Encode(t *testing.T) {
-	tests := []struct {
-		e    ErrorInternalError
-		want []byte
-	}{
-		{
-			ErrorInternalError{nil, fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-			[]byte{0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-		},
-		{
-			ErrorInternalError{errors.New(""), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})},
-			[]byte{0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
-		},
-		{
-			ErrorInternalError{errors.New("some-error"), fields.TracebackID([16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})},
-			[]byte{0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03},
-		},
-		{
-			ErrorInternalError{},
-			[]byte{0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("Test Size: %v", tt),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.e.Size())
-
-				tt.e.Encode(&buf)
-
-				if got := buf.Bytes(); !bytes.Equal(got, tt.want) {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewErrorInternalErrorWithTracebackID(tt.err, tracebackIDOne).Unwrap(); got != tt.err {
+				t.Errorf("Unwrap() = %v, want %v", got, tt.err)
+			}
+		})
 	}
 }

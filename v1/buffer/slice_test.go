@@ -2,352 +2,274 @@ package buffer
 
 import (
 	"bytes"
-	"fmt"
 	"math"
 	"testing"
 )
 
 func TestSlice_Preallocate(t *testing.T) {
-	tests := []*struct {
+	tests := []struct {
+		name string
+		size int
 		want int
 	}{
-		{0},
-		{1},
-		{1 << 10},
+		{"zero", 0, 0},
+		{"one byte", 1, 1},
+		{"one kilobyte", 1 << 10, 1 << 10},
 	}
 
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSlice_Preallocate_%v", i),
-			func(t *testing.T) {
-				slice := Slice{}
-				slice.Preallocate(tt.want)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := Slice{}
+			s.Preallocate(tt.size)
 
-				if cap(slice.data) != tt.want {
-					t.Errorf("preallocate failure: got %v cap want %v", cap(slice.data), tt.want)
-				}
-			},
-		)
+			if got := cap(s.data); got != tt.want {
+				t.Errorf("cap = %v, want %v", got, tt.want)
+			}
+
+			if got := len(s.data); got != 0 {
+				t.Errorf("len = %v, want 0", got)
+			}
+		})
 	}
 }
 
 func TestSlice_PreallocateAfterPreallocate(t *testing.T) {
-	tests := []*struct {
+	tests := []struct {
+		name   string
 		first  int
 		second int
 		want   int
 	}{
-		{0, 1, 1},
-		{1, 0, 1},
-		{1 << 10, 1 << 11, 1 << 11},
-		{1 << 11, 1 << 10, 1 << 11},
-		{1, 1, 1},
+		{"grow from zero", 0, 1, 1},
+		{"shrink to zero", 1, 0, 1},
+		{"grow", 1 << 10, 1 << 11, 1 << 11},
+		{"shrink", 1 << 11, 1 << 10, 1 << 11},
+		{"same size", 1, 1, 1},
 	}
 
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSlice_PreallocateAfterPreallocate_%v", i),
-			func(t *testing.T) {
-				slice := Slice{}
-				slice.Preallocate(tt.first)
-				slice.Preallocate(tt.second)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := Slice{}
+			s.Preallocate(tt.first)
+			s.Preallocate(tt.second)
 
-				if cap(slice.data) != tt.want {
-					t.Errorf("preallocate failure: got %v cap want %v", cap(slice.data), tt.want)
-				}
-			},
-		)
+			if got := cap(s.data); got != tt.want {
+				t.Errorf("cap = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
-func TestSlice_Clean(t *testing.T) {
+func TestSlice_PreallocateAfterAppend(t *testing.T) {
 	tests := []struct {
-		s *Slice
+		name    string
+		data    []byte
+		size    int
+		want    []byte
+		wantCap int
 	}{
-		{&Slice{data: []byte{0x01}}},
-		{&Slice{data: bytes.Repeat([]byte{0xFF}, 1024)}},
+		{"fits in capacity", []byte{0x01, 0x02}, 1, []byte{0x01, 0x02}, 2},
+		{"exceeds capacity", []byte{0x01, 0x02}, 1 << 10, []byte{}, 1 << 10},
 	}
 
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSlice_Clean_%v", i),
-			func(t *testing.T) {
-				tt.s.Clean()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := Slice{}
+			s.Preallocate(len(tt.data))
+			s.Append(tt.data)
+			s.Preallocate(tt.size)
 
-				if cap(tt.s.data) == 0 {
-					t.Errorf("clean failure: cap is 0")
-				}
+			if got := s.Bytes(); !bytes.Equal(got, tt.want) {
+				t.Errorf("Bytes() = % X, want % X", got, tt.want)
+			}
 
-				if len(tt.s.data) != 0 {
-					t.Errorf("clean failure: len is %v", len(tt.s.data))
-				}
-			},
-		)
-	}
-}
-
-func TestSlice_Append(t *testing.T) {
-	tests := []struct {
-		want     []byte
-		allocate bool
-	}{
-		{[]byte{}, false},
-		{[]byte{0x01}, false},
-		{bytes.Repeat([]byte{0xFF}, 1024), false},
-
-		{[]byte{}, true},
-		{[]byte{0x01}, true},
-		{bytes.Repeat([]byte{0xFF}, 1024), true},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSlice_Append_%v", i),
-			func(t *testing.T) {
-				slice := Slice{}
-
-				if tt.allocate {
-					slice.Preallocate(len(tt.want))
-				}
-
-				slice.Append(tt.want)
-
-				if len(slice.data) != len(tt.want) {
-					t.Errorf("append failure: len is %v, want %v", len(slice.data), len(tt.want))
-				}
-			},
-		)
-	}
-}
-
-func TestSlice_AppendString(t *testing.T) {
-	tests := []struct {
-		want     string
-		allocate bool
-	}{
-		{"", false},
-		{"a", false},
-		{"hello world", false},
-		{"хуйлоу ворлд", false},
-
-		{"", true},
-		{"a", true},
-		{"hello world", true},
-		{"хуйлоу ворлд", true},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSlice_AppendString_%v", i),
-			func(t *testing.T) {
-				slice := Slice{}
-
-				if tt.allocate {
-					slice.Preallocate(len(tt.want))
-				}
-
-				slice.AppendString(tt.want)
-
-				if len(slice.data) != len(tt.want) {
-					t.Errorf("append string failure: len is %v, want %v", len(slice.data), len(tt.want))
-				}
-			},
-		)
-	}
-}
-
-func TestSlice_AppendUint8(t *testing.T) {
-	tests := []struct {
-		want     uint8
-		allocate bool
-	}{
-		{0, false},
-		{1, false},
-		{255, false},
-
-		{0, true},
-		{1, true},
-		{255, true},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSlice_AppendUint8_%v", i),
-			func(t *testing.T) {
-				slice := Slice{}
-
-				if tt.allocate {
-					slice.Preallocate(1)
-				}
-
-				slice.AppendUint8(tt.want)
-
-				if len(slice.data) != 1 {
-					t.Errorf("append uint8 failure: len is %v, want 1", len(slice.data))
-				}
-			},
-		)
-	}
-}
-
-func TestSlice_AppendUint16(t *testing.T) {
-	tests := []struct {
-		want     uint16
-		allocate bool
-	}{
-		{0, false},
-		{1, false},
-		{math.MaxUint16, false},
-
-		{0, true},
-		{1, true},
-		{math.MaxUint16, true},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSlice_AppendUint16_%v", i),
-			func(t *testing.T) {
-				slice := Slice{}
-
-				if tt.allocate {
-					slice.Preallocate(2)
-				}
-
-				slice.AppendUint16(tt.want)
-
-				if len(slice.data) != 2 {
-					t.Errorf("append uint16 failure: len is %v, want 2", len(slice.data))
-				}
-			},
-		)
-	}
-}
-
-func TestSlice_AppendUint32(t *testing.T) {
-	tests := []struct {
-		want     uint32
-		allocate bool
-	}{
-		{0, false},
-		{1, false},
-		{math.MaxUint32, false},
-
-		{0, true},
-		{1, true},
-		{math.MaxUint32, true},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSlice_AppendUint32_%v", i),
-			func(t *testing.T) {
-				slice := Slice{}
-
-				if tt.allocate {
-					slice.Preallocate(4)
-				}
-
-				slice.AppendUint32(tt.want)
-
-				if len(slice.data) != 4 {
-					t.Errorf("append uint32 failure: len is %v, want 4", len(slice.data))
-				}
-			},
-		)
-	}
-}
-
-func TestSlice_AppendUint64(t *testing.T) {
-	tests := []struct {
-		want     uint64
-		allocate bool
-	}{
-		{0, false},
-		{1, false},
-		{math.MaxUint64, false},
-
-		{0, true},
-		{1, true},
-		{math.MaxUint64, true},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSlice_AppendUint64_%v", i),
-			func(t *testing.T) {
-				slice := Slice{}
-
-				if tt.allocate {
-					slice.Preallocate(8)
-				}
-
-				slice.AppendUint64(tt.want)
-
-				if len(slice.data) != 8 {
-					t.Errorf("append uint32 failure: len is %v, want 8", len(slice.data))
-				}
-			},
-		)
-	}
-}
-
-func TestSlice_Bytes(t *testing.T) {
-	tests := []struct {
-		want     []byte
-		allocate bool
-	}{
-		{[]byte{}, false},
-		{[]byte{0x01}, false},
-		{bytes.Repeat([]byte{0xFF}, 1024), false},
-
-		{[]byte{}, true},
-		{[]byte{0x01}, true},
-		{bytes.Repeat([]byte{0xFF}, 1024), true},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSlice_Bytes_%v", i),
-			func(t *testing.T) {
-				slice := Slice{}
-
-				if tt.allocate {
-					slice.Preallocate(len(tt.want))
-				}
-
-				slice.Append(tt.want)
-
-				if len(slice.Bytes()) != len(tt.want) {
-					t.Errorf("bytes() failure: len is %v, want %v", len(slice.Bytes()), len(tt.want))
-				}
-			},
-		)
+			if got := cap(s.data); got != tt.wantCap {
+				t.Errorf("cap = %v, want %v", got, tt.wantCap)
+			}
+		})
 	}
 }
 
 func TestSlice_PreallocateOvercrowded(t *testing.T) {
 	tests := []struct {
+		name string
+		data []byte
 		want []byte
 	}{
-		{[]byte{0x01}},
-		{bytes.Repeat([]byte{0xFF}, 1024)},
+		{"one byte", []byte{0x01}, []byte{0x01, 0x01}},
+		{"one kilobyte", bytes.Repeat([]byte{0xFF}, 1<<10), bytes.Repeat([]byte{0xFF}, 1<<11)},
 	}
 
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestSlice_PreallocateOvercrowded_%v", i),
-			func(t *testing.T) {
-				slice := Slice{}
-				slice.Preallocate(len(tt.want))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := Slice{}
+			s.Preallocate(len(tt.data))
+			s.Append(tt.data)
+			s.Append(tt.data)
 
-				slice.Append(tt.want)
-				slice.Append(tt.want)
+			if got := s.Bytes(); !bytes.Equal(got, tt.want) {
+				t.Errorf("Bytes() = % X, want % X", got, tt.want)
+			}
+		})
+	}
+}
 
-				if len(slice.Bytes()) != len(tt.want)*2 {
-					t.Errorf("preallocate overcrowded failure: len is %v, want %v", len(slice.Bytes()), len(tt.want)*2)
-				}
+func TestSlice_Clean(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+	}{
+		{"empty", []byte{}},
+		{"one byte", []byte{0x01}},
+		{"one kilobyte", bytes.Repeat([]byte{0xFF}, 1<<10)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := Slice{data: bytes.Clone(tt.data)}
+			wantCap := cap(s.data)
+			s.Clean()
+
+			if got := s.Bytes(); len(got) != 0 {
+				t.Errorf("Bytes() = % X, want empty", got)
+			}
+
+			if got := cap(s.data); got != wantCap {
+				t.Errorf("cap = %v, want %v", got, wantCap)
+			}
+
+			s.AppendUint8(0xAB)
+			if got, want := s.Bytes(), []byte{0xAB}; !bytes.Equal(got, want) {
+				t.Errorf("Bytes() after append = % X, want % X", got, want)
+			}
+		})
+	}
+}
+
+func TestSlice_Append(t *testing.T) {
+	tests := []struct {
+		name   string
+		append func(*Slice)
+		want   []byte
+	}{
+		{"nothing", func(*Slice) {}, []byte{}},
+		{"nil bytes", func(s *Slice) { s.Append(nil) }, []byte{}},
+		{"empty bytes", func(s *Slice) { s.Append([]byte{}) }, []byte{}},
+		{"one byte", func(s *Slice) { s.Append([]byte{0x01}) }, []byte{0x01}},
+		{"one kilobyte", func(s *Slice) { s.Append(bytes.Repeat([]byte{0xFF}, 1<<10)) }, bytes.Repeat([]byte{0xFF}, 1<<10)},
+		{"empty string", func(s *Slice) { s.AppendString("") }, []byte{}},
+		{"ascii string", func(s *Slice) { s.AppendString("hello world") }, []byte{0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x77, 0x6F, 0x72, 0x6C, 0x64}},
+		{"utf-8 string", func(s *Slice) { s.AppendString("привет мир") }, []byte{0xD0, 0xBF, 0xD1, 0x80, 0xD0, 0xB8, 0xD0, 0xB2, 0xD0, 0xB5, 0xD1, 0x82, 0x20, 0xD0, 0xBC, 0xD0, 0xB8, 0xD1, 0x80}},
+		{"uint8 zero", func(s *Slice) { s.AppendUint8(0) }, []byte{0x00}},
+		{"uint8 one", func(s *Slice) { s.AppendUint8(1) }, []byte{0x01}},
+		{"uint8 max", func(s *Slice) { s.AppendUint8(math.MaxUint8) }, []byte{0xFF}},
+		{"uint16 zero", func(s *Slice) { s.AppendUint16(0) }, []byte{0x00, 0x00}},
+		{"uint16 one", func(s *Slice) { s.AppendUint16(1) }, []byte{0x00, 0x01}},
+		{"uint16 big-endian", func(s *Slice) { s.AppendUint16(0x0102) }, []byte{0x01, 0x02}},
+		{"uint16 max", func(s *Slice) { s.AppendUint16(math.MaxUint16) }, []byte{0xFF, 0xFF}},
+		{"uint32 zero", func(s *Slice) { s.AppendUint32(0) }, []byte{0x00, 0x00, 0x00, 0x00}},
+		{"uint32 one", func(s *Slice) { s.AppendUint32(1) }, []byte{0x00, 0x00, 0x00, 0x01}},
+		{"uint32 big-endian", func(s *Slice) { s.AppendUint32(0x01020304) }, []byte{0x01, 0x02, 0x03, 0x04}},
+		{"uint32 max", func(s *Slice) { s.AppendUint32(math.MaxUint32) }, []byte{0xFF, 0xFF, 0xFF, 0xFF}},
+		{"uint64 zero", func(s *Slice) { s.AppendUint64(0) }, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+		{"uint64 one", func(s *Slice) { s.AppendUint64(1) }, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}},
+		{"uint64 big-endian", func(s *Slice) { s.AppendUint64(0x0102030405060708) }, []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}},
+		{"uint64 max", func(s *Slice) { s.AppendUint64(math.MaxUint64) }, []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}},
+		{
+			"mixed sequence",
+			func(s *Slice) {
+				s.AppendUint8(0x01)
+				s.AppendUint16(0x0203)
+				s.AppendUint32(0x04050607)
+				s.AppendUint64(0x08090A0B0C0D0E0F)
+				s.AppendString("ab")
+				s.Append([]byte{0x10, 0x11})
 			},
-		)
+			[]byte{
+				0x01,
+				0x02, 0x03,
+				0x04, 0x05, 0x06, 0x07,
+				0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+				0x61, 0x62,
+				0x10, 0x11,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			allocations := []struct {
+				name string
+				size int
+			}{
+				{"without preallocate", -1},
+				{"with preallocate", len(tt.want)},
+			}
+
+			for _, a := range allocations {
+				t.Run(a.name, func(t *testing.T) {
+					s := Slice{}
+					if a.size >= 0 {
+						s.Preallocate(a.size)
+					}
+
+					tt.append(&s)
+
+					if got := s.Bytes(); !bytes.Equal(got, tt.want) {
+						t.Errorf("Bytes() = % X, want % X", got, tt.want)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestSlice_AppendCopiesInput(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+	}{
+		{"one byte", []byte{0x01}},
+		{"one kilobyte", bytes.Repeat([]byte{0xFF}, 1<<10)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := bytes.Clone(tt.data)
+			s := Slice{}
+			s.Append(in)
+			in[0] ^= 0xFF
+
+			if got := s.Bytes(); !bytes.Equal(got, tt.data) {
+				t.Errorf("Bytes() = % X, want % X", got, tt.data)
+			}
+		})
+	}
+}
+
+func TestSlice_BytesReturnsCopy(t *testing.T) {
+	tests := []struct {
+		name        string
+		data        []byte
+		preallocate int
+	}{
+		{"one byte", []byte{0x01}, 0},
+		{"one kilobyte", bytes.Repeat([]byte{0xFF}, 1<<10), 0},
+		{"spare capacity", []byte{0x01, 0x02}, 1 << 10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := Slice{}
+			s.Preallocate(tt.preallocate)
+			s.Append(tt.data)
+
+			got := s.Bytes()
+			got[0] ^= 0xFF
+
+			if again := s.Bytes(); !bytes.Equal(again, tt.data) {
+				t.Errorf("Bytes() after mutating previous result = % X, want % X", again, tt.data)
+			}
+		})
 	}
 }

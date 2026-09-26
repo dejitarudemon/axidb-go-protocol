@@ -4,15 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
-	"math"
-	"math/rand"
-	"slices"
-	"strings"
 	"testing"
+	"testing/iotest"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body/bodies"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor"
@@ -21,2124 +16,402 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/specs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
-var zstd, _ = compressors.NewZstd(1 << 12)
-var s2, _ = compressors.NewS2(1 << 12)
+var (
+	zstd, _ = compressors.NewZstd(1 << 12)
+	s2, _   = compressors.NewS2(1 << 12)
 
-var testsSpecs = []struct {
-	encoded []byte
-	decoded frame.Frame
+	testHash = [32]byte{0x01, 0x02, 0x03, 31: 0xFF}
+)
+
+var roundTripFrames = []struct {
+	name string
+	f    frame.Frame
 }{
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x2B, 0x00, 0x00, 0x00,
-			0x04, 0x75, 0x73, 0x65, 0x72, 0x01, 0x02, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x02,
-			0x7A, 0x39, 0x15, 0xBF},
-		decoded: frame.Frame{
-			RequestID: fields.RequestID(0),
-			Body: bodies.Handshake{
-				Login:        "user",
-				Hash:         [32]byte{0x01, 0x02},
-				Compressions: []fields.Compression{fields.Zstd, fields.S2},
-			},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x04, 0x01, 0x00, 0x01,
-			0x01, 0x1B, 0x08, 0x33, 0x19},
-		decoded: frame.Frame{
-			RequestID: fields.RequestID(0),
-			Body: bodies.HandshakeAnswer{
-				Compressions: []fields.Compression{fields.Zstd},
-			},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x02,
-			0x6B, 0xAE, 0x36, 0x80, 0x76, 0x95, 0x47, 0x42,
-			0x92, 0xAF, 0x0A, 0x6F, 0xEC, 0x33, 0x98, 0x25,
-			0x00, 0xF0, 0x8E, 0x28, 0x51},
-		decoded: frame.Frame{
-			RequestID: fields.RequestID(0),
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorUnexpectedCommandWithTracebackID(
-					fields.Batch,
-					fields.Handshake,
-					fields.TracebackID{0x6B, 0xAE, 0x36, 0x80, 0x76, 0x95, 0x47, 0x42, 0x92, 0xAF, 0xA, 0x6F, 0xEC, 0x33, 0x98, 0x25},
-				),
-			},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x02, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x08, 0x73, 0x6F, 0x6D,
-			0x65, 0x2D, 0x6B, 0x65, 0x79, 0xE1, 0x5A, 0x14,
-			0x00},
-		decoded: frame.Frame{
-			RequestID: fields.RequestID(1),
-			Body:      bodies.Read("some-key"),
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x10, 0x01, 0x02, 0x06,
-			0x00, 0x00, 0x00, 0x09, 0x73, 0x6F, 0x6D, 0x65,
-			0x2D, 0x64, 0x61, 0x74, 0x61, 0x5E, 0x79, 0xB8,
-			0x83},
-		decoded: frame.Frame{
-			RequestID: fields.RequestID(1),
-			Body:      bodies.ReadAnswer{Value: values.String("some-data")},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x10, 0x01, 0x02, 0x06,
-			0x00, 0x00, 0x00, 0x09, 0x73, 0x6F, 0x6D, 0x65,
-			0x2D, 0x64, 0x61, 0x74, 0x61, 0x5E, 0x79, 0xB8,
-			0x83},
-		decoded: frame.Frame{
-			RequestID: fields.RequestID(1),
-			Body:      bodies.ReadAnswer{Value: values.String("some-data")},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x0A,
-			0x00, 0x00, 0x00, 0x00, 0x29, 0x01, 0x02, 0x02,
-			0x00, 0x00, 0x00, 0x03, 0x03, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x01, 0x06, 0x00, 0x00,
-			0x00, 0x0B, 0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x20,
-			0x77, 0x6F, 0x72, 0x6C, 0x64, 0x05, 0x40, 0x00,
-			0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCD, 0x34, 0xE8,
-			0xE0, 0x75},
-		decoded: frame.Frame{
-			RequestID: fields.RequestID(10),
-			Body: bodies.ReadAnswer{Value: values.UntypedArray{
-				values.Int(1),
-				values.String("hello world"),
-				values.Float(2.1),
-			}},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x0A,
-			0xF1, 0x38, 0x9C, 0x1F, 0xA2, 0x2F, 0x40, 0x82,
-			0xA2, 0x79, 0xD2, 0x01, 0x7C, 0x60, 0xF8, 0x20,
-			0x88, 0xEE, 0xCC, 0xAA},
-		decoded: frame.Frame{
-			RequestID: fields.RequestID(1),
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorNotFoundWithTracebackID(
-					fields.Key("123"),
-					fields.TracebackID{0xF1, 0x38, 0x9C, 0x1F, 0xA2, 0x2F, 0x40, 0x82,
-						0xA2, 0x79, 0xD2, 0x01, 0x7C, 0x60, 0xF8, 0x20},
-				),
-			},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
-			0xA5, 0x18, 0xB2, 0xC1, 0xCC, 0x27, 0x49, 0x27,
-			0x94, 0x09, 0x6A, 0x10, 0x15, 0xDA, 0x67, 0xB1,
-			0x9C, 0x90, 0xb4, 0x33},
-		decoded: frame.Frame{
-			RequestID: fields.RequestID(1),
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorInternalErrorWithTracebackID(
-					nil,
-					fields.TracebackID{0xA5, 0x18, 0xB2, 0xC1, 0xCC, 0x27, 0x49, 0x27,
-						0x94, 0x09, 0x6A, 0x10, 0x15, 0xDA, 0x67, 0xB1},
-				),
-			},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x03, 0x00, 0x00, 0x00, 0x02,
-			0x00, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00,
-			0x04, 0x63, 0x6F, 0x64, 0x65, 0x06, 0x00, 0x00,
-			0x00, 0x05, 0x49, 0x44, 0x44, 0x51, 0x44, 0x38,
-			0x0A, 0x5A, 0x23},
-		decoded: frame.Frame{
-			RequestID: fields.RequestID(2),
-			Body: bodies.Write{
-				Key:   fields.Key("code"),
-				Value: values.String("IDDQD"),
-			},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x03, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x28, 0x00, 0x00, 0x00,
-			0x06, 0x76, 0x65, 0x63, 0x74, 0x6F, 0x72, 0x01,
-			0x00, 0x00, 0x00, 0x03, 0x03, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x03, 0xD7, 0x99, 0xDF,
-			0x3D},
-		decoded: frame.Frame{
-			RequestID: 1,
-			Body: bodies.Write{
-				Key: fields.Key("vector"),
-				Value: values.TypedArray{
-					ElemType: fields.Int,
-					Elems: []value.V{
-						values.Int(1),
-						values.Int(2),
-						values.Int(3),
-					},
-				},
-			},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x02,
-			0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x03, 0xA0,
-			0x05, 0x87, 0x3E},
-		decoded: frame.Frame{
-			RequestID: 2,
-			Body:      bodies.WriteAnswer{},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x02,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
-			0x77, 0x29, 0x53, 0x66, 0x99, 0x93, 0x4D, 0xC3,
-			0x9B, 0x99, 0x19, 0x24, 0x11, 0xEE, 0x5B, 0x8C,
-			0x9D, 0x90, 0x1B, 0x23},
-		decoded: frame.Frame{
-			RequestID: 2,
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorInternalErrorWithTracebackID(
-					nil,
-					fields.TracebackID{0x77, 0x29, 0x53, 0x66, 0x99, 0x93, 0x4D, 0xC3, 0x9B, 0x99, 0x19, 0x24, 0x11, 0xEE, 0x5B, 0x8C},
-				),
-			},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x04, 0x00, 0x00, 0x00, 0x03,
-			0x00, 0x00, 0x00, 0x00, 0x0B, 0x61, 0x6E, 0x6F,
-			0x74, 0x68, 0x65, 0x72, 0x2D, 0x6B, 0x65, 0x79,
-			0xF4, 0xC7, 0xFF, 0x81},
-		decoded: frame.Frame{
-			RequestID: 3,
-			Body:      bodies.Delete("another-key"),
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
-			0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x04, 0x3D,
-			0xF3, 0x9E, 0xF2},
-		decoded: frame.Frame{
-			RequestID: 3,
-			Body:      bodies.DeleteAnswer{},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
-			0xCA, 0xD1, 0xC1, 0x02, 0xCA, 0xC5, 0x4D, 0xDF,
-			0x9B, 0x61, 0xEB, 0x00, 0x81, 0x8E, 0x25, 0xD1,
-			0x4F, 0x23, 0x68, 0x80},
-		decoded: frame.Frame{
-			RequestID: 3,
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorInternalErrorWithTracebackID(
-					nil,
-					fields.TracebackID{0xCA, 0xD1, 0xC1, 0x02, 0xCA, 0xC5, 0x4D, 0xDF,
-						0x9B, 0x61, 0xEB, 0x00, 0x81, 0x8E, 0x25, 0xD1},
-				),
-			},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x06, 0x00, 0x00, 0x00, 0x04,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0xA2, 0x1B, 0x87,
-			0x9B},
-		decoded: frame.Frame{
-			RequestID: 4,
-			Body:      bodies.Ping{},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x04,
-			0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x06, 0x26,
-			0x91, 0xEB, 0x01},
-		decoded: frame.Frame{
-			RequestID: 4,
-			Body:      bodies.PingAnswer{},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x04,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
-			0x3D, 0x8E, 0xD3, 0xBF, 0xB8, 0xD1, 0x47, 0x45,
-			0xA5, 0xDB, 0xF8, 0x50, 0x30, 0x90, 0x90, 0x2A,
-			0xC9, 0x04, 0x2A, 0x26},
-		decoded: frame.Frame{
-			RequestID: 4,
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorInternalErrorWithTracebackID(
-					nil,
-					fields.TracebackID{0x3D, 0x8E, 0xD3, 0xBF, 0xB8, 0xD1, 0x47, 0x45, 0xA5, 0xDB, 0xF8, 0x50, 0x30, 0x90, 0x90, 0x2A},
-				),
-			},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x05, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x32, 0x05, 0x00, 0x00,
-			0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00,
-			0x00, 0x00, 0x03, 0x6B, 0x65, 0x79, 0x00, 0x00,
-			0x00, 0x02, 0x03, 0x00, 0x00, 0x00, 0x18, 0x00,
-			0x00, 0x00, 0x0B, 0x61, 0x6E, 0x6F, 0x74, 0x68,
-			0x65, 0x72, 0x2D, 0x6B, 0x65, 0x79, 0x06, 0x00,
-			0x00, 0x00, 0x04, 0x64, 0x61, 0x74, 0x61, 0xDE,
-			0x84, 0x44, 0x1C},
-		decoded: frame.Frame{
-			RequestID: 1,
-			Body: bodies.Batch{
-				IsSequentialExecution: true,
-				InterruptAfterError:   false,
-				IsOneAnswer:           true,
+	{"handshake empty", frame.Frame{RequestID: 0, Body: bodies.NewHandshake("", [32]byte{}, []fields.Compression{})}},
+	{"handshake", frame.Frame{RequestID: 0, Body: bodies.NewHandshake("test", testHash, []fields.Compression{fields.Zstd})}},
+	{"handshake duplicate compressions", frame.Frame{RequestID: 0, Body: bodies.NewHandshake("test", testHash, []fields.Compression{fields.Zstd, fields.Zstd})}},
+	{"handshake unknown compression", frame.Frame{RequestID: 0, Body: bodies.NewHandshake("test", testHash, []fields.Compression{fields.Zstd, fields.Compression(23)})}},
+	{"handshake answer empty", frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})}},
+	{"handshake answer", frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd})}},
+	{"handshake answer unknown compression", frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Compression(23)})}},
 
-				Requests: []bodies.Request{
-					{
-						Number: 1,
-						Body:   bodies.Read("key"),
-					},
-					{
-						Number: 2,
-						Body: bodies.Write{
-							Key:   fields.Key("another-key"),
-							Value: values.String("data"),
-						},
-					},
-				},
-			},
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x26, 0x01, 0x05, 0x00,
-			0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
-			0x00, 0x00, 0x0E, 0x01, 0x02, 0x06, 0x00, 0x00,
-			0x00, 0x07, 0x6D, 0x65, 0x73, 0x73, 0x61, 0x67,
-			0x65, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
-			0x02, 0x01, 0x03, 0xB7, 0x2D, 0x2D, 0xF4},
-		decoded: frame.Frame{
-			RequestID: 1,
-			Body: bodies.BatchAnswer([]bodies.Result{
-				{
-					Number: 1,
-					Body: bodies.ReadAnswer{
-						Value: values.String("message"),
-					},
-				},
-				{
-					Number: 2,
-					Body:   bodies.WriteAnswer{},
-				},
-			},
-			),
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x3C, 0x01, 0x05, 0x00,
-			0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
-			0x00, 0x00, 0x13, 0x00, 0x00, 0x08, 0x38, 0xDD,
-			0x5C, 0x39, 0x24, 0xDB, 0x45, 0xA9, 0x85, 0x09,
-			0xFF, 0xE6, 0xC6, 0x5C, 0x7F, 0x42, 0x00, 0x00,
-			0x00, 0x02, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00,
-			0x0C, 0x49, 0x84, 0x98, 0xC5, 0xCF, 0x19, 0x40,
-			0xC9, 0x95, 0x38, 0x15, 0x5C, 0x27, 0xA3, 0xCF,
-			0xF1, 0x01, 0x50, 0x3D, 0x7B},
-		decoded: frame.Frame{
-			RequestID: 1,
-			Body: bodies.BatchAnswer([]bodies.Result{
-				{
-					Number: 1,
-					Body: bodies.ErrorAnswer{
-						Err: errs.NewErrorInternalErrorWithTracebackID(
-							nil,
-							fields.TracebackID{0x38, 0xDD, 0x5C, 0x39, 0x24, 0xDB, 0x45, 0xA9, 0x85, 0x09, 0xFF, 0xE6, 0xC6, 0x5C, 0x7F, 0x42},
-						),
-					},
-				},
-				{
-					Number: 2,
-					Body: bodies.ErrorAnswer{
-						Err: errs.NewErrorRequestInterruptedWithTracebackID(
-							fields.RequestID(1),
-							fields.TracebackID{0x49, 0x84, 0x98, 0xC5, 0xCF, 0x19, 0x40, 0xC9, 0x95, 0x38, 0x15, 0x5C, 0x27, 0xA3, 0xCF, 0xF1},
-						),
-					},
-				},
-			},
-			),
-		},
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
-			0xE5, 0x3A, 0x39, 0x93, 0x7B, 0x7A, 0x47, 0xEC,
-			0xB3, 0x82, 0x7C, 0x2B, 0x05, 0xE3, 0xD6, 0xDD,
-			0x53, 0x81, 0xF9, 0xD8},
-		decoded: frame.Frame{
-			RequestID: 1,
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorInternalErrorWithTracebackID(
-					nil,
-					fields.TracebackID{0xE5, 0x3A, 0x39, 0x93, 0x7B, 0x7A, 0x47, 0xEC, 0xB3, 0x82, 0x7C, 0x2B, 0x05, 0xE3, 0xD6, 0xDD},
-				),
-			},
-		},
-	},
+	{"read empty key", frame.Frame{RequestID: 1, Body: bodies.Read("")}},
+	{"read", frame.Frame{RequestID: 1, Body: bodies.Read("key")}},
+	{"read answer empty bytes", frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes{}}}},
+	{"read answer bytes", frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes{0xFF}}}},
+	{"read answer zero int", frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Int(0)}}},
+	{"read answer int", frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Int(1)}}},
+	{"read answer empty untyped array", frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.UntypedArray{}}}},
+	{"read answer untyped array", frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xFF}, values.Int(1)}}}},
+	{"read answer typed array", frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.TypedArray{
+		ElemType: fields.Bytes,
+		Elems:    []value.V{values.Bytes{0xFF}, values.Bytes{0x00}},
+	}}}},
+
+	{"write empty key", frame.Frame{RequestID: 1, Body: bodies.Write{Key: fields.Key(""), Value: values.Bytes{}}}},
+	{"write bytes", frame.Frame{RequestID: 2, Body: bodies.Write{Key: fields.Key("k"), Value: values.Bytes{0xFF}}}},
+	{"write int", frame.Frame{RequestID: 3, Body: bodies.Write{Key: fields.Key("key"), Value: values.Int(1)}}},
+	{"write empty untyped array", frame.Frame{RequestID: 4, Body: bodies.Write{Key: fields.Key("key "), Value: values.UntypedArray{}}}},
+	{"write untyped array", frame.Frame{RequestID: 5, Body: bodies.Write{Key: fields.Key("key key"), Value: values.UntypedArray{values.Bytes{0xFF}, values.Int(1)}}}},
+	{"write typed array", frame.Frame{RequestID: 6, Body: bodies.Write{Key: fields.Key("key yek"), Value: values.TypedArray{
+		ElemType: fields.Bytes,
+		Elems:    []value.V{values.Bytes{0xFF}, values.Bytes{0x00}},
+	}}}},
+	{"write answer", frame.Frame{RequestID: 1, Body: bodies.WriteAnswer{}}},
+
+	{"delete empty key", frame.Frame{RequestID: 1, Body: bodies.Delete("")}},
+	{"delete", frame.Frame{RequestID: 1, Body: bodies.Delete("key")}},
+	{"delete answer", frame.Frame{RequestID: 1, Body: bodies.DeleteAnswer{}}},
+
+	{"ping", frame.Frame{RequestID: 1, Body: bodies.Ping{}}},
+	{"ping answer", frame.Frame{RequestID: 1, Body: bodies.PingAnswer{}}},
+
+	{"internal error", frame.Frame{RequestID: 0, Body: bodies.ErrorAnswer{Err: errs.NewErrorInternalError(nil)}}},
+	{"malformed value", frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorMalformedValue("bad value")}}},
+	{"batch limit is exceeded", frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(0, 1)}}},
+	{"unexpected command", frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Handshake, fields.Command(10))}}},
+
+	{"batch without flags", frame.Frame{RequestID: 1, Body: bodies.Batch{}}},
+	{"batch sequential execution", frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true}}},
+	{"batch one answer", frame.Frame{RequestID: 1, Body: bodies.Batch{IsOneAnswer: true}}},
+	{"batch interrupt after error", frame.Frame{RequestID: 1, Body: bodies.Batch{InterruptAfterError: true}}},
+	{"batch all flags", frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true}}},
+	{"batch one request", frame.Frame{RequestID: 1, Body: bodies.Batch{Requests: []bodies.Request{
+		{Number: 0, Body: bodies.Read("key")},
+	}}}},
+	{"batch duplicate numbers", frame.Frame{RequestID: 1, Body: bodies.Batch{Requests: []bodies.Request{
+		{Number: 0, Body: bodies.Read("key")},
+		{Number: 0, Body: bodies.Read("key")},
+	}}}},
+	{"batch mixed requests", frame.Frame{RequestID: 1, Body: bodies.Batch{Requests: []bodies.Request{
+		{Number: 0, Body: bodies.Read("key")},
+		{Number: 1, Body: bodies.Delete("key")},
+	}}}},
+
+	{"batch answer empty", frame.Frame{RequestID: 1, Body: bodies.BatchAnswer(nil)}},
+	{"batch answer duplicate numbers", frame.Frame{RequestID: 1, Body: bodies.BatchAnswer{
+		{Number: 0, Body: bodies.WriteAnswer{}},
+		{Number: 0, Body: bodies.DeleteAnswer{}},
+	}}},
+	{"batch answer mixed results", frame.Frame{RequestID: 1, Body: bodies.BatchAnswer{
+		{Number: 0, Body: bodies.WriteAnswer{}},
+		{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
+	}}},
 }
 
-var testsRoundTrip = []struct {
-	f          frame.Frame
+var roundTripCompressors = []struct {
+	name       string
 	compressor compressor.Compressor
 }{
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshake("", [32]byte{}, []fields.Compression{})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Zstd})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Compression(23)})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Zstd})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Compression(23)})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Read("")},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Read("key")},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Read("")},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Read("key")},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{0xFF}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(0)}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(1)}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{}}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.TypedArray{
-			Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
-			ElemType: fields.Bytes,
-		}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Write{Key: fields.Key(""), Value: values.Bytes{}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 2, Body: bodies.Write{Key: fields.Key("k"), Value: values.Bytes{0xFF}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 3, Body: bodies.Write{Key: fields.Key("ke"), Value: values.Int(0)}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 4, Body: bodies.Write{Key: fields.Key("key"), Value: values.Int(1)}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 5, Body: bodies.Write{Key: fields.Key("key "), Value: values.UntypedArray{}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 6, Body: bodies.Write{Key: fields.Key("key k"), Value: values.UntypedArray{values.Bytes{}}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 7, Body: bodies.Write{Key: fields.Key("key ke"), Value: values.UntypedArray{values.Bytes{0xff}}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 8, Body: bodies.Write{Key: fields.Key("key key"), Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 9, Body: bodies.Write{Key: fields.Key("key yek"), Value: values.TypedArray{
-			Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
-			ElemType: fields.Bytes,
-		}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.WriteAnswer{}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.WriteAnswer{}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Delete("")},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Delete("key")},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Delete("")},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Delete("key")},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.DeleteAnswer{}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.DeleteAnswer{}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Ping{}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Ping{}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.PingAnswer{}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.PingAnswer{}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ErrorAnswer{Err: errs.NewErrorInternalError(nil)}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(1, 0)}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(0, 1)}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Command(10), fields.Handshake)}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Handshake, fields.Command(10))}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-		}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-			{Number: 0, Body: bodies.Read("key")},
-		}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-			{Number: 1, Body: bodies.Read("key")},
-		}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-			{Number: 1, Body: bodies.Delete("key")},
-		}}},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer(nil)},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-		})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 0, Body: bodies.WriteAnswer{}},
-		})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 0, Body: bodies.DeleteAnswer{}},
-		})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 1, Body: bodies.DeleteAnswer{}},
-		})},
-		nil,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
-		})},
-		nil,
-	},
-
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshake("", [32]byte{}, []fields.Compression{})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Zstd})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Compression(23)})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Zstd})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Compression(23)})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Read("")},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Read("key")},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Read("")},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Read("key")},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{0xFF}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(0)}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(1)}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{}}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.TypedArray{
-			Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
-			ElemType: fields.Bytes,
-		}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Write{Key: fields.Key(""), Value: values.Bytes{}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 2, Body: bodies.Write{Key: fields.Key("k"), Value: values.Bytes{0xFF}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 3, Body: bodies.Write{Key: fields.Key("ke"), Value: values.Int(0)}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 4, Body: bodies.Write{Key: fields.Key("key"), Value: values.Int(1)}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 5, Body: bodies.Write{Key: fields.Key("key "), Value: values.UntypedArray{}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 6, Body: bodies.Write{Key: fields.Key("key k"), Value: values.UntypedArray{values.Bytes{}}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 7, Body: bodies.Write{Key: fields.Key("key ke"), Value: values.UntypedArray{values.Bytes{0xff}}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 8, Body: bodies.Write{Key: fields.Key("key key"), Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 9, Body: bodies.Write{Key: fields.Key("key yek"), Value: values.TypedArray{
-			Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
-			ElemType: fields.Bytes,
-		}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.WriteAnswer{}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.WriteAnswer{}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Delete("")},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Delete("key")},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Delete("")},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Delete("key")},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.DeleteAnswer{}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.DeleteAnswer{}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Ping{}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Ping{}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.PingAnswer{}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.PingAnswer{}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ErrorAnswer{Err: errs.NewErrorInternalError(nil)}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(1, 0)}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(0, 1)}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Command(10), fields.Handshake)}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Handshake, fields.Command(10))}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-		}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-			{Number: 0, Body: bodies.Read("key")},
-		}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-			{Number: 1, Body: bodies.Read("key")},
-		}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-			{Number: 1, Body: bodies.Delete("key")},
-		}}},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer(nil)},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-		})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 0, Body: bodies.WriteAnswer{}},
-		})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 0, Body: bodies.DeleteAnswer{}},
-		})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 1, Body: bodies.DeleteAnswer{}},
-		})},
-		zstd,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
-		})},
-		zstd,
-	},
-
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshake("", [32]byte{}, []fields.Compression{})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Zstd})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshake("test", fakeHash(), []fields.Compression{fields.Zstd, fields.Compression(23)})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer([]fields.Compression{})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Zstd})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.NewHandshakeAnswer([]fields.Compression{fields.Zstd, fields.Compression(23)})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Read("")},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Read("key")},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Read("")},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Read("key")},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Bytes{0xFF}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(0)}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.Int(1)}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{}}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ReadAnswer{Value: values.TypedArray{
-			Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
-			ElemType: fields.Bytes,
-		}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Write{Key: fields.Key(""), Value: values.Bytes{}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 2, Body: bodies.Write{Key: fields.Key("k"), Value: values.Bytes{0xFF}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 3, Body: bodies.Write{Key: fields.Key("ke"), Value: values.Int(0)}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 4, Body: bodies.Write{Key: fields.Key("key"), Value: values.Int(1)}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 5, Body: bodies.Write{Key: fields.Key("key "), Value: values.UntypedArray{}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 6, Body: bodies.Write{Key: fields.Key("key k"), Value: values.UntypedArray{values.Bytes{}}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 7, Body: bodies.Write{Key: fields.Key("key ke"), Value: values.UntypedArray{values.Bytes{0xff}}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 8, Body: bodies.Write{Key: fields.Key("key key"), Value: values.UntypedArray{values.Bytes{0xff}, values.Int(1)}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 9, Body: bodies.Write{Key: fields.Key("key yek"), Value: values.TypedArray{
-			Elems:    []value.V{values.Bytes{0xff}, values.Bytes{0x00}},
-			ElemType: fields.Bytes,
-		}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.WriteAnswer{}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.WriteAnswer{}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Delete("")},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Delete("key")},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Delete("")},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Delete("key")},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.DeleteAnswer{}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.DeleteAnswer{}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.Ping{}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Ping{}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.PingAnswer{}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.PingAnswer{}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 0, Body: bodies.ErrorAnswer{Err: errs.NewErrorInternalError(nil)}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(1, 0)}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorBatchLimitIsExceeded(0, 1)}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Command(10), fields.Handshake)}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.ErrorAnswer{Err: errs.NewErrorUnexpectedCommand(fields.Handshake, fields.Command(10))}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: false, Requests: nil}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: false, Requests: nil}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: false, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: false, InterruptAfterError: true, Requests: nil}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: nil}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-		}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-			{Number: 0, Body: bodies.Read("key")},
-		}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-			{Number: 1, Body: bodies.Read("key")},
-		}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			{Number: 0, Body: bodies.Read("key")},
-			{Number: 1, Body: bodies.Delete("key")},
-		}}},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer(nil)},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-		})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 0, Body: bodies.WriteAnswer{}},
-		})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 0, Body: bodies.DeleteAnswer{}},
-		})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 1, Body: bodies.DeleteAnswer{}},
-		})},
-		s2,
-	},
-	{
-		frame.Frame{RequestID: 1, Body: bodies.BatchAnswer([]bodies.Result{
-			{Number: 0, Body: bodies.WriteAnswer{}},
-			{Number: 1, Body: bodies.ReadAnswer{Value: values.Int(123)}},
-		})},
-		s2,
-	},
+	{"none", nil},
+	{"zstd", zstd},
+	{"s2", s2},
 }
 
-func fakeHash() [32]byte {
-	hash := make([]byte, 0, 32)
+// rawFrame builds a frame with a valid checksum around an arbitrary body.
+func rawFrame(command fields.Command, compression fields.Compression, body []byte) []byte {
+	headers := cat(frame.MagicBytes, []byte{0x01, byte(command)}, u32(1), []byte{byte(compression)}, u32(uint32(len(body))))
 
-	for range 32 {
-		hash = append(hash, byte(rand.Int31()))
+	return cat(headers, body, u32(uint32(fields.NewChecksumWithParts(headers, body))))
+}
+
+func encodeFrame(t testing.TB, f frame.Frame, c compressor.Compressor) []byte {
+	t.Helper()
+
+	buf := buffer.Slice{}
+	buf.Preallocate(f.Size())
+
+	if e := f.Encode(&buf, c); e != nil {
+		t.Fatalf("Encode() = %v", e)
 	}
 
-	return [32]byte(hash)
+	return buf.Bytes()
 }
 
-func compareValues(t *testing.T, v1, v2 value.V) {
-	switch want := v2.(type) {
-	case values.Bytes:
-		got, ok := v1.(values.Bytes)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
-			return
-		}
-		if !bytes.Equal(want, got) {
-			t.Fatalf("Compare values.Bytes: got %v, want %v", got, want)
-		}
-	case values.JSON:
-		got, ok := v1.(values.JSON)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
-			return
-		}
-		if !bytes.Equal(want, got) {
-			t.Fatalf("Compare values.JSON: got %v, want %v", got, want)
-		}
-	case values.Int:
-		got, ok := v1.(values.Int)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
-			return
-		}
-		if want != got {
-			t.Fatalf("Compare values.Int: got %v, want %v", got, want)
-		}
-	case values.Uint:
-		got, ok := v1.(values.Uint)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
-			return
-		}
-		if want != got {
-			t.Fatalf("Compare values.Uint: got %v, want %v", got, want)
-		}
-	case values.Float:
-		got, ok := v1.(values.Float)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
-			return
-		}
-		if want != got {
-			t.Fatalf("Compare values.Float: got %v, want %v", got, want)
-		}
-	case values.String:
-		got, ok := v1.(values.String)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
-			return
-		}
-		if !strings.EqualFold(string(got), string(want)) {
-			t.Fatalf("Compare values.String: got %v, want %v", got, want)
-		}
-	case values.TypedArray:
-		got, ok := v1.(values.TypedArray)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
-			return
-		}
-		if want.ElemType != got.ElemType {
-			t.Fatalf("Compare values.TypedArray: mismatched elem type: got %v, want %v", got.ElemType, want.ElemType)
-		}
-		if len(want.Elems) != len(got.Elems) {
-			t.Fatalf("Compare values.TypedArray: mismatched lens: got %v, want %v", len(got.Elems), len(want.Elems))
-		}
+func decodeFrameBytes(d Decoder, data []byte) (frame.Frame, error) {
+	return d.DecodeFrame(bufio.NewReader(bytes.NewReader(data)))
+}
 
-		for i := range want.Elems {
-			compareValues(t, got.Elems[i], want.Elems[i])
-		}
-	case values.UntypedArray:
-		got, ok := v1.(values.UntypedArray)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", v1, want)
-			return
-		}
-		if len(want) != len(got) {
-			t.Fatalf("Compare values.TypedArray: mismatched lens: got %v, want %v", len(got), len(want))
-		}
+func assertSameFrame(t *testing.T, got, want frame.Frame) {
+	t.Helper()
 
-		for i := range want {
-			compareValues(t, got[i], want[i])
-		}
+	if got.RequestID != want.RequestID {
+		t.Errorf("RequestID = %v, want %v", got.RequestID, want.RequestID)
+	}
+
+	testutil.AssertSameEncoding(t, got.Body, want.Body)
+}
+
+// isA returns a matcher reporting whether an error chain contains a T.
+func isA[T error]() func(error) bool {
+	return func(e error) bool {
+		var target T
+		return errors.As(e, &target)
 	}
 }
 
-func compareBodies(t *testing.T, b1, b2 body.Body) {
+type fakeCompressor struct {
+	code       fields.Compression
+	decompress func([]byte) ([]byte, error)
+}
 
-	switch want := b2.(type) {
-	case bodies.Handshake:
-		got, ok := b1.(bodies.Handshake)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
+func (f fakeCompressor) Code() fields.Compression              { return f.code }
+func (f fakeCompressor) Compress(buf []byte) ([]byte, error)   { return buf, nil }
+func (f fakeCompressor) Decompress(buf []byte) ([]byte, error) { return f.decompress(buf) }
 
-		if got.Login != want.Login {
-			t.Errorf("Compare Logins: got %v and want %v", got.Login, want.Login)
-		}
+func TestDecoder_Specs(t *testing.T) {
+	for _, tt := range specs.Frames {
+		t.Run(tt.Name, func(t *testing.T) {
+			d := NewDecoder(1024, nil)
+			reader := bufio.NewReader(bytes.NewReader(tt.Encoded))
 
-		if !bytes.Equal(got.Hash[:], want.Hash[:]) {
-			t.Errorf("Compare Hashes: got % X and want % X", got.Hash, want.Hash)
-		}
-
-		if !slices.Equal(got.Compressions, want.Compressions) {
-			t.Errorf("Compare Compressions: got %v and want %v", got.Compressions, want.Compressions)
-		}
-	case bodies.HandshakeAnswer:
-		got, ok := b1.(bodies.HandshakeAnswer)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-
-		if !slices.Equal(got.Compressions, want.Compressions) {
-			t.Errorf("Compare Compressions: got %v and want %v", got.Compressions, want.Compressions)
-		}
-	case bodies.ErrorAnswer:
-		got, ok := b1.(bodies.ErrorAnswer)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-
-		if want.Err.TracebackID() != got.Err.TracebackID() {
-			t.Errorf("Compare Traceback ID: got % X and want % X", got.Err.TracebackID(), want.Err.TracebackID())
-		}
-	case bodies.Read:
-		got, ok := b1.(bodies.Read)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-
-		if !bytes.Equal([]byte(got), []byte(want)) {
-			t.Errorf("Compare Keys: got % X and want % X", got, want)
-		}
-
-	case bodies.ReadAnswer:
-		got, ok := b1.(bodies.ReadAnswer)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-
-		compareValues(t, got.Value, want.Value)
-
-	case bodies.Write:
-		got, ok := b1.(bodies.Write)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-
-		if !bytes.Equal([]byte(got.Key), []byte(want.Key)) {
-			t.Errorf("Compare Keys: got % X and want % X", got.Key, want.Key)
-		}
-
-		compareValues(t, got.Value, want.Value)
-	case bodies.WriteAnswer:
-		_, ok := b1.(bodies.WriteAnswer)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-	case bodies.Ping:
-		_, ok := b1.(bodies.Ping)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-	case bodies.PingAnswer:
-		_, ok := b1.(bodies.PingAnswer)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-	case bodies.Delete:
-		got, ok := b1.(bodies.Delete)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-
-		if !bytes.Equal([]byte(got), []byte(want)) {
-			t.Errorf("Compare Keys: got % X and want % X", got, want)
-		}
-	case bodies.DeleteAnswer:
-		_, ok := b1.(bodies.DeleteAnswer)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-
-	case bodies.Batch:
-		got, ok := b1.(bodies.Batch)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-
-		if got.InterruptAfterError != want.InterruptAfterError {
-			t.Errorf("Compare InterruptAfterError: got %v and want %v", got.InterruptAfterError, want.InterruptAfterError)
-		}
-
-		if got.IsSequentialExecution != want.IsSequentialExecution {
-			t.Errorf("Compare IsSequentialExecution: got %v and want %v", got.IsSequentialExecution, want.IsSequentialExecution)
-		}
-
-		if got.IsOneAnswer != want.IsOneAnswer {
-			t.Errorf("Compare IsOneAnswer: got %v and want %v", got.IsOneAnswer, want.IsOneAnswer)
-		}
-
-		if len(got.Requests) != len(want.Requests) {
-			t.Fatalf("Compare Batch: mismatched lens: got %v, want %v", len(got.Requests), len(want.Requests))
-		}
-
-		for i := range got.Requests {
-			if got.Requests[i].Number != want.Requests[i].Number {
-				t.Errorf("Compare Batch Request Numbers: got %v, want %v", got.Requests[i].Number, want.Requests[i].Number)
+			version, e := d.DecodePreamble(reader)
+			if e != nil {
+				t.Fatalf("DecodePreamble() = %v", e)
 			}
 
-			compareBodies(t, got.Requests[i].Body, want.Requests[i].Body)
-		}
-	case bodies.BatchAnswer:
-		got, ok := b1.(bodies.BatchAnswer)
-		if !ok {
-			t.Errorf("Mismatched typed between got %v and want %v", b1, want)
-			return
-		}
-
-		if len(got) != len(want) {
-			t.Fatalf("Compare BatchAnswer: mismatched lens: got %v, want %v", len(got), len(want))
-		}
-
-		for i := range got {
-			if got[i].Number != want[i].Number {
-				t.Errorf("Compare Result Numbers: got %v, want %v", got[i].Number, want[i].Number)
+			if version != fields.CurrentVersion {
+				t.Errorf("DecodePreamble() = %v, want %v", version, fields.CurrentVersion)
 			}
 
-			compareBodies(t, got[i].Body, want[i].Body)
+			got, e := d.DecodeFrame(reader)
+			if e != nil {
+				t.Fatalf("DecodeFrame() = %v", e)
+			}
+
+			assertSameFrame(t, got, tt.Frame)
+		})
+	}
+}
+
+func TestDecoder_RoundTrip(t *testing.T) {
+	d := NewDecoder(1024, []compressor.Compressor{zstd, s2})
+
+	for _, c := range roundTripCompressors {
+		for _, tt := range roundTripFrames {
+			t.Run(c.name+"/"+tt.name, func(t *testing.T) {
+				got, e := decodeFrameBytes(d, encodeFrame(t, tt.f, c.compressor))
+				if e != nil {
+					t.Fatalf("DecodeFrame() = %v", e)
+				}
+
+				assertSameFrame(t, got, tt.f)
+			})
 		}
 	}
 }
 
-func compareFrames(t *testing.T, f1, f2 frame.Frame) {
-	if f1.RequestID != f2.RequestID {
-		t.Fatalf("Compare Request IDs: got %v, want %v", f1, f2.RequestID)
-	}
-
-	compareBodies(t, f1.Body, f2.Body)
-}
-
-func TestDecoder_BySpecs(t *testing.T) {
-
-	for i, tt := range testsSpecs {
-		t.Run(
-			fmt.Sprintf("TestDecoder_BySpecs_%v", i),
-			func(t *testing.T) {
-				decoder := NewDecoder(1024, nil)
-				reader := bufio.NewReader(bytes.NewReader(tt.encoded))
-				version, err := decoder.DecodePreamble(reader)
-
-				if err != nil {
-					t.Fatalf("DecodePreamble: got err %v", err)
-					return
-				}
-
-				if version != fields.Version(1) {
-					t.Fatalf("DecodePreamble: got unexpected version %v", version)
-					return
-				}
-
-				f, err := decoder.DecodeFrame(reader)
-				if err != nil {
-					t.Fatalf("DecodeFrame: got err %+v", err)
-					return
-				}
-
-				compareFrames(t, f, tt.decoded)
-
-			},
-		)
-	}
-}
-
-func TestDecoder_Preamble(t *testing.T) {
+func TestDecoder_DecodePreamble(t *testing.T) {
 	tests := []struct {
-		p         []byte
-		wantError bool
-		version   fields.Version
+		name    string
+		data    []byte
+		want    fields.Version
+		wantErr bool
 	}{
-		{[]byte{}, true, 0},
-		{[]byte{0x00}, true, 0},
-		{[]byte{0x0A}, true, 0},
-		{[]byte{0x0A, 0xDB}, true, 0},
-		{[]byte{0xDB, 0x0A}, true, 0},
-		{[]byte{0x11, 0xFF}, true, 0},
-		{[]byte{0x0A, 0xDB, 0x00}, false, 0},
-		{[]byte{0xDB, 0x0A, 0x00}, true, 0},
-		{[]byte{0x11, 0xFF, 0x00}, true, 0},
-		{[]byte{0x0A, 0xDB, 0x01}, false, 1},
-		{[]byte{0xDB, 0x0A, 0x01}, true, 0},
-		{[]byte{0x11, 0xFF, 0x01}, true, 0},
-		{[]byte{0x0A, 0xDB, 0xFF}, false, 255},
-		{[]byte{0xDB, 0x0A, 0xFF}, true, 0},
-		{[]byte{0x11, 0xFF, 0xFF}, true, 0},
-		{[]byte{0x0A, 0xDB, 0xFF, 0x01}, false, 255},
-		{[]byte{0xDB, 0x0A, 0xFF, 0x01}, true, 0},
-		{[]byte{0x11, 0xFF, 0xFF, 0x01}, true, 0},
+		{"empty", []byte{}, 0, true},
+		{"one byte", []byte{0x0A}, 0, true},
+		{"magic without version", []byte{0x0A, 0xDB}, 0, true},
+		{"swapped magic", []byte{0xDB, 0x0A, 0x01}, 0, true},
+		{"wrong magic", []byte{0x11, 0xFF, 0x01}, 0, true},
+		{"version 0", []byte{0x0A, 0xDB, 0x00}, 0, false},
+		{"version 1", []byte{0x0A, 0xDB, 0x01}, 1, false},
+		{"version 255", []byte{0x0A, 0xDB, 0xFF}, 255, false},
+		{"followed by data", []byte{0x0A, 0xDB, 0xFF, 0x01}, 255, false},
 	}
 
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDecoder_Preamble_%v", i),
-			func(t *testing.T) {
-				decoder := NewDecoder(1024, nil)
-				reader := bufio.NewReader(bytes.NewReader(tt.p))
-				got, err := decoder.DecodePreamble(reader)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := NewDecoder(1024, nil)
 
-				if err == nil == tt.wantError {
-					t.Fatalf("DecodePreamble: expected err %v got %v", tt.wantError, err)
-					return
-				}
+			got, e := d.DecodePreamble(bufio.NewReader(bytes.NewReader(tt.data)))
+			testutil.AssertErr(t, e, tt.wantErr)
 
-				if got != tt.version {
-					t.Errorf("DecodePreamble: got %v version got %v version", got, tt.version)
-				}
-			},
-		)
+			if got != tt.want {
+				t.Errorf("DecodePreamble() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
-func TestDecoder_EncodeDecodeEncode(t *testing.T) {
+func TestDecoder_DecodePreamble_DoesNotConsume(t *testing.T) {
+	d := NewDecoder(1024, nil)
+	data := specs.Frames[0].Encoded
+	reader := bufio.NewReader(bytes.NewReader(data))
 
-	decoder := NewDecoder(1024, []compressor.Compressor{
-		zstd,
-		s2,
-	})
+	if _, e := d.DecodePreamble(reader); e != nil {
+		t.Fatalf("DecodePreamble() = %v", e)
+	}
 
-	for i, tt := range testsRoundTrip {
-		t.Run(
-			fmt.Sprintf("TestDecoder_EncodeDecodeEncode_%v", i),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.f.Size())
-
-				err := tt.f.Encode(&buf, tt.compressor)
-				if err != nil {
-					t.Fatalf("EncodeFrame: got err %v", err)
-				}
-
-				reader := bufio.NewReader(bytes.NewReader(buf.Bytes()))
-
-				_, err = decoder.DecodePreamble(reader)
-				if err != nil {
-					t.Fatalf("DecodePreamble: got err %v", err)
-					return
-				}
-
-				f1, err := decoder.DecodeFrame(reader)
-				if err != nil {
-					t.Fatalf("DecodeFrame: got err %v", err)
-					return
-				}
-
-				compareFrames(t, f1, tt.f)
-
-				buf.Clean()
-				buf.Preallocate(f1.Size())
-
-				err = f1.Encode(&buf, tt.compressor)
-				if err != nil {
-					t.Fatalf("EncodeFrame: got err %v", err)
-				}
-
-				reader = bufio.NewReader(bytes.NewReader(buf.Bytes()))
-
-				_, err = decoder.DecodePreamble(reader)
-				if err != nil {
-					t.Fatalf("DecodePreamble: got err %v", err)
-					return
-				}
-
-				f2, err := decoder.DecodeFrame(reader)
-				if err != nil {
-					t.Fatalf("DecodeFrame: got err %v", err)
-					return
-				}
-
-				compareFrames(t, f2, tt.f)
-			},
-		)
+	if _, e := d.DecodeFrame(reader); e != nil {
+		t.Errorf("DecodeFrame() after DecodePreamble() = %v", e)
 	}
 }
 
-func TestDecoder_WithUnexpectedPayload(t *testing.T) {
+func TestDecoder_DecodeFrameErrs(t *testing.T) {
+	sentinel := errors.New("corrupted stream")
+	valid := rawFrame(fields.Ping, fields.None, nil)
+	corrupted := bytes.Clone(valid)
+	corrupted[len(corrupted)-1] ^= 0xFF
+	readAnswer := cat([]byte{0x01, byte(fields.Read), byte(fields.String)}, u32(4), []byte("data"))
+
 	tests := []struct {
-		e []byte
+		name        string
+		limit       fields.BodyLimit
+		compressors []compressor.Compressor
+		data        []byte
+		match       func(error) bool
 	}{
+		{"empty reader", 1024, nil, []byte{}, isEOF(io.EOF)},
+		{"truncated headers", 1024, nil, valid[:5], isEOF(io.ErrUnexpectedEOF)},
+		{"truncated body", 1024, nil, rawFrame(fields.Read, fields.None, []byte("key"))[:15], isEOF(io.ErrUnexpectedEOF)},
+		{"truncated checksum", 1024, nil, valid[:len(valid)-1], isEOF(io.ErrUnexpectedEOF)},
+		{"body limit is exceeded", 1, nil, rawFrame(fields.Answer, fields.None, []byte{0x01, 0x03}), isA[errs.ErrorBodyLimitIsExceeded]()},
+		{"unsupported compression", 1024, nil, rawFrame(fields.Ping, fields.Zstd, nil), isA[errs.ErrorUnsupportedCompression]()},
+		{"mismatched checksum", 1024, nil, corrupted, isA[errs.ErrorMismatchedChecksum]()},
+		{"unsupported command", 1024, nil, rawFrame(fields.Command(0x7F), fields.None, nil), isA[errs.ErrorUnsupportedCommand]()},
+		{"malformed body", 1024, nil, rawFrame(fields.Write, fields.None, u32(10)), isA[errs.ErrorMalformedValue]()},
+		{"trailing data after ping", 1024, nil, rawFrame(fields.Ping, fields.None, []byte{0xC0, 0xFF, 0xEE}), isA[err.TrailledError]()},
+		{"trailing data after read answer", 1024, nil, rawFrame(fields.Answer, fields.None, cat(readAnswer, []byte("virus"))), isA[err.TrailledError]()},
 		{
-			[]byte{
-				0x0A, 0xDB, 0x01, 0x06, 0x00, 0x00, 0x00, 0x04,
-				0x00, 0x00, 0x00, 0x00, 0x03, 0xC0, 0xFF, 0xEE,
-				0x83, 0x2C, 0x45, 0x52,
-			},
+			"compressor error",
+			1024,
+			[]compressor.Compressor{fakeCompressor{code: fields.Zstd, decompress: func([]byte) ([]byte, error) { return nil, sentinel }}},
+			rawFrame(fields.Ping, fields.Zstd, []byte{0x01}),
+			func(e error) bool { return isA[err.DecodeError]()(e) && errors.Is(e, sentinel) },
 		},
 		{
-			[]byte{
-				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-				0x00, 0x00, 0x00, 0x00, 0x15, 0x01, 0x02, 0x06,
-				0x00, 0x00, 0x00, 0x09, 0x73, 0x6F, 0x6D, 0x65,
-				0x2D, 0x64, 0x61, 0x74, 0x61, 0x76, 0x69, 0x72,
-				0x75, 0x73, 0xD2, 0x19, 0xB2, 0xFB,
-			},
+			"trailing data after decompression",
+			1024,
+			[]compressor.Compressor{fakeCompressor{code: fields.S2, decompress: func([]byte) ([]byte, error) { return []byte{0x00, 0x01, 0x02}, nil }}},
+			rawFrame(fields.Ping, fields.S2, []byte{0xFF}),
+			func(e error) bool { return errors.Is(e, err.NewTrailledError(3, 0)) },
 		},
 	}
 
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDecoder_WithUnexpectedPayload_%v", i),
-			func(t *testing.T) {
-				d := NewDecoder(1<<10, nil)
-				reader := bufio.NewReader(bytes.NewReader(tt.e))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := NewDecoder(tt.limit, tt.compressors)
 
-				_, er := d.DecodeFrame(reader)
-				if er == nil {
-					t.Fatal("expected err, got nil")
-				}
-
-				if _, ok := er.(err.TrailledError); !ok {
-					t.Fatalf("expected TrailledError, got %v", er)
-				}
-			},
-		)
+			_, e := decodeFrameBytes(d, tt.data)
+			if !tt.match(e) {
+				t.Errorf("DecodeFrame() = %v", e)
+			}
+		})
 	}
 }
 
-func TestDecoder_WithWrongChecksum(t *testing.T) {
-	tests := []struct {
-		e []byte
-	}{
-		{
-			[]byte{
-				0x0A, 0xDB, 0x01, 0x06, 0x00, 0x00, 0x00, 0x04,
-				0x00, 0x00, 0x00, 0x00, 0x00, 0x83, 0x2C, 0x45,
-				0x52,
-			},
-		},
-		{
-			[]byte{
-				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-				0x00, 0x00, 0x00, 0x00, 0x26, 0x01, 0x05, 0x00,
-				0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
-				0x00, 0x00, 0x0E, 0x01, 0x02, 0x06, 0x00, 0x00,
-				0x00, 0x07, 0x6D, 0x65, 0x73, 0x73, 0x61, 0x67,
-				0x65, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
-				0x02, 0x01, 0x03, 0xAA, 0xAA, 0xAA, 0xAA,
-			},
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDecoder_WithWrongChecksum_%v", i),
-			func(t *testing.T) {
-				d := NewDecoder(1<<10, nil)
-				reader := bufio.NewReader(bytes.NewReader(tt.e))
-
-				_, er := d.DecodeFrame(reader)
-				if er == nil {
-					t.Fatal("expected err, got nil")
-				}
-
-				if _, ok := er.(errs.ErrorMismatchedChecksum); !ok {
-					t.Fatalf("expected ErrorMismatchedChecksum, got %v", er)
-				}
-			},
-		)
+// isEOF matches a decode error wrapping target.
+func isEOF(target error) func(error) bool {
+	return func(e error) bool {
+		return isA[err.DecodeError]()(e) && errors.Is(e, target)
 	}
 }
 
-func TestDecoder_WithReaderEOF(t *testing.T) {
-	tests := []struct {
-		e    []byte
-		want error
-	}{
-		{
-			[]byte{
-				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
-				0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x7B, 0x54,
-				0x40, 0xCA,
-			},
-			io.ErrUnexpectedEOF,
-		},
-		{
-			[]byte{},
-			io.EOF,
-		},
+func TestDecoder_DecodeFrame_BodyErrorKeepsRequestID(t *testing.T) {
+	d := NewDecoder(1024, nil)
+
+	f, e := decodeFrameBytes(d, rawFrame(fields.Write, fields.None, u32(10)))
+	if e == nil {
+		t.Fatal("DecodeFrame() = nil, want error")
 	}
 
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDecoder_WithReaderEOF_%v", i),
-			func(t *testing.T) {
-				d := NewDecoder(1<<10, nil)
-				reader := bufio.NewReader(bytes.NewReader(tt.e))
+	if f.RequestID != 1 {
+		t.Errorf("RequestID = %v, want 1", f.RequestID)
+	}
 
-				_, er := d.DecodeFrame(reader)
-				if er == nil {
-					t.Fatal("expected err, got nil")
-				}
-
-				de, ok := er.(err.DecodeError)
-				if !ok {
-					t.Fatalf("expected DecodeError, got %v", er)
-				}
-
-				if !errors.Is(tt.want, de.Unwrap()) {
-					t.Errorf("expected %v, got %v", tt.want, de)
-				}
-			},
-		)
+	if f.Body != nil {
+		t.Errorf("Body = %v, want nil", f.Body)
 	}
 }
 
-func TestDecoder_WithBodyLimitIsExceeded(t *testing.T) {
+func TestDecoder_ReaderErrs(t *testing.T) {
+	sentinel := errors.New("broken pipe")
+
 	tests := []struct {
-		e []byte
+		name   string
+		decode func(d Decoder, r *bufio.Reader) error
 	}{
-		{
-			[]byte{
-				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
-				0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x7B, 0x54,
-				0x40, 0xCA,
-			},
-		},
+		{"DecodePreamble", func(d Decoder, r *bufio.Reader) error { _, e := d.DecodePreamble(r); return e }},
+		{"DecodeFrame", func(d Decoder, r *bufio.Reader) error { _, e := d.DecodeFrame(r); return e }},
 	}
 
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDecoder_WithBodyLimitIsExceeded_%v", i),
-			func(t *testing.T) {
-				d := NewDecoder(1, nil)
-				reader := bufio.NewReader(bytes.NewReader(tt.e))
+	for _, tt := range tests {
+		t.Run(tt.name+"/nil reader", func(t *testing.T) {
+			if e := tt.decode(NewDecoder(1024, nil), nil); !isA[err.DecodeError]()(e) {
+				t.Errorf("got %v, want DecodeError", e)
+			}
+		})
 
-				_, er := d.DecodeFrame(reader)
-				if er == nil {
-					t.Fatal("expected err, got nil")
-				}
-
-				if _, ok := er.(errs.ErrorBodyLimitIsExceeded); !ok {
-					t.Fatalf("expected ErrorBodyLimitIsExceeded, got %v", er)
-				}
-			},
-		)
+		t.Run(tt.name+"/failing reader", func(t *testing.T) {
+			e := tt.decode(NewDecoder(1024, nil), bufio.NewReader(iotest.ErrReader(sentinel)))
+			if !isA[err.DecodeError]()(e) || !errors.Is(e, sentinel) {
+				t.Errorf("got %v, want DecodeError wrapping %v", e, sentinel)
+			}
+		})
 	}
 }
 
 func TestDecoder_ZipBomb(t *testing.T) {
-	frames := []struct {
-		f          frame.Frame
+	bomb := frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 1<<13))}}
+
+	tests := []struct {
+		name       string
 		compressor compressor.Compressor
 	}{
-		{
-			frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 1<<13))}},
-			zstd,
-		},
-		{
-			frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 1<<13))}},
-			s2,
-		},
+		{"zstd", zstd},
+		{"s2", s2},
 	}
 
-	for i, tt := range frames {
-		t.Run(
-			fmt.Sprintf("TestDecoder_ZipBomb_%v", i),
-			func(t *testing.T) {
-				decoder := NewDecoder(1<<12, []compressor.Compressor{zstd, s2})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := NewDecoder(1<<12, []compressor.Compressor{zstd, s2})
 
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.f.Size())
-
-				err := tt.f.Encode(&buf, zstd)
-				if err != nil {
-					t.Fatalf("EncodeFrame: got err %v", err)
-				}
-
-				reader := bufio.NewReader(bytes.NewReader(buf.Bytes()))
-
-				_, err = decoder.DecodeFrame(reader)
-				if err == nil {
-					t.Fatal("DecodeFrame: didn't get err")
-					return
-				}
-			},
-		)
+			if _, e := decodeFrameBytes(d, encodeFrame(t, bomb, tt.compressor)); e == nil {
+				t.Error("DecodeFrame() = nil, want error")
+			}
+		})
 	}
 }
 
-func TestDecoder_WithNilReader(t *testing.T) {
-	t.Run(
-		"TestDecoder_WithNilReader",
-		func(t *testing.T) {
-			d := NewDecoder(1, nil)
+func TestNewDecoder_KeepsFirstCompressorPerCode(t *testing.T) {
+	first := fakeCompressor{code: fields.Zstd, decompress: func([]byte) ([]byte, error) { return nil, nil }}
+	second := fakeCompressor{code: fields.Zstd, decompress: func([]byte) ([]byte, error) { return nil, errors.New("second") }}
+	d := NewDecoder(1024, []compressor.Compressor{first, second})
 
-			_, e := d.DecodePreamble(nil)
-			if e == nil {
-				t.Error("DecodePreamble: expected err, got nil")
-			}
-
-			if _, ok := e.(err.DecodeError); !ok {
-				t.Errorf("DecodePreamble: expected DecodeError, got %v", e)
-			}
-
-			_, e = d.DecodeFrame(nil)
-			if e == nil {
-				t.Error("DecodeFrame: expected err, got nil")
-			}
-
-			if _, ok := e.(err.DecodeError); !ok {
-				t.Errorf("DecodeFrame: expected DecodeError, got %v", e)
-			}
-		},
-	)
-}
-
-func TestDecoder_answer_Errs(t *testing.T) {
-	tests := []struct {
-		d    []byte
-		want any
-	}{
-		{
-			[]byte{0x01},
-			errs.ErrorMalformedValue{},
-		},
-		{
-			[]byte{0x00},
-			errs.ErrorMalformedValue{},
-		},
-		{
-			[]byte{0x02},
-			errs.ErrorMalformedValue{},
-		},
-		{
-			[]byte{0x02, 0x00},
-			errs.ErrorMalformedValue{},
-		},
-		{
-			[]byte{0x01, 0xFF},
-			errs.ErrorMalformedValue{},
-		},
-		{
-			[]byte{0x01, 0x01},
-			errs.ErrorMalformedValue{},
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDecoder_answer_Errs_%v", i),
-			func(t *testing.T) {
-				decoder := NewDecoder(1024, nil)
-
-				_, _, e := decoder.answer(tt.d)
-				if !errors.As(e, &tt.want) {
-					t.Errorf("decode.answer(): got %v want %v", e, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestDecoder_decodeUintValue(t *testing.T) {
-	tests := []struct {
-		d       []byte
-		wantErr bool
-		want    uint32
-	}{
-		{
-			[]byte{},
-			true,
-			0,
-		},
-		{
-			[]byte{0x00, 0x00, 0x00, 0x00, 0x00},
-			true,
-			0,
-		},
-		{
-			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-			false,
-			0,
-		},
-		{
-			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-			false,
-			1,
-		},
-		{
-			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00},
-			false,
-			1,
-		},
-		{
-			[]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
-			false,
-			math.MaxUint32,
-		},
-	}
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDecoder_decodeUintValue_%v", i),
-			func(t *testing.T) {
-				decoder := NewDecoder(1024, nil)
-
-				v, _, e := decoder.decodeUintValue(tt.d)
-				if e == nil == tt.wantErr {
-					t.Fatalf("decodeUintValue: expect error %v, got %v", tt.wantErr, e)
-					return
-				}
-				if tt.wantErr {
-					return
-				}
-
-				if uint32(v) != tt.want {
-					t.Errorf("uint32 comparing: got %v, expected %v", v, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestDecoder_body_Errs(t *testing.T) {
-	tests := []struct {
-		c    fields.Command
-		want any
-	}{
-		{
-			fields.Command(8),
-			errs.ErrorUnsupportedCommand{},
-		},
-		{
-			fields.Command(255),
-			errs.ErrorUnsupportedCommand{},
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDecoder_body_Errs_%v", i),
-			func(t *testing.T) {
-				decoder := NewDecoder(1024, nil)
-
-				_, _, e := decoder.decodeBody(nil, tt.c)
-				if !errors.As(e, &tt.want) {
-					t.Errorf("decoder.decodeBody(): got %v want %v", e, tt.want)
-				}
-			},
-		)
+	if _, e := decodeFrameBytes(d, rawFrame(fields.Ping, fields.Zstd, []byte{0x01})); e != nil {
+		t.Errorf("DecodeFrame() = %v, want the first compressor to be used", e)
 	}
 }
 
 func FuzzDecoder_Preamble(f *testing.F) {
 	f.Add([]byte{0x0A, 0xDB, 0x01})
 	f.Fuzz(func(t *testing.T, a []byte) {
-		decoder := NewDecoder(1024, nil)
-		_, _ = decoder.DecodePreamble(bufio.NewReader(bytes.NewBuffer(a)))
+		_, _ = NewDecoder(1024, nil).DecodePreamble(bufio.NewReader(bytes.NewBuffer(a)))
 	})
 }
 
 func FuzzDecoder_BySpecs(f *testing.F) {
-	for _, t := range testsSpecs {
-		f.Add(t.encoded)
+	for _, tt := range specs.Frames {
+		f.Add(tt.Encoded)
 	}
 	f.Fuzz(func(t *testing.T, a []byte) {
-		decoder := NewDecoder(1024, nil)
-		_, _ = decoder.DecodeFrame(bufio.NewReader(bytes.NewBuffer(a)))
+		_, _ = NewDecoder(1024, nil).DecodeFrame(bufio.NewReader(bytes.NewBuffer(a)))
 	})
 }
 
 func FuzzDecoder_RoundTrip(f *testing.F) {
-	for _, t := range testsRoundTrip {
-		buf := buffer.Slice{}
-		buf.Preallocate(t.f.Size())
-
-		_ = t.f.Encode(&buf, t.compressor)
-
-		f.Add(buf.Bytes())
+	for _, c := range roundTripCompressors {
+		for _, tt := range roundTripFrames {
+			f.Add(encodeFrame(f, tt.f, c.compressor))
+		}
 	}
 	f.Fuzz(func(t *testing.T, a []byte) {
-		decoder := NewDecoder(1<<12, nil)
-		_, _ = decoder.DecodeFrame(bufio.NewReader(bytes.NewBuffer(a)))
+		_, _ = NewDecoder(1<<12, []compressor.Compressor{zstd, s2}).DecodeFrame(bufio.NewReader(bytes.NewBuffer(a)))
 	})
 }

@@ -1,564 +1,183 @@
-package frame
+package frame_test
 
 import (
 	"bytes"
-	"fmt"
+	"encoding/binary"
+	"errors"
 	"slices"
 	"testing"
 
 	"github.com/dejitarudemon/axidb-go-protocol/v1/body/bodies"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor/compressors"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/specs"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
-var testsSpecs = []struct {
-	encoded []byte
-	decoded Frame
-	size    int
-}{
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x2B, 0x00, 0x00, 0x00,
-			0x04, 0x75, 0x73, 0x65, 0x72, 0x01, 0x02, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x02,
-			0x7A, 0x39, 0x15, 0xBF},
-		decoded: Frame{
-			RequestID: fields.RequestID(0),
-			Body: bodies.Handshake{
-				Login:        "user",
-				Hash:         [32]byte{0x01, 0x02},
-				Compressions: []fields.Compression{fields.Zstd, fields.S2},
-			},
-		},
-		size: 60,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x04, 0x01, 0x00, 0x01,
-			0x01, 0x1B, 0x08, 0x33, 0x19},
-		decoded: Frame{
-			RequestID: fields.RequestID(0),
-			Body: bodies.HandshakeAnswer{
-				Compressions: []fields.Compression{fields.Zstd},
-			},
-		},
-		size: 21,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x02,
-			0x6B, 0xAE, 0x36, 0x80, 0x76, 0x95, 0x47, 0x42,
-			0x92, 0xAF, 0x0A, 0x6F, 0xEC, 0x33, 0x98, 0x25,
-			0x00, 0xF0, 0x8E, 0x28, 0x51},
-		decoded: Frame{
-			RequestID: fields.RequestID(0),
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorUnexpectedCommandWithTracebackID(
-					fields.Batch,
-					fields.Handshake,
-					fields.TracebackID{0x6B, 0xAE, 0x36, 0x80, 0x76, 0x95, 0x47, 0x42, 0x92, 0xAF, 0xA, 0x6F, 0xEC, 0x33, 0x98, 0x25},
-				),
-			},
-		},
-		size: 37,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x02, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x08, 0x73, 0x6F, 0x6D,
-			0x65, 0x2D, 0x6B, 0x65, 0x79, 0xE1, 0x5A, 0x14,
-			0x00},
-		decoded: Frame{
-			RequestID: fields.RequestID(1),
-			Body:      bodies.Read("some-key"),
-		},
-		size: 25,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x10, 0x01, 0x02, 0x06,
-			0x00, 0x00, 0x00, 0x09, 0x73, 0x6F, 0x6D, 0x65,
-			0x2D, 0x64, 0x61, 0x74, 0x61, 0x5E, 0x79, 0xB8,
-			0x83},
-		decoded: Frame{
-			RequestID: fields.RequestID(1),
-			Body:      bodies.ReadAnswer{Value: values.String("some-data")},
-		},
-		size: 33,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x0A,
-			0x00, 0x00, 0x00, 0x00, 0x29, 0x01, 0x02, 0x02,
-			0x00, 0x00, 0x00, 0x03, 0x03, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x01, 0x06, 0x00, 0x00,
-			0x00, 0x0B, 0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x20,
-			0x77, 0x6F, 0x72, 0x6C, 0x64, 0x05, 0x40, 0x00,
-			0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCD, 0x34, 0xE8,
-			0xE0, 0x75},
-		decoded: Frame{
-			RequestID: fields.RequestID(10),
-			Body: bodies.ReadAnswer{Value: values.UntypedArray{
-				values.Int(1),
-				values.String("hello world"),
-				values.Float(2.1),
-			}},
-		},
-		size: 58,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x0A,
-			0xF1, 0x38, 0x9C, 0x1F, 0xA2, 0x2F, 0x40, 0x82,
-			0xA2, 0x79, 0xD2, 0x01, 0x7C, 0x60, 0xF8, 0x20,
-			0x88, 0xEE, 0xCC, 0xAA},
-		decoded: Frame{
-			RequestID: fields.RequestID(1),
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorNotFoundWithTracebackID(
-					fields.Key("123"),
-					fields.TracebackID{0xF1, 0x38, 0x9C, 0x1F, 0xA2, 0x2F, 0x40, 0x82,
-						0xA2, 0x79, 0xD2, 0x01, 0x7C, 0x60, 0xF8, 0x20},
-				),
-			},
-		},
-		size: 36,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
-			0xA5, 0x18, 0xB2, 0xC1, 0xCC, 0x27, 0x49, 0x27,
-			0x94, 0x09, 0x6A, 0x10, 0x15, 0xDA, 0x67, 0xB1,
-			0x9C, 0x90, 0xb4, 0x33},
-		decoded: Frame{
-			RequestID: fields.RequestID(1),
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorInternalErrorWithTracebackID(
-					nil,
-					fields.TracebackID{0xA5, 0x18, 0xB2, 0xC1, 0xCC, 0x27, 0x49, 0x27,
-						0x94, 0x09, 0x6A, 0x10, 0x15, 0xDA, 0x67, 0xB1},
-				),
-			},
-		},
-		size: 36,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x03, 0x00, 0x00, 0x00, 0x02,
-			0x00, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00,
-			0x04, 0x63, 0x6F, 0x64, 0x65, 0x06, 0x00, 0x00,
-			0x00, 0x05, 0x49, 0x44, 0x44, 0x51, 0x44, 0x38,
-			0x0A, 0x5A, 0x23},
-		decoded: Frame{
-			RequestID: fields.RequestID(2),
-			Body: bodies.Write{
-				Key:   fields.Key("code"),
-				Value: values.String("IDDQD"),
-			},
-		},
-		size: 35,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x03, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x28, 0x00, 0x00, 0x00,
-			0x06, 0x76, 0x65, 0x63, 0x74, 0x6F, 0x72, 0x01,
-			0x00, 0x00, 0x00, 0x03, 0x03, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x03, 0xD7, 0x99, 0xDF,
-			0x3D},
-		decoded: Frame{
-			RequestID: 1,
-			Body: bodies.Write{
-				Key: fields.Key("vector"),
-				Value: values.TypedArray{
-					ElemType: fields.Int,
-					Elems: []value.V{
-						values.Int(1),
-						values.Int(2),
-						values.Int(3),
-					},
-				},
-			},
-		},
-		size: 57,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x02,
-			0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x03, 0xA0,
-			0x05, 0x87, 0x3E},
-		decoded: Frame{
-			RequestID: 2,
-			Body:      bodies.WriteAnswer{},
-		},
-		size: 19,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x02,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
-			0x77, 0x29, 0x53, 0x66, 0x99, 0x93, 0x4D, 0xC3,
-			0x9B, 0x99, 0x19, 0x24, 0x11, 0xEE, 0x5B, 0x8C,
-			0x9D, 0x90, 0x1B, 0x23},
-		decoded: Frame{
-			RequestID: 2,
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorInternalErrorWithTracebackID(
-					nil,
-					fields.TracebackID{0x77, 0x29, 0x53, 0x66, 0x99, 0x93, 0x4D, 0xC3, 0x9B, 0x99, 0x19, 0x24, 0x11, 0xEE, 0x5B, 0x8C},
-				),
-			},
-		},
-		size: 36,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x04, 0x00, 0x00, 0x00, 0x03,
-			0x00, 0x00, 0x00, 0x00, 0x0B, 0x61, 0x6E, 0x6F,
-			0x74, 0x68, 0x65, 0x72, 0x2D, 0x6B, 0x65, 0x79,
-			0xF4, 0xC7, 0xFF, 0x81},
-		decoded: Frame{
-			RequestID: 3,
-			Body:      bodies.Delete("another-key"),
-		},
-		size: 28,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
-			0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x04, 0x3D,
-			0xF3, 0x9E, 0xF2},
-		decoded: Frame{
-			RequestID: 3,
-			Body:      bodies.DeleteAnswer{},
-		},
-		size: 19,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
-			0xCA, 0xD1, 0xC1, 0x02, 0xCA, 0xC5, 0x4D, 0xDF,
-			0x9B, 0x61, 0xEB, 0x00, 0x81, 0x8E, 0x25, 0xD1,
-			0x4F, 0x23, 0x68, 0x80},
-		decoded: Frame{
-			RequestID: 3,
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorInternalErrorWithTracebackID(
-					nil,
-					fields.TracebackID{0xCA, 0xD1, 0xC1, 0x02, 0xCA, 0xC5, 0x4D, 0xDF,
-						0x9B, 0x61, 0xEB, 0x00, 0x81, 0x8E, 0x25, 0xD1},
-				),
-			},
-		},
-		size: 36,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x06, 0x00, 0x00, 0x00, 0x04,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0xA2, 0x1B, 0x87,
-			0x9B},
-		decoded: Frame{
-			RequestID: 4,
-			Body:      bodies.Ping{},
-		},
-		size: 17,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x04,
-			0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x06, 0x26,
-			0x91, 0xEB, 0x01},
-		decoded: Frame{
-			RequestID: 4,
-			Body:      bodies.PingAnswer{},
-		},
-		size: 19,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x04,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
-			0x3D, 0x8E, 0xD3, 0xBF, 0xB8, 0xD1, 0x47, 0x45,
-			0xA5, 0xDB, 0xF8, 0x50, 0x30, 0x90, 0x90, 0x2A,
-			0xC9, 0x04, 0x2A, 0x26},
-		decoded: Frame{
-			RequestID: 4,
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorInternalErrorWithTracebackID(
-					nil,
-					fields.TracebackID{0x3D, 0x8E, 0xD3, 0xBF, 0xB8, 0xD1, 0x47, 0x45, 0xA5, 0xDB, 0xF8, 0x50, 0x30, 0x90, 0x90, 0x2A},
-				),
-			},
-		},
-		size: 36,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x05, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x32, 0x05, 0x00, 0x00,
-			0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00,
-			0x00, 0x00, 0x03, 0x6B, 0x65, 0x79, 0x00, 0x00,
-			0x00, 0x02, 0x03, 0x00, 0x00, 0x00, 0x18, 0x00,
-			0x00, 0x00, 0x0B, 0x61, 0x6E, 0x6F, 0x74, 0x68,
-			0x65, 0x72, 0x2D, 0x6B, 0x65, 0x79, 0x06, 0x00,
-			0x00, 0x00, 0x04, 0x64, 0x61, 0x74, 0x61, 0xDE,
-			0x84, 0x44, 0x1C},
-		decoded: Frame{
-			RequestID: 1,
-			Body: bodies.Batch{
-				IsSequentialExecution: true,
-				InterruptAfterError:   false,
-				IsOneAnswer:           true,
+type failingCompressor struct{ err error }
 
-				Requests: []bodies.Request{
-					{
-						Number: 1,
-						Body:   bodies.Read("key"),
-					},
-					{
-						Number: 2,
-						Body: bodies.Write{
-							Key:   fields.Key("another-key"),
-							Value: values.String("data"),
-						},
-					},
-				},
-			},
-		},
-		size: 67,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x26, 0x01, 0x05, 0x00,
-			0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
-			0x00, 0x00, 0x0E, 0x01, 0x02, 0x06, 0x00, 0x00,
-			0x00, 0x07, 0x6D, 0x65, 0x73, 0x73, 0x61, 0x67,
-			0x65, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
-			0x02, 0x01, 0x03, 0xB7, 0x2D, 0x2D, 0xF4},
-		decoded: Frame{
-			RequestID: 1,
-			Body: bodies.BatchAnswer([]bodies.Result{
-				{
-					Number: 1,
-					Body: bodies.ReadAnswer{
-						Value: values.String("message"),
-					},
-				},
-				{
-					Number: 2,
-					Body:   bodies.WriteAnswer{},
-				},
-			},
-			),
-		},
-		size: 55,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x3C, 0x01, 0x05, 0x00,
-			0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
-			0x00, 0x00, 0x13, 0x00, 0x00, 0x08, 0x38, 0xDD,
-			0x5C, 0x39, 0x24, 0xDB, 0x45, 0xA9, 0x85, 0x09,
-			0xFF, 0xE6, 0xC6, 0x5C, 0x7F, 0x42, 0x00, 0x00,
-			0x00, 0x02, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00,
-			0x0C, 0x49, 0x84, 0x98, 0xC5, 0xCF, 0x19, 0x40,
-			0xC9, 0x95, 0x38, 0x15, 0x5C, 0x27, 0xA3, 0xCF,
-			0xF1, 0x01, 0x50, 0x3D, 0x7B},
-		decoded: Frame{
-			RequestID: 1,
-			Body: bodies.BatchAnswer([]bodies.Result{
-				{
-					Number: 1,
-					Body: bodies.ErrorAnswer{
-						Err: errs.NewErrorInternalErrorWithTracebackID(
-							nil,
-							fields.TracebackID{0x38, 0xDD, 0x5C, 0x39, 0x24, 0xDB, 0x45, 0xA9, 0x85, 0x09, 0xFF, 0xE6, 0xC6, 0x5C, 0x7F, 0x42},
-						),
-					},
-				},
-				{
-					Number: 2,
-					Body: bodies.ErrorAnswer{
-						Err: errs.NewErrorRequestInterruptedWithTracebackID(
-							fields.RequestID(1),
-							fields.TracebackID{0x49, 0x84, 0x98, 0xC5, 0xCF, 0x19, 0x40, 0xC9, 0x95, 0x38, 0x15, 0x5C, 0x27, 0xA3, 0xCF, 0xF1},
-						),
-					},
-				},
-			},
-			),
-		},
-		size: 77,
-	},
-	{
-		encoded: []byte{
-			0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x08,
-			0xE5, 0x3A, 0x39, 0x93, 0x7B, 0x7A, 0x47, 0xEC,
-			0xB3, 0x82, 0x7C, 0x2B, 0x05, 0xE3, 0xD6, 0xDD,
-			0x53, 0x81, 0xF9, 0xD8},
-		decoded: Frame{
-			RequestID: 1,
-			Body: bodies.ErrorAnswer{
-				Err: errs.NewErrorInternalErrorWithTracebackID(
-					nil,
-					fields.TracebackID{0xE5, 0x3A, 0x39, 0x93, 0x7B, 0x7A, 0x47, 0xEC, 0xB3, 0x82, 0x7C, 0x2B, 0x05, 0xE3, 0xD6, 0xDD},
-				),
-			},
-		},
-		size: 36,
-	},
+func (f failingCompressor) Code() fields.Compression          { return fields.Zstd }
+func (f failingCompressor) Compress([]byte) ([]byte, error)   { return nil, f.err }
+func (f failingCompressor) Decompress([]byte) ([]byte, error) { return nil, f.err }
+
+func encode(t *testing.T, f frame.Frame, c compressor.Compressor) []byte {
+	t.Helper()
+
+	buf := buffer.Slice{}
+	buf.Preallocate(f.Size())
+
+	if e := f.Encode(&buf, c); e != nil {
+		t.Fatalf("Encode() = %v", e)
+	}
+
+	return buf.Bytes()
 }
 
-func TestFrame_Size(t *testing.T) {
-	for i, tt := range testsSpecs {
-		t.Run(
-			fmt.Sprintf("TestFrame_Size %v", i),
-			func(t *testing.T) {
-				if got := tt.decoded.Size(); got != tt.size {
-					t.Errorf("frame Size() failure: got %v want %v", got, tt.size)
-				}
-			},
-		)
+func TestFrame_Specs(t *testing.T) {
+	for _, tt := range specs.Frames {
+		t.Run(tt.Name, func(t *testing.T) {
+			if got := encode(t, tt.Frame, nil); !bytes.Equal(got, tt.Encoded) {
+				t.Errorf("Encode() = % X, want % X", got, tt.Encoded)
+			}
+
+			if got := tt.Frame.Size(); got != len(tt.Encoded) {
+				t.Errorf("Size() = %v, want %v", got, len(tt.Encoded))
+			}
+
+			if got := tt.Frame.Version(); got != fields.CurrentVersion {
+				t.Errorf("Version() = %v, want %v", got, fields.CurrentVersion)
+			}
+
+			if e := tt.Frame.IsValid(); e != nil {
+				t.Errorf("IsValid() = %v", e)
+			}
+		})
 	}
 }
 
-func TestFrame_Version(t *testing.T) {
-	for i, tt := range testsSpecs {
-		t.Run(
-			fmt.Sprintf("TestFrame_Version %v", i),
-			func(t *testing.T) {
-				if got := tt.decoded.Version(); got != fields.CurrentVersion {
-					t.Errorf("frame version() failure: got %v want %v", got, fields.CurrentVersion)
-				}
-			},
-		)
+func TestFrame_EncodeWithCompression(t *testing.T) {
+	zstd, _ := compressors.NewZstd(1 << 12)
+	s2, _ := compressors.NewS2(1 << 12)
+
+	tests := []struct {
+		name       string
+		compressor compressor.Compressor
+		f          frame.Frame
+	}{
+		{"zstd read", zstd, frame.Frame{RequestID: 1, Body: bodies.Read("key")}},
+		{"zstd read answer", zstd, frame.Frame{RequestID: 2, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 256))}}},
+		{"s2 read", s2, frame.Frame{RequestID: 1, Body: bodies.Read("key")}},
+		{"s2 read answer", s2, frame.Frame{RequestID: 2, Body: bodies.ReadAnswer{Value: values.Bytes(make([]byte, 256))}}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := encode(t, tt.f, tt.compressor)
+
+			headers, compressed, checksum := got[:13], got[13:len(got)-4], got[len(got)-4:]
+
+			if want := byte(tt.f.Body.Command()); headers[3] != want {
+				t.Errorf("command byte = %v, want %v", headers[3], want)
+			}
+
+			if want := byte(tt.compressor.Code()); headers[8] != want {
+				t.Errorf("compression byte = %v, want %v", headers[8], want)
+			}
+
+			if bodyLen := binary.BigEndian.Uint32(headers[9:]); int(bodyLen) != len(compressed) {
+				t.Errorf("body len = %v, but body has %v bytes", bodyLen, len(compressed))
+			}
+
+			if want := fields.NewChecksum(got[:len(got)-4]); binary.BigEndian.Uint32(checksum) != uint32(want) {
+				t.Errorf("checksum = % X, want %08X", checksum, uint32(want))
+			}
+
+			body, e := tt.compressor.Decompress(compressed)
+			if e != nil {
+				t.Fatalf("Decompress() = %v", e)
+			}
+
+			if want := testutil.Encode(t, tt.f.Body); !bytes.Equal(body, want) {
+				t.Errorf("decompressed body = % X, want % X", body, want)
+			}
+		})
 	}
 }
 
-func TestFrame_Encode(t *testing.T) {
-	for i, tt := range testsSpecs {
-		t.Run(
-			fmt.Sprintf("TestFrame_Encode %v", i),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.decoded.Size())
+func TestFrame_EncodeErrs(t *testing.T) {
+	sentinel := errors.New("compress failed")
 
-				if err := tt.decoded.Encode(&buf, nil); err != nil {
-					t.Fatalf("encode frame failure: %v err", err)
-					return
-				}
+	tests := []struct {
+		name       string
+		f          frame.Frame
+		compressor compressor.Compressor
+		want       error
+	}{
+		{"nil body", frame.Frame{RequestID: 1}, nil, nil},
+		{"nil body with compressor", frame.Frame{RequestID: 1}, failingCompressor{sentinel}, nil},
+		{"compressor error", frame.Frame{RequestID: 1, Body: bodies.Ping{}}, failingCompressor{sentinel}, sentinel},
+	}
 
-				if got := buf.Bytes(); !bytes.Equal(got, tt.encoded) {
-					t.Errorf("encode frame failure: got %v want %v", got, tt.encoded)
-				}
-			},
-		)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := buffer.Slice{}
+
+			e := tt.f.Encode(&buf, tt.compressor)
+			if e == nil {
+				t.Fatal("Encode() = nil, want error")
+			}
+
+			if tt.want != nil && !errors.Is(e, tt.want) {
+				t.Errorf("Encode() = %v, want %v", e, tt.want)
+			}
+		})
 	}
 }
 
-func TestFrame_IsValid_BySpecs(t *testing.T) {
-	for i, tt := range testsSpecs {
-		t.Run(
-			fmt.Sprintf("TestFrame_IsValid_BySpecs %v", i),
-			func(t *testing.T) {
-				if err := tt.decoded.IsValid(); err != nil {
-					t.Errorf("frame IsValid failure: got %v err", err)
-				}
-			},
-		)
+func TestFrame_NilBody(t *testing.T) {
+	f := frame.Frame{RequestID: 1}
+
+	if got, want := f.Size(), 17; got != want {
+		t.Errorf("Size() = %v, want %v", got, want)
+	}
+
+	if e := f.IsValid(); e == nil {
+		t.Error("IsValid() = nil, want error")
 	}
 }
 
 func TestFrame_IsValid(t *testing.T) {
+	tooManyCompressions := slices.Repeat([]fields.Compression{fields.Zstd}, int(bodies.MaxCompressionsPerOneHandshake)+1)
+
 	tests := []struct {
-		f Frame
+		name string
+		f    frame.Frame
 	}{
-		{Frame{1, nil}},
-		{
-			Frame{1, bodies.Handshake{
-				Login:        "",
-				Hash:         [32]byte{},
-				Compressions: slices.Repeat([]fields.Compression{fields.Zstd}, int(bodies.MaxCompressionsPerOneHandshake)+1)},
-			},
-		},
-		{
-			Frame{1, bodies.HandshakeAnswer{
-				Compressions: slices.Repeat([]fields.Compression{fields.Zstd}, int(bodies.MaxCompressionsPerOneHandshake)+1)},
-			},
-		},
-		{
-			Frame{1, bodies.Read("")},
-		},
-		{
-			Frame{1, bodies.ReadAnswer{Value: nil}},
-		},
-		{
-			Frame{1, bodies.ReadAnswer{Value: values.JSON("n")}},
-		},
-		{
-			Frame{1, bodies.Write{Key: fields.Key(""), Value: nil}},
-		},
-		{
-			Frame{1, bodies.Write{Key: fields.Key("key"), Value: nil}},
-		},
-		{
-			Frame{1, bodies.Write{Key: fields.Key("key"), Value: values.JSON("n")}},
-		},
-		{
-			Frame{1, bodies.Delete("")},
-		},
-		{
-			Frame{1, bodies.Batch{Requests: []bodies.Request{
-				{Number: 1, Body: nil},
-			}}},
-		},
-		{
-			Frame{1, bodies.Batch{Requests: []bodies.Request{
-				{Number: 1, Body: bodies.Delete("")},
-			}}},
-		},
-		{
-			Frame{1, bodies.BatchAnswer{
-				{Number: 1, Body: nil},
-			}},
-		},
-		{
-			Frame{1, bodies.BatchAnswer{
-				{Number: 1, Body: bodies.ReadAnswer{Value: nil}},
-			}},
-		},
-		{
-			Frame{1, bodies.BatchAnswer{
-				{Number: 1, Body: bodies.ReadAnswer{Value: values.JSON("a")}},
-			}},
-		},
+		{"handshake with too many compressions", frame.Frame{RequestID: 1, Body: bodies.Handshake{Compressions: tooManyCompressions}}},
+		{"handshake answer with too many compressions", frame.Frame{RequestID: 1, Body: bodies.HandshakeAnswer{Compressions: tooManyCompressions}}},
+		{"read empty key", frame.Frame{RequestID: 1, Body: bodies.Read("")}},
+		{"read answer nil value", frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: nil}}},
+		{"read answer invalid json", frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.JSON("n")}}},
+		{"write empty key and nil value", frame.Frame{RequestID: 1, Body: bodies.Write{Key: fields.Key(""), Value: nil}}},
+		{"write nil value", frame.Frame{RequestID: 1, Body: bodies.Write{Key: fields.Key("key"), Value: nil}}},
+		{"write invalid json", frame.Frame{RequestID: 1, Body: bodies.Write{Key: fields.Key("key"), Value: values.JSON("n")}}},
+		{"delete empty key", frame.Frame{RequestID: 1, Body: bodies.Delete("")}},
+		{"batch with nil request body", frame.Frame{RequestID: 1, Body: bodies.Batch{Requests: []bodies.Request{{Number: 1, Body: nil}}}}},
+		{"batch with invalid request", frame.Frame{RequestID: 1, Body: bodies.Batch{Requests: []bodies.Request{{Number: 1, Body: bodies.Delete("")}}}}},
+		{"batch answer with nil result body", frame.Frame{RequestID: 1, Body: bodies.BatchAnswer{{Number: 1, Body: nil}}}},
+		{"batch answer with nil value", frame.Frame{RequestID: 1, Body: bodies.BatchAnswer{{Number: 1, Body: bodies.ReadAnswer{Value: nil}}}}},
+		{"batch answer with invalid json", frame.Frame{RequestID: 1, Body: bodies.BatchAnswer{{Number: 1, Body: bodies.ReadAnswer{Value: values.JSON("a")}}}}},
 	}
-	for i, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestFrame_IsValid %v", i),
-			func(t *testing.T) {
-				if err := tt.f.IsValid(); err == nil {
-					t.Errorf("frame IsValid failure: got nil err")
-				}
-			},
-		)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if e := tt.f.IsValid(); e == nil {
+				t.Error("IsValid() = nil, want error")
+			}
+		})
 	}
 }

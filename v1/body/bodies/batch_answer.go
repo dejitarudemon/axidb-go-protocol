@@ -7,11 +7,15 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
+// Result is one numbered answer inside a [BatchAnswer].
 type Result struct {
+	// Number identifies the request this result replies to.
 	Number fields.RequestNumber
-	Body   body.Answer
+	// Body is the nested answer.
+	Body body.Answer
 }
 
+// Size returns the encoded result size in bytes.
 func (r Result) Size() int {
 	if r.Body == nil {
 		return RequestsLenFieldSize + fields.RequestNumberFieldSize
@@ -19,6 +23,7 @@ func (r Result) Size() int {
 	return RequestsLenFieldSize + fields.RequestNumberFieldSize + r.Body.Size()
 }
 
+// Encode writes the request number, answer length, and answer into buf.
 func (r Result) Encode(buf buffer.Appender) {
 	r.Number.Encode(buf)
 
@@ -30,6 +35,8 @@ func (r Result) Encode(buf buffer.Appender) {
 	}
 }
 
+// IsResponseTo returns the command the nested answer replies to.
+// A nil body reports command code 0.
 func (r Result) IsResponseTo() fields.Command {
 	if r.Body == nil {
 		return fields.Command(0)
@@ -37,6 +44,8 @@ func (r Result) IsResponseTo() fields.Command {
 	return r.Body.IsResponseTo()
 }
 
+// IsValid reports whether the result satisfies protocol rules.
+// Body must be a non-nil answer whose command is [fields.Answer] and which passes its own IsValid check.
 func (r Result) IsValid() error {
 	if r.Body == nil {
 		return err.NewValidationError(
@@ -64,8 +73,10 @@ func (r Result) IsValid() error {
 
 var _ body.Answer = BatchAnswer{}
 
+// BatchAnswer is a successful reply to [fields.Batch] listing one result per request.
 type BatchAnswer []Result
 
+// Size returns the encoded body size in bytes.
 func (b BatchAnswer) Size() int {
 	size := RequestsLenFieldSize + ResultFieldSize + b.IsResponseTo().Size()
 
@@ -76,6 +87,7 @@ func (b BatchAnswer) Size() int {
 	return size
 }
 
+// Encode writes the wire encoding of the body into buf.
 func (b BatchAnswer) Encode(buf buffer.Appender) {
 	buf.Append(ResultOK)
 	b.IsResponseTo().Encode(buf)
@@ -86,14 +98,18 @@ func (b BatchAnswer) Encode(buf buffer.Appender) {
 	}
 }
 
+// Command returns [fields.Answer].
 func (b BatchAnswer) Command() fields.Command {
 	return fields.Answer
 }
 
+// IsResponseTo returns [fields.Batch].
 func (b BatchAnswer) IsResponseTo() fields.Command {
 	return fields.Batch
 }
 
+// IsValid reports whether the body satisfies protocol rules.
+// Results must be non-empty, uniquely numbered, and each must pass its own IsValid check.
 func (b BatchAnswer) IsValid() error {
 	if len(b) == 0 {
 		return err.NewValidationError(

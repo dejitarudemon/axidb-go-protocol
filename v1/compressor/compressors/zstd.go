@@ -11,20 +11,24 @@ import (
 
 var _ compressor.Compressor = Zstd{}
 
+// Zstd compresses frame bodies with Zstandard ([fields.Zstd]).
 type Zstd struct {
 	limit uint32
 }
 
+// NewZstd returns a Zstd compressor that rejects decompressed output larger than limit bytes.
 func NewZstd(limit uint32) (Zstd, error) {
 	return Zstd{
 		limit: limit,
 	}, nil
 }
 
+// Code returns [fields.Zstd].
 func (z Zstd) Code() fields.Compression {
 	return fields.Zstd
 }
 
+// Compress returns the Zstandard-compressed form of data.
 func (z Zstd) Compress(data []byte) ([]byte, error) {
 	writer, err := zstd.NewWriter(
 		nil,
@@ -42,6 +46,8 @@ func (z Zstd) Compress(data []byte) ([]byte, error) {
 	return writer.EncodeAll(data, nil), nil
 }
 
+// Decompress returns the original bytes from a Zstandard payload.
+// Output longer than the configured limit is rejected.
 func (z Zstd) Decompress(data []byte) ([]byte, error) {
 	reader, err := zstd.NewReader(
 		bytes.NewReader(data),

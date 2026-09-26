@@ -1,113 +1,36 @@
 package fields
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
 )
 
-func TestCompression_Size(t *testing.T) {
+func TestCompression(t *testing.T) {
 	tests := []struct {
-		c    Compression
-		want int
+		c         Compression
+		want      []byte
+		wantStr   string
+		wantValid bool
 	}{
-		{None, 1},
-		{Zstd, 1},
-		{S2, 1},
-		{Compression(3), 1},
-		{Compression(255), 1},
+		{None, []byte{0x00}, "None", true},
+		{Zstd, []byte{0x01}, "Zstd", true},
+		{S2, []byte{0x02}, "S2", true},
+		{Compression(3), []byte{0x03}, "Unknown (3)", false},
+		{Compression(255), []byte{0xFF}, "Unknown (255)", false},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("%v", tt.c),
-			func(t *testing.T) {
-				if got := tt.c.Size(); got != tt.want {
-					t.Errorf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
+		t.Run(tt.wantStr, func(t *testing.T) {
+			testutil.AssertEncoded(t, tt.c, tt.want)
 
-func TestCompression_Encode(t *testing.T) {
-	tests := []struct {
-		c    Compression
-		want []byte
-	}{
-		{None, []byte{0x00}},
-		{Zstd, []byte{0x01}},
-		{S2, []byte{0x02}},
-	}
+			if got := tt.c.String(); got != tt.wantStr {
+				t.Errorf("String() = %q, want %q", got, tt.wantStr)
+			}
 
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("%v", tt.c),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.c.Size())
-
-				tt.c.Encode(&buf)
-				got := buf.Bytes()
-
-				if len(got) != tt.c.Size() {
-					t.Fatalf("expected %v bytes, got %v bytes", tt.c.Size(), len(got))
-				}
-
-				if !bytes.Equal(got, tt.want) {
-					t.Errorf("Encode() = %q, want %q", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestCompression_String(t *testing.T) {
-	tests := []struct {
-		c    Compression
-		want string
-	}{
-		{None, "None"},
-		{Zstd, "Zstd"},
-		{S2, "S2"},
-		{Compression(3), "Unknown (3)"},
-		{Compression(255), "Unknown (255)"},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("%v", tt.c),
-			func(t *testing.T) {
-				if got := tt.c.String(); got != tt.want {
-					t.Errorf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestCompression_IsValid(t *testing.T) {
-	tests := []struct {
-		c       Compression
-		wantErr bool
-	}{
-		{None, true},
-		{Zstd, true},
-		{S2, true},
-		{Compression(3), false},
-		{Compression(255), false},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("%v", tt.c),
-			func(t *testing.T) {
-				if got := tt.c.IsValid(); got != tt.wantErr {
-					t.Errorf("got %v, want %v", got, tt.wantErr)
-				}
-			},
-		)
+			if got := tt.c.IsValid(); got != tt.wantValid {
+				t.Errorf("IsValid() = %v, want %v", got, tt.wantValid)
+			}
+		})
 	}
 }
