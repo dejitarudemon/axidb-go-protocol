@@ -3,7 +3,7 @@
 
 # axidb-go-protocol
 
-Go-библиотека кадров протокола [AxiDB](docs/specs.md): Hello (версия 0) и рабочая версия 1.
+Go-библиотека кадров протокола AxiDB: Hello (версия 0) и рабочая версия 1.
 
 [Русский](#русский) · [English](#english)
 
@@ -11,335 +11,211 @@ Go-библиотека кадров протокола [AxiDB](docs/specs.md): 
 
 ## Русский
 
-Кодирование, декодирование и проверка кадров AxiDB. Версия 0 согласовывает рабочую версию. Версия 1 — Handshake, Read, Write, Delete, Ping, Batch, ответы и ошибки.
+Кодирование и разбор бинарных кадров. Сокет, хранилище и ACL — на стороне приложения.
 
-### Спецификация
+### Документация
 
-- [Русский текст](docs/specs.md)
-- [English text](docs/specs.en.md)
+- [Как это работает](docs/how-it-works.md)
+- [Туториалы](docs/tutorial.md)
+- [Спецификация](docs/specs.md) · [English](docs/specs.en.md)
 
 ### Установка
 
-Требуется Go 1.27 или новее.
+Нужен Go 1.27 или новее.
 
 ```bash
 go get github.com/dejitarudemon/axidb-go-protocol@latest
 ```
 
-### Пакеты
+### Фишки протокола
 
-| Пакет | Назначение |
-| --- | --- |
-| `v0/builder`, `v0/decoder`, `v0/frame` | Hello-кадр: список поддерживаемых версий |
-| `v0/body/bodies` | Тело Hello и пересечение версий (`Common`) |
-| `v1/builder` | Сборка кадров Handshake, Read, Write, Delete, Ping, Batch и ответов |
-| `v1/decoder` | Разбор кадра из `*bufio.Reader` |
-| `v1/frame`, `v1/body/bodies` | Кадр и тела команд |
-| `v1/value/values` | Типы значений: bytes, string, int, uint, float, JSON, массивы |
-| `v1/compressor/compressors` | Сжатие тела: zstd, s2 |
-| `v1/buffer` | Буфер кодирования (`buffer.Slice`) |
-| `v1/err`, `v1/err/errs` | Локальные и протокольные ошибки |
+- **Hello v0** — узлы пересекают списки версий до любой рабочей команды. Версия 0 сама по себе не рабочая.
+- **Один кадр на поток** — magic `0A DB`, big-endian, длина известна из заголовка. `DecodePreamble` смотрит версию и не сдвигает курсор.
+- **Контрольные суммы** — CRC-32/XFER на Hello, CRC-32C (Castagnoli) на v1. Сумма покрывает кадр без себя; при сжатии проверяется до распаковки.
+- **Асинхронность** — `RequestID` multiplexит запросы на одном TCP. `0` зарезервирован для Handshake.
+- **Типизированные значения** — bytes, массивы, int/uint, float64, UTF-8, JSON.
+- **Сжатие Body** — zstd и s2 по согласованию в Handshake. Handshake и Ping не сжимаются.
+- **Батч** — несколько Read/Write/Delete в одном кадре, не транзакция: последовательность, прерывание по ошибке, один или несколько ответов.
+- **Ошибки с TracebackID** — ответ клиенту связан с записью в логе сервера.
 
-### Туториал
+### Пример: TCP-сервер
 
-Ниже — полный путь клиента: TCP, Hello, Handshake, запись, чтение, ping. Примеры собирают кадр в память; на сокете вместо `bytes.NewReader` используйте `bufio.NewReader(conn)`.
-
-#### 1. Согласовать версию (Hello)
-
-Клиент и сервер обмениваются кадрами версии 0. Общие версии — пересечение двух списков.
+Сервер принимает Hello, отвечает своими версиями, проходит Handshake и обслуживает Ping, Read, Write, Delete в памяти.
 
 ```go
 package main
 
 import (
 	"bufio"
-	"bytes"
-	"fmt"
+	"log"
+	"net"
+	"sync"
 
 	v0bodies "github.com/dejitarudemon/axidb-go-protocol/v0/body/bodies"
 	v0builder "github.com/dejitarudemon/axidb-go-protocol/v0/builder"
 	v0decoder "github.com/dejitarudemon/axidb-go-protocol/v0/decoder"
 	v0fields "github.com/dejitarudemon/axidb-go-protocol/v0/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-)
-
-func main() {
-	client := v0builder.NewFrameBuilder(1 << 10)
-	hello, err := client.NewHello([]v0fields.Version{1, 2, 3})
-	if err != nil {
-		panic(err)
-	}
-
-	var out buffer.Slice
-	out.Preallocate(hello.Size())
-	if err := hello.Encode(&out); err != nil {
-		panic(err)
-	}
-
-	// На сервере тот же кадр приходит из сети.
-	d := v0decoder.NewDecoder()
-	r := bufio.NewReader(bytes.NewReader(out.Bytes()))
-
-	version, err := d.DecodePreamble(r)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("preamble version:", version) // 0
-
-	got, err := d.DecodeFrame(r)
-	if err != nil {
-		panic(err)
-	}
-
-	mine := hello.Body.(v0bodies.Hello)
-	peer := got.Body.(v0bodies.Hello)
-	fmt.Println("common:", mine.Common(peer)) // [1 2 3] в этом примере
-}
-```
-
-`DecodePreamble` не потребляет байты: по версии `0` вызывайте `v0/decoder`, по версии `1` — `v1/decoder`.
-
-Если пересечение пустое, клиент разрывает соединение.
-
-#### 2. Рукопожатие (Handshake)
-
-После Hello клиент отправляет кадр версии 1 с `RequestID = 0`. Сжатие в Handshake запрещено.
-
-```go
-package main
-
-import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-)
-
-func main() {
-	fb := builder.NewFrameBuilder(1 << 20)
-	var hash [32]byte // Argon2id от пароля; для анонимного входа — нули
-
-	hs, err := fb.NewHandshake("user", hash, []fields.Compression{fields.Zstd, fields.S2})
-	if err != nil {
-		panic(err)
-	}
-
-	var out buffer.Slice
-	out.Preallocate(hs.Size())
-	if err := hs.Encode(&out, nil); err != nil {
-		panic(err)
-	}
-
-	_ = out.Bytes() // отправить в соединение
-}
-```
-
-Ответ сервера собирается через `NewHandshakeAnswer`. Дальше `RequestID` должен быть ненулевым.
-
-#### 3. Запись и чтение
-
-```go
-package main
-
-import (
-	"bufio"
-	"bytes"
-	"fmt"
-
+	v0frame "github.com/dejitarudemon/axidb-go-protocol/v0/frame"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/body/bodies"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/decoder"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
 func main() {
-	fb := builder.NewFrameBuilder(1 << 20)
-
-	write, err := fb.NewWrite(2, fields.Key("code"), values.String("IDDQD"))
+	ln, err := net.Listen("tcp", "127.0.0.1:4747")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
+	log.Println("listen", ln.Addr())
 
-	var out buffer.Slice
-	out.Preallocate(write.Size())
-	if err := write.Encode(&out, nil); err != nil {
-		panic(err)
+	for {
+		c, err := ln.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+		go serve(c)
 	}
-
-	d := decoder.NewDecoder(1<<20, nil)
-	got, err := d.DecodeFrame(bufio.NewReader(bytes.NewReader(out.Bytes())))
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(got.RequestID, got.Body) // 2 и тело Write
-
-	read, err := fb.NewRead(1, fields.Key("code"))
-	if err != nil {
-		panic(err)
-	}
-
-	out.Clean()
-	out.Preallocate(read.Size())
-	if err := read.Encode(&out, nil); err != nil {
-		panic(err)
-	}
-
-	answer, err := fb.NewReadAnswer(1, values.String("IDDQD"))
-	if err != nil {
-		panic(err)
-	}
-	_ = answer
 }
-```
 
-Другие тела:
+type kv struct {
+	mu   sync.Mutex
+	data map[string]value.V
+}
 
-```go
-fb.NewDelete(3, fields.Key("another-key"))
-fb.NewPing(4)
-fb.NewWriteAnswer(2)
-fb.NewDeleteAnswer(3)
-fb.NewPingAnswer(4)
-```
+func serve(c net.Conn) {
+	defer c.Close()
 
-#### 4. Разобрать кадр из потока
+	r := bufio.NewReader(c)
+	fb0 := v0builder.NewFrameBuilder(1 << 10)
+	fb1 := builder.NewFrameBuilder(1 << 20)
+	store := &kv{data: map[string]value.V{}}
 
-```go
-package main
-
-import (
-	"bufio"
-	"io"
-
-	v0decoder "github.com/dejitarudemon/axidb-go-protocol/v0/decoder"
-	v1decoder "github.com/dejitarudemon/axidb-go-protocol/v1/decoder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-)
-
-func readFrame(r *bufio.Reader) error {
-	v0 := v0decoder.NewDecoder()
-	version, err := v0.DecodePreamble(r)
+	hello, err := v0decoder.NewDecoder().DecodeFrame(r)
 	if err != nil {
-		return err
+		return
+	}
+	peer, ok := hello.Body.(v0bodies.Hello)
+	if !ok {
+		return
+	}
+	mine, err := fb0.NewHello([]v0fields.Version{1})
+	if err != nil || len(mine.Body.(v0bodies.Hello).Common(peer)) == 0 {
+		return
+	}
+	if err := writeV0(c, mine); err != nil {
+		return
 	}
 
-	if version == 0 {
-		_, err = v0.DecodeFrame(r)
-		return err
+	hs, err := decoder.NewDecoder(1<<20, nil).DecodeFrame(r)
+	if err != nil {
+		return
+	}
+	if _, ok := hs.Body.(bodies.Handshake); !ok {
+		return
+	}
+	ans, err := fb1.NewHandshakeAnswer(nil)
+	if err != nil {
+		return
+	}
+	if err := writeV1(c, ans); err != nil {
+		return
 	}
 
-	v1 := v1decoder.NewDecoder(fields.BodyLimit(1<<20), nil)
-	_, err = v1.DecodeFrame(r)
+	d1 := decoder.NewDecoder(1<<20, nil)
+	for {
+		f, err := d1.DecodeFrame(r)
+		if err != nil {
+			return
+		}
+		reply, err := store.handle(fb1, f)
+		if err != nil {
+			return
+		}
+		if err := writeV1(c, reply); err != nil {
+			return
+		}
+	}
+}
+
+func (s *kv) handle(fb builder.FrameBuilder, f frame.Frame) (frame.Frame, error) {
+	switch b := f.Body.(type) {
+	case bodies.Ping:
+		return fb.NewPingAnswer(f.RequestID)
+	case bodies.Read:
+		s.mu.Lock()
+		v, ok := s.data[string(b)]
+		s.mu.Unlock()
+		if !ok {
+			return fb.NewErrAnswer(f.RequestID, errs.NewErrorNotFound(fields.Key(b)))
+		}
+		return fb.NewReadAnswer(f.RequestID, v)
+	case bodies.Write:
+		s.mu.Lock()
+		s.data[string(b.Key)] = b.Value
+		s.mu.Unlock()
+		return fb.NewWriteAnswer(f.RequestID)
+	case bodies.Delete:
+		s.mu.Lock()
+		delete(s.data, string(b))
+		s.mu.Unlock()
+		return fb.NewDeleteAnswer(f.RequestID)
+	default:
+		cmd := fields.Command(0)
+		if f.Body != nil {
+			cmd = f.Body.Command()
+		}
+		return fb.NewErrAnswer(f.RequestID, errs.NewErrorUnsupportedCommand(cmd))
+	}
+}
+
+func writeV0(c net.Conn, f v0frame.Frame) error {
+	var buf buffer.Slice
+	buf.Preallocate(f.Size())
+	if err := f.Encode(&buf); err != nil {
+		return err
+	}
+	_, err := c.Write(buf.Bytes())
 	return err
 }
 
-func serve(r io.Reader) error {
-	return readFrame(bufio.NewReader(r))
+func writeV1(c net.Conn, f frame.Frame) error {
+	var buf buffer.Slice
+	buf.Preallocate(f.Size())
+	if err := f.Encode(&buf, nil); err != nil {
+		return err
+	}
+	_, err := c.Write(buf.Bytes())
+	return err
 }
 ```
 
-#### 5. Сжатие тела
+Клиент, сжатие и батч — в [туториалах](docs/tutorial.md).
 
-Сжатие применяется только к Body. Контрольная сумма считается по сжатым байтам. Handshake и Ping сжимать нельзя.
-
-```go
-package main
-
-import (
-	"bufio"
-	"bytes"
-
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor/compressors"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/decoder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
-)
-
-func main() {
-	zstd, err := compressors.NewZstd(1 << 20)
-	if err != nil {
-		panic(err)
-	}
-
-	fb := builder.NewFrameBuilder(1 << 20)
-	f, err := fb.NewWrite(2, fields.Key("blob"), values.Bytes(make([]byte, 256)))
-	if err != nil {
-		panic(err)
-	}
-
-	var out buffer.Slice
-	if err := f.Encode(&out, zstd); err != nil {
-		panic(err)
-	}
-
-	d := decoder.NewDecoder(1<<20, []compressor.Compressor{zstd})
-	_, err = d.DecodeFrame(bufio.NewReader(bytes.NewReader(out.Bytes())))
-	if err != nil {
-		panic(err)
-	}
-}
-```
-
-#### 6. Батч
-
-Батч — не транзакция. Допустимы только Read, Write и Delete. Номера операций назначает builder, начиная с нуля.
-
-```go
-package main
-
-import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
-)
-
-func main() {
-	fb := builder.NewFrameBuilder(1 << 20)
-	batch := builder.NewBatchRequestsBuilder().
-		SequentialExecution(true).
-		InterruptAfterError(false).
-		OneAnswer(true).
-		AddRead(fields.Key("key")).
-		AddWrite(fields.Key("another-key"), values.String("data"))
-
-	f, err := fb.NewBatch(1, *batch)
-	if err != nil {
-		panic(err)
-	}
-	_ = f
-}
-```
-
-### Примеры из спецификации
-
-Готовые кадры из спецификации лежат в `v0/internal/specs` и `v1/internal/specs`. Тесты `TestFrame_Specs` и `TestDecoder_Specs` сверяют кодирование и разбор с этими байтами.
-
-```text
-Клиент → сервер, Hello:  0A DB 00 03 01 02 03 6E 38 99 00
-Сервер → клиент, Hello:  0A DB 00 04 01 04 07 0B 3B 78 5D 98
-Общие версии: 1
-```
-
-### Тесты
+### Тесты и бенчмарки
 
 ```bash
 go test ./v0/... ./v1/...
+go test -bench=. -benchmem ./v0/... ./v1/...
 ```
 
 ---
 
 ## English
 
-A Go library for [AxiDB](docs/specs.en.md) protocol frames: Hello (version 0) and working version 1.
+A Go library for AxiDB protocol frames: Hello (version 0) and working version 1.
 
-### Specification
+Encoding and decoding only. The socket, storage, and ACL stay in the application.
 
-- [Russian](docs/specs.md)
-- [English](docs/specs.en.md)
+### Docs
+
+- [How it works](docs/how-it-works.en.md)
+- [Tutorials](docs/tutorial.en.md)
+- [Specification](docs/specs.en.md) · [Русский](docs/specs.md)
 
 ### Install
 
@@ -349,306 +225,178 @@ Go 1.27 or newer is required.
 go get github.com/dejitarudemon/axidb-go-protocol@latest
 ```
 
-### Packages
+### Protocol features
 
-| Package | Role |
-| --- | --- |
-| `v0/builder`, `v0/decoder`, `v0/frame` | Hello frame: advertised protocol versions |
-| `v0/body/bodies` | Hello body and version intersection (`Common`) |
-| `v1/builder` | Handshake, Read, Write, Delete, Ping, Batch, and answers |
-| `v1/decoder` | Parse one frame from a `*bufio.Reader` |
-| `v1/frame`, `v1/body/bodies` | Frame and command bodies |
-| `v1/value/values` | Value types: bytes, string, int, uint, float, JSON, arrays |
-| `v1/compressor/compressors` | Body compression: zstd, s2 |
-| `v1/buffer` | Encoding buffer (`buffer.Slice`) |
-| `v1/err`, `v1/err/errs` | Local and protocol errors |
+- **Hello v0** — nodes intersect version lists before any working command. Version 0 is not a working version.
+- **One frame on a stream** — magic `0A DB`, big-endian, length taken from the header. `DecodePreamble` peeks the version and does not consume bytes.
+- **Checksums** — CRC-32/XFER on Hello, CRC-32C (Castagnoli) on v1. The sum covers the frame except itself; with compression it is checked before decompress.
+- **Asynchrony** — `RequestID` multiplexes requests on one TCP connection. `0` is reserved for Handshake.
+- **Typed values** — bytes, arrays, int/uint, float64, UTF-8, JSON.
+- **Body compression** — zstd and s2, agreed in Handshake. Handshake and Ping are not compressed.
+- **Batch** — several Read/Write/Delete operations in one frame, not a transaction: order, fail-fast, one reply or many.
+- **Errors with TracebackID** — the client reply is tied to a server log line.
 
-### Tutorial
+### Example: TCP server
 
-A full client path: TCP, Hello, Handshake, write, read, ping. The snippets encode into memory; on a socket use `bufio.NewReader(conn)` instead of `bytes.NewReader`.
-
-#### 1. Agree on a version (Hello)
-
-Client and server exchange version-0 frames. Working versions are the intersection of the two lists.
+The server accepts Hello, replies with its versions, completes Handshake, then serves Ping, Read, Write, and Delete in memory.
 
 ```go
 package main
 
 import (
 	"bufio"
-	"bytes"
-	"fmt"
+	"log"
+	"net"
+	"sync"
 
 	v0bodies "github.com/dejitarudemon/axidb-go-protocol/v0/body/bodies"
 	v0builder "github.com/dejitarudemon/axidb-go-protocol/v0/builder"
 	v0decoder "github.com/dejitarudemon/axidb-go-protocol/v0/decoder"
 	v0fields "github.com/dejitarudemon/axidb-go-protocol/v0/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-)
-
-func main() {
-	client := v0builder.NewFrameBuilder(1 << 10)
-	hello, err := client.NewHello([]v0fields.Version{1, 2, 3})
-	if err != nil {
-		panic(err)
-	}
-
-	var out buffer.Slice
-	out.Preallocate(hello.Size())
-	if err := hello.Encode(&out); err != nil {
-		panic(err)
-	}
-
-	// On the server the same frame arrives from the network.
-	d := v0decoder.NewDecoder()
-	r := bufio.NewReader(bytes.NewReader(out.Bytes()))
-
-	version, err := d.DecodePreamble(r)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("preamble version:", version) // 0
-
-	got, err := d.DecodeFrame(r)
-	if err != nil {
-		panic(err)
-	}
-
-	mine := hello.Body.(v0bodies.Hello)
-	peer := got.Body.(v0bodies.Hello)
-	fmt.Println("common:", mine.Common(peer)) // [1 2 3] in this example
-}
-```
-
-`DecodePreamble` does not consume bytes: use `v0/decoder` for version `0` and `v1/decoder` for version `1`.
-
-If the intersection is empty, the client closes the connection.
-
-#### 2. Handshake
-
-After Hello the client sends a version-1 frame with `RequestID = 0`. Compression is forbidden on Handshake.
-
-```go
-package main
-
-import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-)
-
-func main() {
-	fb := builder.NewFrameBuilder(1 << 20)
-	var hash [32]byte // Argon2id of the password; zeros for anonymous login
-
-	hs, err := fb.NewHandshake("user", hash, []fields.Compression{fields.Zstd, fields.S2})
-	if err != nil {
-		panic(err)
-	}
-
-	var out buffer.Slice
-	out.Preallocate(hs.Size())
-	if err := hs.Encode(&out, nil); err != nil {
-		panic(err)
-	}
-
-	_ = out.Bytes() // write to the connection
-}
-```
-
-Build the server reply with `NewHandshakeAnswer`. Later requests must use a non-zero `RequestID`.
-
-#### 3. Write and read
-
-```go
-package main
-
-import (
-	"bufio"
-	"bytes"
-	"fmt"
-
+	v0frame "github.com/dejitarudemon/axidb-go-protocol/v0/frame"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/body/bodies"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/decoder"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
 )
 
 func main() {
-	fb := builder.NewFrameBuilder(1 << 20)
-
-	write, err := fb.NewWrite(2, fields.Key("code"), values.String("IDDQD"))
+	ln, err := net.Listen("tcp", "127.0.0.1:4747")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
+	log.Println("listen", ln.Addr())
 
-	var out buffer.Slice
-	out.Preallocate(write.Size())
-	if err := write.Encode(&out, nil); err != nil {
-		panic(err)
+	for {
+		c, err := ln.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+		go serve(c)
 	}
-
-	d := decoder.NewDecoder(1<<20, nil)
-	got, err := d.DecodeFrame(bufio.NewReader(bytes.NewReader(out.Bytes())))
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(got.RequestID, got.Body) // 2 and a Write body
-
-	read, err := fb.NewRead(1, fields.Key("code"))
-	if err != nil {
-		panic(err)
-	}
-
-	out.Clean()
-	out.Preallocate(read.Size())
-	if err := read.Encode(&out, nil); err != nil {
-		panic(err)
-	}
-
-	answer, err := fb.NewReadAnswer(1, values.String("IDDQD"))
-	if err != nil {
-		panic(err)
-	}
-	_ = answer
 }
-```
 
-Other bodies:
+type kv struct {
+	mu   sync.Mutex
+	data map[string]value.V
+}
 
-```go
-fb.NewDelete(3, fields.Key("another-key"))
-fb.NewPing(4)
-fb.NewWriteAnswer(2)
-fb.NewDeleteAnswer(3)
-fb.NewPingAnswer(4)
-```
+func serve(c net.Conn) {
+	defer c.Close()
 
-#### 4. Decode a frame from a stream
+	r := bufio.NewReader(c)
+	fb0 := v0builder.NewFrameBuilder(1 << 10)
+	fb1 := builder.NewFrameBuilder(1 << 20)
+	store := &kv{data: map[string]value.V{}}
 
-```go
-package main
-
-import (
-	"bufio"
-	"io"
-
-	v0decoder "github.com/dejitarudemon/axidb-go-protocol/v0/decoder"
-	v1decoder "github.com/dejitarudemon/axidb-go-protocol/v1/decoder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-)
-
-func readFrame(r *bufio.Reader) error {
-	v0 := v0decoder.NewDecoder()
-	version, err := v0.DecodePreamble(r)
+	hello, err := v0decoder.NewDecoder().DecodeFrame(r)
 	if err != nil {
-		return err
+		return
+	}
+	peer, ok := hello.Body.(v0bodies.Hello)
+	if !ok {
+		return
+	}
+	mine, err := fb0.NewHello([]v0fields.Version{1})
+	if err != nil || len(mine.Body.(v0bodies.Hello).Common(peer)) == 0 {
+		return
+	}
+	if err := writeV0(c, mine); err != nil {
+		return
 	}
 
-	if version == 0 {
-		_, err = v0.DecodeFrame(r)
-		return err
+	hs, err := decoder.NewDecoder(1<<20, nil).DecodeFrame(r)
+	if err != nil {
+		return
+	}
+	if _, ok := hs.Body.(bodies.Handshake); !ok {
+		return
+	}
+	ans, err := fb1.NewHandshakeAnswer(nil)
+	if err != nil {
+		return
+	}
+	if err := writeV1(c, ans); err != nil {
+		return
 	}
 
-	v1 := v1decoder.NewDecoder(fields.BodyLimit(1<<20), nil)
-	_, err = v1.DecodeFrame(r)
+	d1 := decoder.NewDecoder(1<<20, nil)
+	for {
+		f, err := d1.DecodeFrame(r)
+		if err != nil {
+			return
+		}
+		reply, err := store.handle(fb1, f)
+		if err != nil {
+			return
+		}
+		if err := writeV1(c, reply); err != nil {
+			return
+		}
+	}
+}
+
+func (s *kv) handle(fb builder.FrameBuilder, f frame.Frame) (frame.Frame, error) {
+	switch b := f.Body.(type) {
+	case bodies.Ping:
+		return fb.NewPingAnswer(f.RequestID)
+	case bodies.Read:
+		s.mu.Lock()
+		v, ok := s.data[string(b)]
+		s.mu.Unlock()
+		if !ok {
+			return fb.NewErrAnswer(f.RequestID, errs.NewErrorNotFound(fields.Key(b)))
+		}
+		return fb.NewReadAnswer(f.RequestID, v)
+	case bodies.Write:
+		s.mu.Lock()
+		s.data[string(b.Key)] = b.Value
+		s.mu.Unlock()
+		return fb.NewWriteAnswer(f.RequestID)
+	case bodies.Delete:
+		s.mu.Lock()
+		delete(s.data, string(b))
+		s.mu.Unlock()
+		return fb.NewDeleteAnswer(f.RequestID)
+	default:
+		cmd := fields.Command(0)
+		if f.Body != nil {
+			cmd = f.Body.Command()
+		}
+		return fb.NewErrAnswer(f.RequestID, errs.NewErrorUnsupportedCommand(cmd))
+	}
+}
+
+func writeV0(c net.Conn, f v0frame.Frame) error {
+	var buf buffer.Slice
+	buf.Preallocate(f.Size())
+	if err := f.Encode(&buf); err != nil {
+		return err
+	}
+	_, err := c.Write(buf.Bytes())
 	return err
 }
 
-func serve(r io.Reader) error {
-	return readFrame(bufio.NewReader(r))
+func writeV1(c net.Conn, f frame.Frame) error {
+	var buf buffer.Slice
+	buf.Preallocate(f.Size())
+	if err := f.Encode(&buf, nil); err != nil {
+		return err
+	}
+	_, err := c.Write(buf.Bytes())
+	return err
 }
 ```
 
-#### 5. Compress the body
+Client, compression, and batch are in the [tutorials](docs/tutorial.en.md).
 
-Compression applies to the Body only. The checksum is computed over the compressed bytes. Handshake and Ping must not be compressed.
-
-```go
-package main
-
-import (
-	"bufio"
-	"bytes"
-
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor/compressors"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/decoder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
-)
-
-func main() {
-	zstd, err := compressors.NewZstd(1 << 20)
-	if err != nil {
-		panic(err)
-	}
-
-	fb := builder.NewFrameBuilder(1 << 20)
-	f, err := fb.NewWrite(2, fields.Key("blob"), values.Bytes(make([]byte, 256)))
-	if err != nil {
-		panic(err)
-	}
-
-	var out buffer.Slice
-	if err := f.Encode(&out, zstd); err != nil {
-		panic(err)
-	}
-
-	d := decoder.NewDecoder(1<<20, []compressor.Compressor{zstd})
-	_, err = d.DecodeFrame(bufio.NewReader(bytes.NewReader(out.Bytes())))
-	if err != nil {
-		panic(err)
-	}
-}
-```
-
-#### 6. Batch
-
-A batch is not a transaction. Only Read, Write, and Delete are allowed. The builder assigns operation numbers starting at zero.
-
-```go
-package main
-
-import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
-)
-
-func main() {
-	fb := builder.NewFrameBuilder(1 << 20)
-	batch := builder.NewBatchRequestsBuilder().
-		SequentialExecution(true).
-		InterruptAfterError(false).
-		OneAnswer(true).
-		AddRead(fields.Key("key")).
-		AddWrite(fields.Key("another-key"), values.String("data"))
-
-	f, err := fb.NewBatch(1, *batch)
-	if err != nil {
-		panic(err)
-	}
-	_ = f
-}
-```
-
-### Specification examples
-
-Canonical frames from the spec live in `v0/internal/specs` and `v1/internal/specs`. `TestFrame_Specs` and `TestDecoder_Specs` check encode and decode against those bytes.
-
-```text
-Client → server, Hello:  0A DB 00 03 01 02 03 6E 38 99 00
-Server → client, Hello:  0A DB 00 04 01 04 07 0B 3B 78 5D 98
-Common versions: 1
-```
-
-### Tests
+### Tests and benchmarks
 
 ```bash
 go test ./v0/... ./v1/...
+go test -bench=. -benchmem ./v0/... ./v1/...
 ```
