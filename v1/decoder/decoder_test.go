@@ -3,7 +3,9 @@ package decoder
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"slices"
 	"strings"
@@ -1820,6 +1822,44 @@ func TestDecoder_WithWrongChecksum(t *testing.T) {
 
 				if _, ok := er.(errs.ErrorMismatchedChecksum); !ok {
 					t.Fatalf("expected ErrorMismatchedChecksum, got %v", er)
+				}
+			},
+		)
+	}
+}
+
+func TestDecoder_WithReaderUnexpectedEOF(t *testing.T) {
+	tests := []struct {
+		e []byte
+	}{
+		{
+			[]byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
+				0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x7B, 0x54,
+				0x40, 0xCA,
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_WithReaderUnexpectedEOF_%v", i),
+			func(t *testing.T) {
+				d := NewDecoder(1<<10, nil)
+				reader := bufio.NewReader(bytes.NewReader(tt.e))
+
+				_, er := d.DecodeFrame(reader)
+				if er == nil {
+					t.Fatal("expected err, got nil")
+				}
+
+				de, ok := er.(err.DecodeError)
+				if !ok {
+					t.Fatalf("expected ErrorMismatchedChecksum, got %v", er)
+				}
+
+				if !errors.Is(io.ErrUnexpectedEOF, de.Unwrap()) {
+					t.Errorf("expected io.ErrUnexpectedEOF, got %v", de)
 				}
 			},
 		)
