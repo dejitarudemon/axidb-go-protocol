@@ -288,3 +288,68 @@ func TestBatch_IsValid(t *testing.T) {
 		)
 	}
 }
+
+func TestBatch_Sort(t *testing.T) {
+	tests := []struct {
+		b    Batch
+		want []Request
+	}{
+		{Batch{}, nil},
+		{Batch{Requests: []Request{}}, []Request{}},
+		{Batch{Requests: []Request{{0, nil}}}, []Request{{0, nil}}},
+		{Batch{Requests: []Request{{0, Read{}}}}, []Request{{0, Read{}}}},
+		{Batch{Requests: []Request{
+			{0, Read("key")},
+			{0, Read("yek")},
+		}}, []Request{
+			{0, Read("key")},
+			{0, Read("yek")},
+		}},
+		{Batch{Requests: []Request{
+			{0, Read("key")},
+			{1, Read("yek")},
+		}}, []Request{
+			{0, Read("key")},
+			{1, Read("yek")},
+		}},
+		{Batch{Requests: []Request{
+			{1, Read("key")},
+			{0, Read("yek")},
+		}}, []Request{
+			{0, Read("key")},
+			{1, Read("yek")},
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestBatch_Sort %v", tt.b),
+			func(t *testing.T) {
+				tt.b.Sort()
+
+				if len(tt.b.Requests) != len(tt.want) {
+					t.Fatalf("Batch.Sort: got %v requests, want %v", len(tt.b.Requests), len(tt.want))
+					return
+				}
+
+				for i := range tt.b.Requests {
+					if tt.b.Requests[i].Number != tt.want[i].Number {
+						t.Errorf("Batch.Sort: got %v request number, want %v", tt.b.Requests[i].Number, tt.want[i].Number)
+					}
+
+					if tt.b.Requests[i].Body == nil && tt.want[i].Body == nil {
+						return
+					}
+
+					if tt.b.Requests[i].Size() != tt.want[i].Size() {
+						t.Errorf("Batch.Sort: got %v bytes, want %v", tt.b.Requests[i].Size(), tt.want[i].Size())
+					}
+
+					if tt.b.Requests[i].Body.Command() != tt.want[i].Body.Command() {
+						t.Errorf("Batch.Sort: got %v command, want %v", tt.b.Requests[i].Body.Command(), tt.want[i].Body.Command())
+					}
+				}
+			},
+		)
+	}
+}
