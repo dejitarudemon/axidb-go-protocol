@@ -967,28 +967,28 @@ var testsRoundTrip = []struct {
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
 		}}},
 		zstd,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
 		}}},
 		zstd,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 1, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Read("key")},
 		}}},
 		zstd,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 1, Body: bodies.Delete("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Delete("key")},
 		}}},
 		zstd,
 	},
@@ -1267,28 +1267,28 @@ var testsRoundTrip = []struct {
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
 		}}},
 		s2,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
 		}}},
 		s2,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 1, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Read("key")},
 		}}},
 		s2,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 1, Body: bodies.Delete("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Delete("key")},
 		}}},
 		s2,
 	},
