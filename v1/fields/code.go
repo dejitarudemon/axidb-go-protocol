@@ -6,22 +6,13 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 )
 
-/*
-ErrorFieldSize представляет размер в байтах,
-отведенный для хранения кода команды в сообщении.
-*/
+// ErrorFieldSize is the encoded size in bytes of an [Error] code.
 const ErrorFieldSize = 2
 
-/*
-type Error предназначен для хранения
-кода ошибки, его валидации и кодирования в сообщение.
-*/
+// Error is a protocol v1 error code carried in error answers.
 type Error uint16
 
-/*
-Константы, представляющие ошибки,
-используемые в спецификации протокола v1.
-*/
+// Error codes defined by protocol v1.
 const (
 	NoHello Error = iota
 	UnsupportedVersion
@@ -43,21 +34,12 @@ const (
 	RestrictedRequest
 )
 
-/*
-func Encode предназначена для кодирования кода ошибки
-в сообщении.
-
-Принимааемые параметры:
-  - buf buffer.Appender - буфер для хранения закодированного значения.
-*/
+// Encode writes the wire encoding of the error code into buf.
 func (e Error) Encode(buf buffer.Appender) {
 	buf.AppendUint16(uint16(e))
 }
 
-/*
-func String предназначена для вывода человекочитаемого названия
-ошибки, представленного конкретным кодом.
-*/
+// String returns a human-readable error name.
 func (e Error) String() string {
 	switch e {
 	case NoHello:
@@ -101,17 +83,12 @@ func (e Error) String() string {
 	return fmt.Sprintf("Unknown (%d)", e)
 }
 
-/*
-func Size возвращает размер кода ошибок в байтах.
-*/
+// Size returns the encoded size in bytes.
 func (e Error) Size() int {
 	return ErrorFieldSize
 }
 
-/*
-func IsValid возвращает true, если код ошибки валиден.
-В противном случае false.
-*/
+// IsValid reports whether e is a known protocol error code (0 through [RestrictedRequest]).
 func (e Error) IsValid() bool {
 	return e <= RestrictedRequest
 }

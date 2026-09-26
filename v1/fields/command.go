@@ -1,8 +1,3 @@
-/*
-package field предназначен для представления различных кодов и полей
-согласно спецификации протокола v1.
-*/
-
 package fields
 
 import (
@@ -11,22 +6,13 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 )
 
-/*
-type Command предназначен для хранения
-кода команды, его валидации и кодирования в сообщение.
-*/
+// Command is a protocol v1 frame command code.
 type Command uint8
 
-/*
-FieldSize представляет размер в байтах,
-отведенный для хранения кода команды в сообщении.
-*/
+// CommandFieldSize is the encoded size in bytes of a [Command].
 const CommandFieldSize = 1
 
-/*
-Константы, представляющие команды,
-используемые в спецификации протокола v1.
-*/
+// Command codes defined by protocol v1.
 const (
 	Handshake Command = iota
 	Answer
@@ -37,21 +23,12 @@ const (
 	Ping
 )
 
-/*
-func Encode предназначена для кодирования кода команды
-в сообщении.
-
-Принимааемые параметры:
-  - buf buffer.Appender - буфер для хранения закодированного значения.
-*/
+// Encode writes the wire encoding of the command into buf.
 func (c Command) Encode(buf buffer.Appender) {
 	buf.AppendUint8(uint8(c))
 }
 
-/*
-func String предназначена для вывода человекочитаемого названия
-команды, представленного конкретным кодом.
-*/
+// String returns a human-readable command name.
 func (c Command) String() string {
 	switch c {
 	case Handshake:
@@ -73,18 +50,12 @@ func (c Command) String() string {
 	return fmt.Sprintf("Unknown (%d)", c)
 }
 
-/*
-func IsValid предназначена для проверки кода команды.
-Проверки:
- 1. Код находится в пределах 0-6.
-*/
+// IsValid reports whether c is a known protocol command (0 through [Ping]).
 func (c Command) IsValid() bool {
 	return c <= Ping
 }
 
-/*
-func Size возвращает размер кода команды в байтах.
-*/
+// Size returns the encoded size in bytes.
 func (c Command) Size() int {
 	return CommandFieldSize
 }
