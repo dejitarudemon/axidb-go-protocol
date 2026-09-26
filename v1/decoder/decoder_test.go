@@ -2011,7 +2011,7 @@ func TestDecoder_answer_Errs(t *testing.T) {
 			func(t *testing.T) {
 				decoder := NewDecoder(1024, nil)
 
-				_, _, e := decoder.answer(tt.d)
+				_, e := decoder.answer(newCursor(tt.d))
 				if !errors.As(e, &tt.want) {
 					t.Errorf("decode.answer(): got %v want %v", e, tt.want)
 				}
@@ -2063,7 +2063,7 @@ func TestDecoder_decodeUintValue(t *testing.T) {
 			func(t *testing.T) {
 				decoder := NewDecoder(1024, nil)
 
-				v, _, e := decoder.decodeUintValue(tt.d)
+				v, e := decoder.decodeUintValue(newCursor(tt.d))
 				if e == nil == tt.wantErr {
 					t.Fatalf("decodeUintValue: expect error %v, got %v", tt.wantErr, e)
 					return
@@ -2101,7 +2101,7 @@ func TestDecoder_body_Errs(t *testing.T) {
 			func(t *testing.T) {
 				decoder := NewDecoder(1024, nil)
 
-				_, _, e := decoder.decodeBody(nil, tt.c)
+				_, e := decoder.decodeBody(newCursor(nil), tt.c)
 				if !errors.As(e, &tt.want) {
 					t.Errorf("decoder.decodeBody(): got %v want %v", e, tt.want)
 				}
