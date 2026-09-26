@@ -13,8 +13,6 @@ A Go library for AxiDB protocol frames: Hello (version 0) and working version 1.
 
 A Go library for AxiDB protocol frames: Hello (version 0) and working version 1.
 
-Encoding and decoding only. The socket, storage, and ACL stay in the application.
-
 After Hello the connection is not pinned to one version: each later frame may use any version both sides advertised.
 
 ### Docs
@@ -200,7 +198,7 @@ go test -bench=. -benchmem ./v0/... ./v1/...
 
 ## Русский
 
-Кодирование и разбор бинарных кадров. Сокет, хранилище и ACL — на стороне приложения.
+Go-библиотека кадров протокола AxiDB: Hello (версия 0) и рабочая версия 1.
 
 После Hello соединение не привязано к одной версии: каждый следующий кадр может использовать любую версию из пересечения списков.
 
