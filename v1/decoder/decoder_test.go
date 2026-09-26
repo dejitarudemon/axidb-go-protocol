@@ -3,7 +3,10 @@ package decoder
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
+	"math"
 	"math/rand"
 	"slices"
 	"strings"
@@ -967,28 +970,28 @@ var testsRoundTrip = []struct {
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
 		}}},
 		zstd,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
 		}}},
 		zstd,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 1, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Read("key")},
 		}}},
 		zstd,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 1, Body: bodies.Delete("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Delete("key")},
 		}}},
 		zstd,
 	},
@@ -1267,28 +1270,28 @@ var testsRoundTrip = []struct {
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
 		}}},
 		s2,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
 		}}},
 		s2,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 1, Body: bodies.Read("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Read("key")},
 		}}},
 		s2,
 	},
 	{
 		frame.Frame{RequestID: 1, Body: bodies.Batch{IsSequentialExecution: true, IsOneAnswer: true, InterruptAfterError: true, Requests: []bodies.Request{
-			bodies.Request{Number: 0, Body: bodies.Read("key")},
-			bodies.Request{Number: 1, Body: bodies.Delete("key")},
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Delete("key")},
 		}}},
 		s2,
 	},
@@ -1826,6 +1829,83 @@ func TestDecoder_WithWrongChecksum(t *testing.T) {
 	}
 }
 
+func TestDecoder_WithReaderEOF(t *testing.T) {
+	tests := []struct {
+		e    []byte
+		want error
+	}{
+		{
+			[]byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
+				0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x7B, 0x54,
+				0x40, 0xCA,
+			},
+			io.ErrUnexpectedEOF,
+		},
+		{
+			[]byte{},
+			io.EOF,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_WithReaderEOF_%v", i),
+			func(t *testing.T) {
+				d := NewDecoder(1<<10, nil)
+				reader := bufio.NewReader(bytes.NewReader(tt.e))
+
+				_, er := d.DecodeFrame(reader)
+				if er == nil {
+					t.Fatal("expected err, got nil")
+				}
+
+				de, ok := er.(err.DecodeError)
+				if !ok {
+					t.Fatalf("expected DecodeError, got %v", er)
+				}
+
+				if !errors.Is(tt.want, de.Unwrap()) {
+					t.Errorf("expected %v, got %v", tt.want, de)
+				}
+			},
+		)
+	}
+}
+
+func TestDecoder_WithBodyLimitIsExceeded(t *testing.T) {
+	tests := []struct {
+		e []byte
+	}{
+		{
+			[]byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
+				0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x7B, 0x54,
+				0x40, 0xCA,
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_WithBodyLimitIsExceeded_%v", i),
+			func(t *testing.T) {
+				d := NewDecoder(1, nil)
+				reader := bufio.NewReader(bytes.NewReader(tt.e))
+
+				_, er := d.DecodeFrame(reader)
+				if er == nil {
+					t.Fatal("expected err, got nil")
+				}
+
+				if _, ok := er.(errs.ErrorBodyLimitIsExceeded); !ok {
+					t.Fatalf("expected ErrorBodyLimitIsExceeded, got %v", er)
+				}
+			},
+		)
+	}
+}
+
 func TestDecoder_ZipBomb(t *testing.T) {
 	frames := []struct {
 		f          frame.Frame
@@ -1861,6 +1941,169 @@ func TestDecoder_ZipBomb(t *testing.T) {
 				if err == nil {
 					t.Fatal("DecodeFrame: didn't get err")
 					return
+				}
+			},
+		)
+	}
+}
+
+func TestDecoder_WithNilReader(t *testing.T) {
+	t.Run(
+		"TestDecoder_WithNilReader",
+		func(t *testing.T) {
+			d := NewDecoder(1, nil)
+
+			_, e := d.DecodePreamble(nil)
+			if e == nil {
+				t.Error("DecodePreamble: expected err, got nil")
+			}
+
+			if _, ok := e.(err.DecodeError); !ok {
+				t.Errorf("DecodePreamble: expected DecodeError, got %v", e)
+			}
+
+			_, e = d.DecodeFrame(nil)
+			if e == nil {
+				t.Error("DecodeFrame: expected err, got nil")
+			}
+
+			if _, ok := e.(err.DecodeError); !ok {
+				t.Errorf("DecodeFrame: expected DecodeError, got %v", e)
+			}
+		},
+	)
+}
+
+func TestDecoder_answer_Errs(t *testing.T) {
+	tests := []struct {
+		d    []byte
+		want any
+	}{
+		{
+			[]byte{0x01},
+			errs.ErrorMalformedValue{},
+		},
+		{
+			[]byte{0x00},
+			errs.ErrorMalformedValue{},
+		},
+		{
+			[]byte{0x02},
+			errs.ErrorMalformedValue{},
+		},
+		{
+			[]byte{0x02, 0x00},
+			errs.ErrorMalformedValue{},
+		},
+		{
+			[]byte{0x01, 0xFF},
+			errs.ErrorMalformedValue{},
+		},
+		{
+			[]byte{0x01, 0x01},
+			errs.ErrorMalformedValue{},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_answer_Errs_%v", i),
+			func(t *testing.T) {
+				decoder := NewDecoder(1024, nil)
+
+				_, _, e := decoder.answer(tt.d)
+				if !errors.As(e, &tt.want) {
+					t.Errorf("decode.answer(): got %v want %v", e, tt.want)
+				}
+			},
+		)
+	}
+}
+
+func TestDecoder_decodeUintValue(t *testing.T) {
+	tests := []struct {
+		d       []byte
+		wantErr bool
+		want    uint32
+	}{
+		{
+			[]byte{},
+			true,
+			0,
+		},
+		{
+			[]byte{0x00, 0x00, 0x00, 0x00, 0x00},
+			true,
+			0,
+		},
+		{
+			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			false,
+			0,
+		},
+		{
+			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+			false,
+			1,
+		},
+		{
+			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00},
+			false,
+			1,
+		},
+		{
+			[]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+			false,
+			math.MaxUint32,
+		},
+	}
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_decodeUintValue_%v", i),
+			func(t *testing.T) {
+				decoder := NewDecoder(1024, nil)
+
+				v, _, e := decoder.decodeUintValue(tt.d)
+				if e == nil == tt.wantErr {
+					t.Fatalf("decodeUintValue: expect error %v, got %v", tt.wantErr, e)
+					return
+				}
+				if tt.wantErr {
+					return
+				}
+
+				if uint32(v) != tt.want {
+					t.Errorf("uint32 comparing: got %v, expected %v", v, tt.want)
+				}
+			},
+		)
+	}
+}
+
+func TestDecoder_body_Errs(t *testing.T) {
+	tests := []struct {
+		c    fields.Command
+		want any
+	}{
+		{
+			fields.Command(8),
+			errs.ErrorUnsupportedCommand{},
+		},
+		{
+			fields.Command(255),
+			errs.ErrorUnsupportedCommand{},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_body_Errs_%v", i),
+			func(t *testing.T) {
+				decoder := NewDecoder(1024, nil)
+
+				_, _, e := decoder.decodeBody(nil, tt.c)
+				if !errors.As(e, &tt.want) {
+					t.Errorf("decoder.decodeBody(): got %v want %v", e, tt.want)
 				}
 			},
 		)

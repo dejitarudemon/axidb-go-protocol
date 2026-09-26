@@ -172,7 +172,7 @@ func (d Decoder) decodeBody(body []byte, command fields.Command) (body.Body, int
 		return d.batch(body)
 	}
 
-	return nil, 0, err.NewDecodeError(fmt.Sprintf("unkown command: %v", command), nil)
+	return nil, 0, errs.NewErrorUnsupportedCommand(command)
 }
 
 func (d Decoder) checkIfBodyLenIsTooSmall(l, bound int) error {
@@ -242,7 +242,7 @@ func (d Decoder) answer(body []byte) (body.Answer, int, error) {
 		return b, cursor + consumed, e
 	}
 
-	return nil, 0, err.NewDecodeError(fmt.Sprintf("unknown command in answer: %v", originalCommand), nil)
+	return nil, 0, errs.NewErrorMalformedValue(fmt.Sprintf("unknown command in answer: %v", originalCommand))
 }
 
 func (d Decoder) answerHandshake(body []byte) (bodies.HandshakeAnswer, int, error) {
