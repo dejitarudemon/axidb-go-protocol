@@ -5,42 +5,22 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
-/*
-TracebackIDFieldSize представляет размер в байтах,
-отведенный для хранения Traceback ID ошибки в сообщении.
-*/
-const (
-	TracebackIDFieldSize = 16
-)
+// TracebackIDFieldSize is the number of bytes reserved for a traceback ID in an error message.
+const TracebackIDFieldSize = 16
 
-/*
-interface Error предназначен для представления
-ошибки протокола согласно спецификации протокола v1.
-*/
+// ProtocolError is a protocol v1 error that can be encoded in a message.
 type ProtocolError interface {
 	error
 
-	/*
-		func Size возвращает размер сообщения ошибки в байтах.
-	*/
+	// Size returns the encoded error message size in bytes.
 	Size() int
 
-	/*
-		func TracebackID возвращает Traceback ID ошибки.
-	*/
+	// TracebackID returns the error traceback ID.
 	TracebackID() fields.TracebackID
 
-	/*
-		func Encode предназначена для кодирования сообщения об ошибке
-		в сообщении.
-
-		Принимаемые параметры:
-		  - buf buffer.Appender - буфер для хранения закодированного значения.
-	*/
+	// Encode writes the wire encoding of the error into buf.
 	Encode(buf buffer.Appender)
 
-	/*
-		func Code возвращает код ошибки.
-	*/
+	// Code returns the protocol error code.
 	Code() fields.Error
 }
