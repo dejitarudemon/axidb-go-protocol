@@ -58,6 +58,36 @@ func main() {
 }
 ```
 
+By hand, without the builder (import `v0/frame`). `NewHello` drops 0, duplicates, and values greater than 255; a `Hello` literal does not.
+
+```go
+hello := v0frame.Frame{
+	Body: v0bodies.Hello{Versions: []v0fields.Version{1, 2, 3}},
+}
+if err := hello.IsValid(); err != nil {
+	panic(err)
+}
+
+var out buffer.Slice
+out.Preallocate(hello.Size())
+if err := hello.Encode(&out); err != nil {
+	panic(err)
+}
+```
+
+Fields on the wire — magic, version, Version Len, versions, CRC-32/XFER:
+
+```go
+body := v0bodies.Hello{Versions: []v0fields.Version{1, 2, 3}}
+
+var out buffer.Slice
+out.Append(v0frame.MagicBytes)
+v0fields.Version(0).Encode(&out)
+v0fields.VersionLen(body.Size()).Encode(&out)
+body.Encode(&out)
+v0fields.NewChecksum(out.Bytes()).Encode(&out)
+```
+
 `DecodePreamble` does not consume bytes: use `v0/decoder` for version `0` and `v1/decoder` for version `1`. If the intersection is empty, the client closes the connection.
 
 Specification example:
@@ -100,7 +130,26 @@ func main() {
 }
 ```
 
-Build the server reply with `NewHandshakeAnswer`. Later requests must use a non-zero `RequestID`.
+By hand (imports `v1/frame` and `v1/body/bodies`):
+
+```go
+var hash [32]byte
+hs := frame.Frame{
+	RequestID: 0,
+	Body:      bodies.NewHandshake("user", hash, []fields.Compression{fields.Zstd, fields.S2}),
+}
+if err := hs.IsValid(); err != nil {
+	panic(err)
+}
+
+var out buffer.Slice
+out.Preallocate(hs.Size())
+if err := hs.Encode(&out, nil); err != nil {
+	panic(err)
+}
+```
+
+Build the server reply with `NewHandshakeAnswer` or `frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer(nil)}`. Later requests must use a non-zero `RequestID`.
 
 ## 3. Write and read
 
@@ -152,6 +201,40 @@ func main() {
 	}
 	_ = answer
 }
+```
+
+By hand:
+
+```go
+write := frame.Frame{
+	RequestID: 2,
+	Body: bodies.Write{
+		Key:   fields.Key("code"),
+		Value: values.String("IDDQD"),
+	},
+}
+if err := write.IsValid(); err != nil {
+	panic(err)
+}
+
+read := frame.Frame{RequestID: 1, Body: bodies.Read("code")}
+answer := frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.String("IDDQD")}}
+```
+
+Fields on the wire for Read — magic, version, command, RequestID, compression, Body Len, key, CRC-32C:
+
+```go
+body := bodies.Read("code")
+
+var out buffer.Slice
+out.Append(frame.MagicBytes)
+fields.Version(1).Encode(&out)
+body.Command().Encode(&out)
+fields.RequestID(1).Encode(&out)
+fields.None.Encode(&out)
+out.AppendUint32(uint32(body.Size()))
+body.Encode(&out)
+fields.NewChecksum(out.Bytes()).Encode(&out)
 ```
 
 Other bodies:
@@ -275,6 +358,29 @@ func main() {
 }
 ```
 
+By hand:
+
+```go
+f := frame.Frame{
+	RequestID: 1,
+	Body: bodies.Batch{
+		IsSequentialExecution: true,
+		InterruptAfterError:   false,
+		IsOneAnswer:           true,
+		Requests: []bodies.Request{
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Write{
+				Key:   fields.Key("another-key"),
+				Value: values.String("data"),
+			}},
+		},
+	},
+}
+if err := f.IsValid(); err != nil {
+	panic(err)
+}
+```
+
 Flags:
 
 | Flag | 1 | 0 |
@@ -282,5 +388,7 @@ Flags:
 | Sequential | by number | in parallel |
 | Interrupt after error | remaining requests get Request Interrupted | remaining requests continue |
 | One answer | a single combined reply | replies as they complete |
+
+The builder only checks `IsValid` and the size limit. After that it is the same `frame.Frame.Encode`. Hello, Handshake, Read/Write, and Batch show manual assembly in their sections: a frame struct or fields on the wire plus the checksum.
 
 Canonical frames from the specification live in `v0/internal/specs` and `v1/internal/specs`.

@@ -58,6 +58,36 @@ func main() {
 }
 ```
 
+Вручную, без builder (импорт `v0/frame`). `NewHello` отфильтровывает 0, дубликаты и значения больше 255; литерал `Hello` — нет.
+
+```go
+hello := v0frame.Frame{
+	Body: v0bodies.Hello{Versions: []v0fields.Version{1, 2, 3}},
+}
+if err := hello.IsValid(); err != nil {
+	panic(err)
+}
+
+var out buffer.Slice
+out.Preallocate(hello.Size())
+if err := hello.Encode(&out); err != nil {
+	panic(err)
+}
+```
+
+Поля на проводе — magic, версия, Version Len, версии, CRC-32/XFER:
+
+```go
+body := v0bodies.Hello{Versions: []v0fields.Version{1, 2, 3}}
+
+var out buffer.Slice
+out.Append(v0frame.MagicBytes)
+v0fields.Version(0).Encode(&out)
+v0fields.VersionLen(body.Size()).Encode(&out)
+body.Encode(&out)
+v0fields.NewChecksum(out.Bytes()).Encode(&out)
+```
+
 `DecodePreamble` не потребляет байты: по версии `0` вызывайте `v0/decoder`, по версии `1` — `v1/decoder`. Если пересечение пустое, клиент разрывает соединение.
 
 Пример из спецификации:
@@ -100,7 +130,26 @@ func main() {
 }
 ```
 
-Ответ сервера — `NewHandshakeAnswer`. Дальше `RequestID` должен быть ненулевым.
+Вручную (импорты `v1/frame` и `v1/body/bodies`):
+
+```go
+var hash [32]byte
+hs := frame.Frame{
+	RequestID: 0,
+	Body:      bodies.NewHandshake("user", hash, []fields.Compression{fields.Zstd, fields.S2}),
+}
+if err := hs.IsValid(); err != nil {
+	panic(err)
+}
+
+var out buffer.Slice
+out.Preallocate(hs.Size())
+if err := hs.Encode(&out, nil); err != nil {
+	panic(err)
+}
+```
+
+Ответ сервера — `NewHandshakeAnswer` или `frame.Frame{RequestID: 0, Body: bodies.NewHandshakeAnswer(nil)}`. Дальше `RequestID` должен быть ненулевым.
 
 ## 3. Запись и чтение
 
@@ -152,6 +201,40 @@ func main() {
 	}
 	_ = answer
 }
+```
+
+Вручную:
+
+```go
+write := frame.Frame{
+	RequestID: 2,
+	Body: bodies.Write{
+		Key:   fields.Key("code"),
+		Value: values.String("IDDQD"),
+	},
+}
+if err := write.IsValid(); err != nil {
+	panic(err)
+}
+
+read := frame.Frame{RequestID: 1, Body: bodies.Read("code")}
+answer := frame.Frame{RequestID: 1, Body: bodies.ReadAnswer{Value: values.String("IDDQD")}}
+```
+
+Поля на проводе для Read — magic, версия, команда, RequestID, сжатие, Body Len, ключ, CRC-32C:
+
+```go
+body := bodies.Read("code")
+
+var out buffer.Slice
+out.Append(frame.MagicBytes)
+fields.Version(1).Encode(&out)
+body.Command().Encode(&out)
+fields.RequestID(1).Encode(&out)
+fields.None.Encode(&out)
+out.AppendUint32(uint32(body.Size()))
+body.Encode(&out)
+fields.NewChecksum(out.Bytes()).Encode(&out)
 ```
 
 Другие тела:
@@ -275,6 +358,29 @@ func main() {
 }
 ```
 
+Вручную:
+
+```go
+f := frame.Frame{
+	RequestID: 1,
+	Body: bodies.Batch{
+		IsSequentialExecution: true,
+		InterruptAfterError:   false,
+		IsOneAnswer:           true,
+		Requests: []bodies.Request{
+			{Number: 0, Body: bodies.Read("key")},
+			{Number: 1, Body: bodies.Write{
+				Key:   fields.Key("another-key"),
+				Value: values.String("data"),
+			}},
+		},
+	},
+}
+if err := f.IsValid(); err != nil {
+	panic(err)
+}
+```
+
 Флаги:
 
 | Флаг | 1 | 0 |
@@ -282,5 +388,7 @@ func main() {
 | Sequential | по номеру | параллельно |
 | Interrupt after error | остальные запросы получают Request Interrupted | остальные продолжаются |
 | One answer | один общий ответ | ответы по мере готовности |
+
+Builder только проверяет `IsValid` и лимит размера. Дальше тот же `frame.Frame.Encode`. Для Hello, Handshake, Read/Write и Batch ручная сборка показана в соответствующих разделах: структура кадра или поля на проводе плюс контрольная сумма.
 
 Готовые кадры из спецификации — в `v0/internal/specs` и `v1/internal/specs`.
