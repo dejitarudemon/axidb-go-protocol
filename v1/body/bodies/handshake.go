@@ -8,20 +8,29 @@ import (
 )
 
 const (
-	LoginLenFieldSize              = 4
-	HashFieldSize                  = 32
-	CompressionLenFieldSize        = 1
+	// LoginLenFieldSize is the encoded size in bytes of the login length prefix.
+	LoginLenFieldSize = 4
+	// HashFieldSize is the encoded size in bytes of the handshake hash.
+	HashFieldSize = 32
+	// CompressionLenFieldSize is the encoded size in bytes of the compression count.
+	CompressionLenFieldSize = 1
+	// MaxCompressionsPerOneHandshake is the maximum number of compression codes in one handshake.
 	MaxCompressionsPerOneHandshake = 255
 )
 
 var _ body.Body = Handshake{}
 
+// Handshake is a [fields.Handshake] body carrying login, hash, and offered compressions.
 type Handshake struct {
-	Login        string
-	Hash         [32]byte
+	// Login is the client identity.
+	Login string
+	// Hash is the authentication hash.
+	Hash [32]byte
+	// Compressions lists compression algorithms the client can use.
 	Compressions []fields.Compression
 }
 
+// NewHandshake returns a Handshake after dropping [fields.None] and duplicate compression codes.
 func NewHandshake(login string, hash [32]byte, compressions []fields.Compression) Handshake {
 	return Handshake{
 		Login:        login,
@@ -30,6 +39,7 @@ func NewHandshake(login string, hash [32]byte, compressions []fields.Compression
 	}
 }
 
+// filter drops fields.None and duplicate compression codes.
 func filter(compressions []fields.Compression) []fields.Compression {
 	filtered := make([]fields.Compression, 0, len(compressions))
 	used := make(map[fields.Compression]struct{}, len(compressions))
@@ -44,12 +54,14 @@ func filter(compressions []fields.Compression) []fields.Compression {
 	return filtered
 }
 
+// Size returns the encoded body size in bytes.
 func (h Handshake) Size() int {
 	size := min(len(h.Compressions), MaxCompressionsPerOneHandshake)
 
 	return LoginLenFieldSize + cap(h.Hash) + len(h.Login) + fields.CompressionFieldSize + size*fields.CompressionFieldSize
 }
 
+// Encode writes the wire encoding of the body into buf.
 func (h Handshake) Encode(buf buffer.Appender) {
 	buf.AppendUint32(uint32(len(h.Login)))
 	buf.AppendString(h.Login)
@@ -65,11 +77,14 @@ func (h Handshake) Encode(buf buffer.Appender) {
 	}
 }
 
+// Command returns [fields.Handshake].
 func (h Handshake) Command() fields.Command {
 	return fields.Handshake
 }
 
-// Не проверяем Compression на валидность, т.к. по спеке могут быть кастомные алгоритмы.
+// IsValid reports whether the body satisfies protocol rules.
+// Compression codes are not checked because custom algorithms are allowed.
+// The compression list must not exceed [MaxCompressionsPerOneHandshake].
 func (h Handshake) IsValid() error {
 	if len(h.Compressions) > MaxCompressionsPerOneHandshake {
 		return err.NewValidationError(

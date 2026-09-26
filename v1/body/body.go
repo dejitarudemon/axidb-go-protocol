@@ -1,7 +1,3 @@
-/*
-package body предназначен для представления различных
-тел сообщений (Body), представленных в спецификации протокола v1.
-*/
 package body
 
 import (
@@ -9,36 +5,28 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
+// BodyLenFieldSize is the encoded size in bytes of the body length prefix in a frame header.
 const BodyLenFieldSize = 4
 
+// Body is a protocol v1 message body that can be validated and encoded.
 type Body interface {
-	/*
-		Size возвращает размер тела в байтах.
-	*/
+	// Size returns the encoded body size in bytes.
 	Size() int
 
-	/*
-		Encode предназначена для кодирования кода тела сообщения
-		в сообщении.
-
-		Принимааемые параметры:
-		  - buf buffer.Appender - буфер для хранения закодированного значения.
-	*/
+	// Encode writes the wire encoding of the body into buf.
 	Encode(buf buffer.Appender)
 
-	/*
-		Command возвращает код команды, к которому относится тело сообщения.
-	*/
+	// Command returns the protocol command code for the body.
 	Command() fields.Command
 
-	/*
-		IsValid возвращает валидность тела.
-	*/
+	// IsValid reports whether the body satisfies protocol rules.
 	IsValid() error
 }
 
+// Answer is a [Body] that replies to a specific command.
 type Answer interface {
 	Body
 
+	// IsResponseTo returns the command this answer replies to.
 	IsResponseTo() fields.Command
 }

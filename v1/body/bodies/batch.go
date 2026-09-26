@@ -10,20 +10,30 @@ import (
 )
 
 const (
-	FlagsFieldSize          = 1
-	RequestsLenFieldSize    = 4
+	// FlagsFieldSize is the encoded size in bytes of the batch option flags.
+	FlagsFieldSize = 1
+	// RequestsLenFieldSize is the encoded size in bytes of a request or result count.
+	RequestsLenFieldSize = 4
+	// RequestBodyLenFieldSize is the encoded size in bytes of a nested body length prefix.
 	RequestBodyLenFieldSize = 4
 
+	// IsSequentialExecution is the flag bit that runs batch requests in order.
 	IsSequentialExecution = 0b1
-	InterruptAfterError   = 0b10
-	IsOneAnswer           = 0b100
+	// InterruptAfterError is the flag bit that stops the batch after the first error.
+	InterruptAfterError = 0b10
+	// IsOneAnswer is the flag bit that replies with a single combined answer.
+	IsOneAnswer = 0b100
 )
 
+// Request is one numbered command inside a [Batch].
 type Request struct {
+	// Number identifies the request within the batch.
 	Number fields.RequestNumber
-	Body   body.Body
+	// Body is the nested command payload.
+	Body body.Body
 }
 
+// Size returns the encoded request size in bytes.
 func (r Request) Size() int {
 	if r.Body == nil {
 		return RequestBodyLenFieldSize + fields.CommandFieldSize + fields.RequestNumberFieldSize
@@ -31,6 +41,7 @@ func (r Request) Size() int {
 	return RequestBodyLenFieldSize + fields.CommandFieldSize + fields.RequestNumberFieldSize + r.Body.Size()
 }
 
+// Encode writes the request number, command, length, and body into buf.
 func (r Request) Encode(buf buffer.Appender) {
 	r.Number.Encode(buf)
 
@@ -44,6 +55,8 @@ func (r Request) Encode(buf buffer.Appender) {
 	}
 }
 
+// IsValid reports whether the request satisfies protocol rules.
+// Body must be non-nil, valid, and a read, write, or delete command.
 func (r Request) IsValid() error {
 	if r.Body == nil {
 		return err.NewValidationError(
@@ -72,14 +85,20 @@ func (r Request) IsValid() error {
 
 var _ body.Body = Batch{}
 
+// Batch is a [fields.Batch] body holding several numbered requests and execution flags.
 type Batch struct {
+	// IsSequentialExecution runs requests in number order when true.
 	IsSequentialExecution bool
-	InterruptAfterError   bool
-	IsOneAnswer           bool
+	// InterruptAfterError stops the batch after the first failed request when true.
+	InterruptAfterError bool
+	// IsOneAnswer asks for a single combined answer when true.
+	IsOneAnswer bool
 
+	// Requests holds the nested commands.
 	Requests []Request
 }
 
+// encodeFlags packs the batch option bits.
 func (b Batch) encodeFlags() uint8 {
 	encoded := uint8(0)
 
@@ -98,6 +117,7 @@ func (b Batch) encodeFlags() uint8 {
 	return encoded
 }
 
+// Size returns the encoded body size in bytes.
 func (b Batch) Size() int {
 	size := FlagsFieldSize + RequestsLenFieldSize
 
@@ -108,6 +128,7 @@ func (b Batch) Size() int {
 	return size
 }
 
+// Encode writes the wire encoding of the body into buf.
 func (b Batch) Encode(buf buffer.Appender) {
 	buf.AppendUint8(b.encodeFlags())
 	buf.AppendUint32(uint32(len(b.Requests)))
@@ -117,10 +138,13 @@ func (b Batch) Encode(buf buffer.Appender) {
 	}
 }
 
+// Command returns [fields.Batch].
 func (b Batch) Command() fields.Command {
 	return fields.Batch
 }
 
+// IsValid reports whether the body satisfies protocol rules.
+// Requests must be non-empty, uniquely numbered, and each must pass its own IsValid check.
 func (b Batch) IsValid() error {
 	if len(b.Requests) == 0 {
 		return err.NewValidationError(
@@ -151,6 +175,7 @@ func (b Batch) IsValid() error {
 	return nil
 }
 
+// Sort orders Requests by ascending request number.
 func (b *Batch) Sort() {
 	sort.Slice(b.Requests, func(i, j int) bool {
 		return b.Requests[i].Number < b.Requests[j].Number
