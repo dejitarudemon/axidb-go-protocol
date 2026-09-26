@@ -15,6 +15,8 @@ A Go library for AxiDB protocol frames: Hello (version 0) and working version 1.
 
 After Hello the connection is not pinned to one version: each later frame may use any version both sides advertised.
 
+Values on the wire carry a type: bytes, int, uint, float64, string, JSON, and a homogeneous or mixed array.
+
 ### Docs
 
 - [How it works](docs/how-it-works.en.md)
@@ -201,6 +203,8 @@ go test -bench=. -benchmem ./v0/... ./v1/...
 Go-библиотека кадров протокола AxiDB: Hello (версия 0) и рабочая версия 1.
 
 После Hello соединение не привязано к одной версии: каждый следующий кадр может использовать любую версию из пересечения списков.
+
+Значение на проводе несёт тип: байты, int, uint, float64, строка, JSON и однородный или смешанный массив.
 
 ### Документация
 
