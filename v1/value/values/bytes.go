@@ -1,8 +1,3 @@
-/*
-protocol values содержит конретные типы, реализующие интерфейс value.V.
-Каждый представленный тип является реализацией типа из спецификации протокола v1.
-*/
-
 package values
 
 import (
@@ -13,27 +8,29 @@ import (
 
 var _ value.V = Bytes([]byte{})
 
+// BytesLenFieldSize is the encoded size in bytes of the length prefix for [Bytes].
 const BytesLenFieldSize = 4
 
-/*
-type Bytes представляет собой байтовую последовательность
-из спецификации протокола v1.
-*/
+// Bytes is an opaque byte sequence with type code [fields.Bytes].
 type Bytes []byte
 
+// Encode writes the wire encoding of the value into buf.
 func (b Bytes) Encode(buf buffer.Appender) {
 	buf.AppendUint32(uint32(len(b)))
 	buf.Append(b)
 }
 
+// Size returns the encoded value size in bytes.
 func (b Bytes) Size() int {
 	return BytesLenFieldSize + len(b)
 }
 
+// Type returns [fields.Bytes].
 func (b Bytes) Type() fields.Type {
 	return fields.Bytes
 }
 
+// IsValid reports whether the value satisfies type-specific rules.
 func (b Bytes) IsValid() error {
 	return nil
 }

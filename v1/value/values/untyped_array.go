@@ -9,14 +9,13 @@ import (
 
 var _ value.V = UntypedArray{}
 
+// UntypedArrayLenFieldSize is the encoded size in bytes of the element count prefix for [UntypedArray].
 const UntypedArrayLenFieldSize = 4
 
-/*
-type UntypedArray представляет собой нетипизированную
-последовательность элементов из спецификации протокола v1.
-*/
+// UntypedArray is a heterogeneous sequence of [value.V] elements with type code [fields.UntypedArray].
 type UntypedArray []value.V
 
+// realLen returns the number of non-nil elements.
 func (ua UntypedArray) realLen() int {
 	realLen := 0
 	for _, elem := range ua {
@@ -28,6 +27,8 @@ func (ua UntypedArray) realLen() int {
 	return realLen
 }
 
+// Encode writes the wire encoding of the value into buf.
+// Nil elements are omitted from the encoded sequence.
 func (ua UntypedArray) Encode(buf buffer.Appender) {
 	buf.AppendUint32(uint32(ua.realLen()))
 
@@ -39,6 +40,7 @@ func (ua UntypedArray) Encode(buf buffer.Appender) {
 	}
 }
 
+// Size returns the encoded value size in bytes.
 func (ua UntypedArray) Size() int {
 	size := UntypedArrayLenFieldSize
 
@@ -51,10 +53,13 @@ func (ua UntypedArray) Size() int {
 	return size
 }
 
+// Type returns [fields.UntypedArray].
 func (ua UntypedArray) Type() fields.Type {
 	return fields.UntypedArray
 }
 
+// IsValid reports whether the value satisfies type-specific rules.
+// Elements must be non-nil and each element must pass its own IsValid check.
 func (ua UntypedArray) IsValid() error {
 	for i, elem := range ua {
 		if elem == nil {

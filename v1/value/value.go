@@ -5,36 +5,18 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
-/*
-interface V предназначен для объявления требований
-к данным (Value).
-*/
+// V is a protocol v1 value that can be validated and encoded in a message.
 type V interface {
-	/*
-		func Size возвращает размер данных в байтах.
-	*/
+	// Size returns the encoded value size in bytes.
 	Size() int
 
-	/*
-		func IsValid предназначена для проверки данных.
-		Проверки: зависят от конкретной реализации интерфейса.
-
-		Возвращаемые ошибки:
-		 1. ErrorMalformedValue.
-	*/
+	// IsValid reports whether the value satisfies type-specific rules.
+	// Validation details depend on the concrete implementation.
 	IsValid() error
 
-	/*
-		func Encode предназначена для кодирования данных
-		в сообщении.
-
-		Принимааемые параметры:
-		  - buf buffer.Appender - буфер для хранения закодированного значения.
-	*/
+	// Encode writes the wire encoding of the value into buf.
 	Encode(buf buffer.Appender)
 
-	/*
-		func Type возвращает код типа данных.
-	*/
+	// Type returns the protocol type code for the value.
 	Type() fields.Type
 }

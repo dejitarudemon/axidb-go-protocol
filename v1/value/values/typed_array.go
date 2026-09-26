@@ -9,17 +9,18 @@ import (
 
 var _ value.V = TypedArray{}
 
+// TypedArrayLenFieldSize is the encoded size in bytes of the element count prefix for [TypedArray].
 const TypedArrayLenFieldSize = 4
 
-/*
-type TypedArray представляет собой типизированную последовательность
-элементов из спецификации протокола v1.
-*/
+// TypedArray is a homogeneous sequence of [value.V] elements with type code [fields.TypedArray].
 type TypedArray struct {
+	// ElemType is the wire type shared by all non-nil elements.
 	ElemType fields.Type
-	Elems    []value.V
+	// Elems holds the array elements in order.
+	Elems []value.V
 }
 
+// realLen returns the number of non-nil elements.
 func (ta TypedArray) realLen() int {
 	realLen := 0
 	for _, elem := range ta.Elems {
@@ -31,6 +32,8 @@ func (ta TypedArray) realLen() int {
 	return realLen
 }
 
+// Encode writes the wire encoding of the value into buf.
+// Nil elements are omitted from the encoded sequence.
 func (ta TypedArray) Encode(buf buffer.Appender) {
 	buf.AppendUint32(uint32(ta.realLen()))
 	ta.ElemType.Encode(buf)
@@ -42,6 +45,7 @@ func (ta TypedArray) Encode(buf buffer.Appender) {
 	}
 }
 
+// Size returns the encoded value size in bytes.
 func (ta TypedArray) Size() int {
 	size := 0
 
@@ -54,10 +58,13 @@ func (ta TypedArray) Size() int {
 	return TypedArrayLenFieldSize + ta.ElemType.Size() + size
 }
 
+// Type returns [fields.TypedArray].
 func (ta TypedArray) Type() fields.Type {
 	return fields.TypedArray
 }
 
+// IsValid reports whether the value satisfies type-specific rules.
+// Elements must be non-nil, match ElemType, and pass their own IsValid check.
 func (ta TypedArray) IsValid() error {
 	for i, elem := range ta.Elems {
 		if elem == nil {
