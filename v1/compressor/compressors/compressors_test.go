@@ -234,7 +234,7 @@ func TestZstd_DecompressLimitError(t *testing.T) {
 	}
 
 	if err := frame.Close(); err != nil {
-		log.Fatalf("failed to close Zstd Writer: %v", err)
+		t.Fatalf("zstd.Close(): got err: %v", err)
 	}
 }
 
