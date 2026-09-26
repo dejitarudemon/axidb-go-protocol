@@ -147,7 +147,7 @@ func (d Decoder) DecodeFrame(reader *bufio.Reader) (frame.Frame, error) {
 		return f, e
 	}
 	if consumed != len(bodyBuf) {
-		return f, err.NewDecodeError(fmt.Sprintf("body len %v, but consumed %v", len(bodyBuf), consumed), nil)
+		return f, err.NewTrailledError(bodyLen, uint32(consumed))
 	}
 
 	f.Body = body
