@@ -11,19 +11,23 @@ import (
 )
 
 const (
+	// handshakeRequestID is the request ID used by handshake frames.
 	handshakeRequestID = fields.RequestID(0)
 )
 
+// FrameBuilder builds protocol frames and rejects those larger than a size limit.
 type FrameBuilder struct {
 	limit int
 }
 
+// NewFrameBuilder returns a FrameBuilder that rejects frames whose encoded size exceeds limit bytes.
 func NewFrameBuilder(limit int) FrameBuilder {
 	return FrameBuilder{
 		limit: limit,
 	}
 }
 
+// requestIDIsNotZero reports an error when requestID is zero.
 func (fb FrameBuilder) requestIDIsNotZero(requestID fields.RequestID) error {
 	if requestID == 0 {
 		return err.NewBuildError("request ID is 0", nil)
@@ -32,6 +36,7 @@ func (fb FrameBuilder) requestIDIsNotZero(requestID fields.RequestID) error {
 	return nil
 }
 
+// frameSizeLowerLimit reports an error when size exceeds the builder limit.
 func (fb FrameBuilder) frameSizeLowerLimit(size int) error {
 	if size > fb.limit {
 		return err.NewBuildError(fmt.Sprintf("frame size is %v, but limit is %v", size, fb.limit), nil)
@@ -40,6 +45,8 @@ func (fb FrameBuilder) frameSizeLowerLimit(size int) error {
 	return nil
 }
 
+// NewHandshake returns a handshake frame with request ID 0.
+// It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewHandshake(login string, hash [32]byte, compressions []fields.Compression) (frame.Frame, error) {
 	f := frame.Frame{
 		RequestID: handshakeRequestID,
@@ -53,6 +60,8 @@ func (fb FrameBuilder) NewHandshake(login string, hash [32]byte, compressions []
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewHandshakeAnswer returns a handshake answer frame with request ID 0.
+// It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewHandshakeAnswer(compressions []fields.Compression) (frame.Frame, error) {
 	f := frame.Frame{
 		RequestID: handshakeRequestID,
@@ -66,6 +75,8 @@ func (fb FrameBuilder) NewHandshakeAnswer(compressions []fields.Compression) (fr
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewRead returns a read frame for key.
+// requestID must be non-zero. It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewRead(requestID fields.RequestID, key fields.Key) (frame.Frame, error) {
 	if err := fb.requestIDIsNotZero(requestID); err != nil {
 		return frame.Frame{}, err
@@ -83,6 +94,8 @@ func (fb FrameBuilder) NewRead(requestID fields.RequestID, key fields.Key) (fram
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewReadAnswer returns a read answer frame carrying value.
+// requestID must be non-zero. It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewReadAnswer(requestID fields.RequestID, value value.V) (frame.Frame, error) {
 	if err := fb.requestIDIsNotZero(requestID); err != nil {
 		return frame.Frame{}, err
@@ -100,6 +113,8 @@ func (fb FrameBuilder) NewReadAnswer(requestID fields.RequestID, value value.V) 
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewWrite returns a write frame storing value under key.
+// requestID must be non-zero. It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewWrite(requestID fields.RequestID, key fields.Key, value value.V) (frame.Frame, error) {
 	if err := fb.requestIDIsNotZero(requestID); err != nil {
 		return frame.Frame{}, err
@@ -117,6 +132,8 @@ func (fb FrameBuilder) NewWrite(requestID fields.RequestID, key fields.Key, valu
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewWriteAnswer returns a successful write answer frame.
+// requestID must be non-zero. It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewWriteAnswer(requestID fields.RequestID) (frame.Frame, error) {
 	if err := fb.requestIDIsNotZero(requestID); err != nil {
 		return frame.Frame{}, err
@@ -134,6 +151,8 @@ func (fb FrameBuilder) NewWriteAnswer(requestID fields.RequestID) (frame.Frame, 
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewDelete returns a delete frame for key.
+// requestID must be non-zero. It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewDelete(requestID fields.RequestID, key fields.Key) (frame.Frame, error) {
 	if err := fb.requestIDIsNotZero(requestID); err != nil {
 		return frame.Frame{}, err
@@ -151,6 +170,8 @@ func (fb FrameBuilder) NewDelete(requestID fields.RequestID, key fields.Key) (fr
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewDeleteAnswer returns a successful delete answer frame.
+// requestID must be non-zero. It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewDeleteAnswer(requestID fields.RequestID) (frame.Frame, error) {
 	if err := fb.requestIDIsNotZero(requestID); err != nil {
 		return frame.Frame{}, err
@@ -168,6 +189,8 @@ func (fb FrameBuilder) NewDeleteAnswer(requestID fields.RequestID) (frame.Frame,
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewPing returns a ping frame.
+// requestID must be non-zero. It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewPing(requestID fields.RequestID) (frame.Frame, error) {
 	if err := fb.requestIDIsNotZero(requestID); err != nil {
 		return frame.Frame{}, err
@@ -185,6 +208,8 @@ func (fb FrameBuilder) NewPing(requestID fields.RequestID) (frame.Frame, error) 
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewPingAnswer returns a ping answer frame.
+// requestID must be non-zero. It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewPingAnswer(requestID fields.RequestID) (frame.Frame, error) {
 	if err := fb.requestIDIsNotZero(requestID); err != nil {
 		return frame.Frame{}, err
@@ -202,6 +227,8 @@ func (fb FrameBuilder) NewPingAnswer(requestID fields.RequestID) (frame.Frame, e
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewErrAnswer returns an error answer frame for pe.
+// It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewErrAnswer(requestID fields.RequestID, pe err.ProtocolError) (frame.Frame, error) {
 	f := frame.Frame{
 		RequestID: requestID,
@@ -215,6 +242,8 @@ func (fb FrameBuilder) NewErrAnswer(requestID fields.RequestID, pe err.ProtocolE
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewBatch returns a batch frame built from batch.
+// requestID must be non-zero. It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewBatch(requestID fields.RequestID, batch BatchRequestsBuilder) (frame.Frame, error) {
 	if err := fb.requestIDIsNotZero(requestID); err != nil {
 		return frame.Frame{}, err
@@ -241,6 +270,8 @@ func (fb FrameBuilder) NewBatch(requestID fields.RequestID, batch BatchRequestsB
 	return f, fb.frameSizeLowerLimit(f.Size())
 }
 
+// NewBatchAnswer returns a batch answer frame built from batch.
+// requestID must be non-zero. It returns an error when the body is invalid or the encoded frame exceeds the size limit.
 func (fb FrameBuilder) NewBatchAnswer(requestID fields.RequestID, batch BatchResultsBuilder) (frame.Frame, error) {
 	if err := fb.requestIDIsNotZero(requestID); err != nil {
 		return frame.Frame{}, err
