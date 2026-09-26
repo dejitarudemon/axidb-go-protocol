@@ -1872,6 +1872,39 @@ func TestDecoder_WithReaderEOF(t *testing.T) {
 	}
 }
 
+func TestDecoder_WithBodyLimitIsExceeded(t *testing.T) {
+	tests := []struct {
+		e []byte
+	}{
+		{
+			[]byte{
+				0x0A, 0xDB, 0x01, 0x01, 0x00, 0x00, 0x00, 0x03,
+				0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x7B, 0x54,
+				0x40, 0xCA,
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_WithBodyLimitIsExceeded_%v", i),
+			func(t *testing.T) {
+				d := NewDecoder(1, nil)
+				reader := bufio.NewReader(bytes.NewReader(tt.e))
+
+				_, er := d.DecodeFrame(reader)
+				if er == nil {
+					t.Fatal("expected err, got nil")
+				}
+
+				if _, ok := er.(errs.ErrorBodyLimitIsExceeded); !ok {
+					t.Fatalf("expected ErrorBodyLimitIsExceeded, got %v", er)
+				}
+			},
+		)
+	}
+}
+
 func TestDecoder_ZipBomb(t *testing.T) {
 	frames := []struct {
 		f          frame.Frame
