@@ -1,88 +1,36 @@
-/*
-package buffer предназначен для объявления требований
-к буферу, куда будут кодироваться кадры
-*/
 package buffer
 
-/*
-interface Appender предназначен для объявления требований
-к буферу в частности добавления значений.
-*/
+// Appender writes encoded values into a buffer.
 type Appender interface {
-	/*
-		func Append предназначена для копирования []byte в буфер.
-
-		Принимаемые значения:
-			- v []byte - значение для копирования.
-	*/
+	// Append copies v into the buffer.
 	Append(v []byte)
 
-	/*
-		func AppendUint8 предназначена для копирования uint8 в буфер.
-
-		Принимаемые значения:
-			- v uint8 - значение для копирования.
-	*/
+	// AppendUint8 appends v as a single byte.
 	AppendUint8(v uint8)
 
-	/*
-		func AppendUint16 предназначена для копирования uint16 в буфер.
-
-		Принимаемые значения:
-			- v uint16 - значение для копирования.
-	*/
+	// AppendUint16 appends v in big-endian order.
 	AppendUint16(v uint16)
 
-	/*
-		func AppendUint32 предназначена для копирования uint32 в буфер.
-
-		Принимаемые значения:
-			- v uint32 - значение для копирования.
-	*/
+	// AppendUint32 appends v in big-endian order.
 	AppendUint32(v uint32)
 
-	/*
-		func AppendUint64 предназначена для копирования uint64 в буфер.
-
-		Принимаемые значения:
-			- v uint64 - значение для копирования.
-	*/
+	// AppendUint64 appends v in big-endian order.
 	AppendUint64(v uint64)
 
-	/*
-		func AppendString предназначена для копирования string в буфер.
-
-		Принимаемые значения:
-			- v string - значение для копирования.
-	*/
+	// AppendString appends the raw bytes of v.
 	AppendString(v string)
 }
 
-/*
-interface Buffer предназначен для расширения Appender в частности работы
-с памятью.
-*/
+// Buffer is an [Appender] that can reserve space, reset, and return its contents.
 type Buffer interface {
 	Appender
 
-	/*
-		func Preallocate предназначена для выделения буфера.
-
-		Принимаемые значения:
-			- size int - размер буфера.
-	*/
+	// Preallocate ensures the buffer can hold at least size bytes without reallocating.
 	Preallocate(size int)
 
-	/*
-		func Clean предназначена для очищения буфера.
-	*/
+	// Clean discards buffered bytes while keeping allocated capacity.
 	Clean()
 
-	/*
-		func Bytes предназначена для получения значения буфера.
-
-		Выходные значения:
-			- []byte - значение в буфере.
-	*/
+	// Bytes returns a copy of the buffered bytes.
 	Bytes() []byte
 }
