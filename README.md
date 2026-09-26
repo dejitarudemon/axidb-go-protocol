@@ -15,6 +15,8 @@ A Go library for AxiDB protocol frames: Hello (version 0) and working version 1.
 
 Encoding and decoding only. The socket, storage, and ACL stay in the application.
 
+After Hello the connection is not pinned to one version: each later frame may use any version both sides advertised.
+
 ### Docs
 
 - [How it works](docs/how-it-works.en.md)
@@ -28,18 +30,6 @@ Go 1.27 or newer is required.
 ```bash
 go get github.com/dejitarudemon/axidb-go-protocol@latest
 ```
-
-### Protocol features
-
-- **Hello v0** — nodes intersect version lists before any working command. Version 0 is not a working version.
-- **Versions on the fly** — each frame carries its own Version byte. `DecodePreamble` picks the decoder per frame without consuming bytes: Hello v0, then v1, then another agreed version on the same TCP connection.
-- **One frame on a stream** — magic `0A DB`, big-endian, length taken from the header.
-- **Checksums** — CRC-32/XFER on Hello, CRC-32C (Castagnoli) on v1. The sum covers the frame except itself; with compression it is checked before decompress.
-- **Asynchrony** — `RequestID` multiplexes requests on one TCP connection. `0` is reserved for Handshake.
-- **Typed values** — bytes, arrays, int/uint, float64, UTF-8, JSON.
-- **Body compression** — zstd and s2, agreed in Handshake. Handshake and Ping are not compressed.
-- **Batch** — several Read/Write/Delete operations in one frame, not a transaction: order, fail-fast, one reply or many.
-- **Errors with TracebackID** — the client reply is tied to a server log line.
 
 ### Example: TCP server
 
@@ -212,6 +202,8 @@ go test -bench=. -benchmem ./v0/... ./v1/...
 
 Кодирование и разбор бинарных кадров. Сокет, хранилище и ACL — на стороне приложения.
 
+После Hello соединение не привязано к одной версии: каждый следующий кадр может использовать любую версию из пересечения списков.
+
 ### Документация
 
 - [Как это работает](docs/how-it-works.md)
@@ -225,18 +217,6 @@ go test -bench=. -benchmem ./v0/... ./v1/...
 ```bash
 go get github.com/dejitarudemon/axidb-go-protocol@latest
 ```
-
-### Фишки протокола
-
-- **Hello v0** — узлы пересекают списки версий до любой рабочей команды. Версия 0 сама по себе не рабочая.
-- **Версии на лету** — каждый кадр несёт свой байт Version. `DecodePreamble` выбирает декодер на кадр, не сдвигая курсор: на одном TCP можно Hello v0, затем v1 и снова сменить версию из согласованного набора.
-- **Один кадр на поток** — magic `0A DB`, big-endian, длина известна из заголовка.
-- **Контрольные суммы** — CRC-32/XFER на Hello, CRC-32C (Castagnoli) на v1. Сумма покрывает кадр без себя; при сжатии проверяется до распаковки.
-- **Асинхронность** — `RequestID` multiplexит запросы на одном TCP. `0` зарезервирован для Handshake.
-- **Типизированные значения** — bytes, массивы, int/uint, float64, UTF-8, JSON.
-- **Сжатие Body** — zstd и s2 по согласованию в Handshake. Handshake и Ping не сжимаются.
-- **Батч** — несколько Read/Write/Delete в одном кадре, не транзакция: последовательность, прерывание по ошибке, один или несколько ответов.
-- **Ошибки с TracebackID** — ответ клиенту связан с записью в логе сервера.
 
 ### Пример: TCP-сервер
 
