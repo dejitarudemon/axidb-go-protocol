@@ -364,9 +364,9 @@ func (d Decoder) answerErr(body []byte) (bodies.ErrorAnswer, int, error) {
 	case fields.UnsupportedCommand:
 		pe = errs.NewErrorUnsupportedCommandWithTracebackID(0, tracebackID)
 	case fields.RequestsConflict:
-		pe = errs.NewErrorRequestInterruptedWithTracebackID(0, tracebackID)
+		pe = errs.NewErrorRequestsConflictWithTracebackID(0, tracebackID)
 	case fields.UnsupportedCompression:
-		pe = errs.NewErrorUnsupportedCommandWithTracebackID(0, tracebackID)
+		pe = errs.NewErrorUnsupportedCompressionWithTracebackID(0, tracebackID)
 	case fields.MismatchedChecksum:
 		pe = errs.NewErrorMismatchedChecksumWithTracebackID(0, 0, tracebackID)
 	case fields.InternalError:
