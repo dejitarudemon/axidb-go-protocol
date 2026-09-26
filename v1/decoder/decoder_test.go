@@ -1828,9 +1828,10 @@ func TestDecoder_WithWrongChecksum(t *testing.T) {
 	}
 }
 
-func TestDecoder_WithReaderUnexpectedEOF(t *testing.T) {
+func TestDecoder_WithReaderEOF(t *testing.T) {
 	tests := []struct {
-		e []byte
+		e    []byte
+		want error
 	}{
 		{
 			[]byte{
@@ -1838,12 +1839,17 @@ func TestDecoder_WithReaderUnexpectedEOF(t *testing.T) {
 				0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x7B, 0x54,
 				0x40, 0xCA,
 			},
+			io.ErrUnexpectedEOF,
+		},
+		{
+			[]byte{},
+			io.EOF,
 		},
 	}
 
 	for i, tt := range tests {
 		t.Run(
-			fmt.Sprintf("TestDecoder_WithReaderUnexpectedEOF_%v", i),
+			fmt.Sprintf("TestDecoder_WithReaderEOF_%v", i),
 			func(t *testing.T) {
 				d := NewDecoder(1<<10, nil)
 				reader := bufio.NewReader(bytes.NewReader(tt.e))
@@ -1855,11 +1861,11 @@ func TestDecoder_WithReaderUnexpectedEOF(t *testing.T) {
 
 				de, ok := er.(err.DecodeError)
 				if !ok {
-					t.Fatalf("expected ErrorMismatchedChecksum, got %v", er)
+					t.Fatalf("expected DecodeError, got %v", er)
 				}
 
-				if !errors.Is(io.ErrUnexpectedEOF, de.Unwrap()) {
-					t.Errorf("expected io.ErrUnexpectedEOF, got %v", de)
+				if !errors.Is(tt.want, de.Unwrap()) {
+					t.Errorf("expected %v, got %v", tt.want, de)
 				}
 			},
 		)
