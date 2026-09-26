@@ -1,88 +1,91 @@
 package fields
 
 import (
-	"bytes"
-	"fmt"
 	"math"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
 )
 
-func TestChecksum_NewsEqual(t *testing.T) {
+func TestChecksum(t *testing.T) {
 	tests := []struct {
-		c1 Checksum
-		c2 Checksum
-	}{
-		{NewChecksum([]byte{0x00, 0x01, 0x02}), NewChecksumWithParts([]byte{0x00}, []byte{0x01, 0x02})},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("%v", tt.c1),
-			func(t *testing.T) {
-				if tt.c1 != tt.c2 {
-					t.Errorf("NewChecksum: %v, NewChecsumWithParts: %v", tt.c1, tt.c2)
-				}
-
-				if !tt.c1.Equal(tt.c2) {
-					t.Errorf("failed to equal %v and %v", tt.c1, tt.c2)
-				}
-			},
-		)
-	}
-}
-
-func TestChecksum_Size(t *testing.T) {
-	tests := []struct {
-		c    Checksum
-		want int
-	}{
-		{Checksum(0), 4},
-		{Checksum(3), 4},
-		{Checksum(math.MaxUint32), 4},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("%v", tt.c),
-			func(t *testing.T) {
-				if got := tt.c.Size(); got != tt.want {
-					t.Errorf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestChecksum_Encode(t *testing.T) {
-	tests := []struct {
+		name string
 		c    Checksum
 		want []byte
 	}{
-		{Checksum(0), []byte{0x00, 0x00, 0x00, 0x00}},
-		{Checksum(3), []byte{0x00, 0x00, 0x00, 0x03}},
-		{Checksum(math.MaxUint32), []byte{0xFF, 0xFF, 0xFF, 0xFF}},
+		{"zero", Checksum(0), []byte{0x00, 0x00, 0x00, 0x00}},
+		{"small", Checksum(3), []byte{0x00, 0x00, 0x00, 0x03}},
+		{"max", Checksum(math.MaxUint32), []byte{0xFF, 0xFF, 0xFF, 0xFF}},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("%v", tt.c),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.c.Size())
+		t.Run(tt.name, func(t *testing.T) {
+			testutil.AssertEncoded(t, tt.c, tt.want)
+		})
+	}
+}
 
-				tt.c.Encode(&buf)
-				got := buf.Bytes()
+func TestNewChecksum(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+		want Checksum
+	}{
+		{"nil", nil, 0},
+		{"empty", []byte{}, 0},
+		{"three bytes", []byte{0x00, 0x01, 0x02}, 0x92FD4BFA},
+		{"check value", []byte("123456789"), 0xE3069283},
+	}
 
-				if len(got) != tt.c.Size() {
-					t.Fatalf("expected %v bytes, got %v bytes", tt.c.Size(), len(got))
-				}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewChecksum(tt.data); got != tt.want {
+				t.Errorf("NewChecksum() = %#08X, want %#08X", got, tt.want)
+			}
+		})
+	}
+}
 
-				if !bytes.Equal(got, tt.want) {
-					t.Errorf("Encode() = %q, want %q", got, tt.want)
-				}
-			},
-		)
+func TestNewChecksumWithParts(t *testing.T) {
+	tests := []struct {
+		name  string
+		base  []byte
+		parts [][]byte
+		want  Checksum
+	}{
+		{"empty", nil, nil, 0},
+		{"base only", []byte("123456789"), nil, 0xE3069283},
+		{"empty base", nil, [][]byte{[]byte("123456789")}, 0xE3069283},
+		{"one part", []byte{0x00}, [][]byte{{0x01, 0x02}}, 0x92FD4BFA},
+		{"many parts", []byte("1"), [][]byte{[]byte("2345"), {}, []byte("6789")}, 0xE3069283},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewChecksumWithParts(tt.base, tt.parts...); got != tt.want {
+				t.Errorf("NewChecksumWithParts() = %#08X, want %#08X", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestChecksum_Equal(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b Checksum
+		want bool
+	}{
+		{"zero", 0, 0, true},
+		{"same", 0xE3069283, 0xE3069283, true},
+		{"different", 0xE3069283, 0x92FD4BFA, false},
+		{"zero and max", 0, math.MaxUint32, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.a.Equal(tt.b); got != tt.want {
+				t.Errorf("Equal() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

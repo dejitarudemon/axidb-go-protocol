@@ -1,239 +1,160 @@
 package bodies
 
 import (
-	"bytes"
-	"fmt"
 	"slices"
-	"strings"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
 )
 
 func generateManyCompressions(size uint16) []fields.Compression {
-	fieldss := make([]fields.Compression, 0, size)
+	compressions := make([]fields.Compression, 0, size)
 
 	for i := range size {
-		fieldss = append(fieldss, fields.Compression((i+1)%254+1))
+		compressions = append(compressions, fields.Compression((i+1)%254+1))
 	}
 
-	return fieldss
+	return compressions
 }
 
-func encodeCompressions(fieldss []fields.Compression) []byte {
-	size := min(len(fieldss), MaxCompressionsPerOneHandshake)
+func encodeCompressions(compressions []fields.Compression) []byte {
+	n := min(len(compressions), MaxCompressionsPerOneHandshake)
+	encoded := []byte{byte(n)}
 
-	buf := buffer.Slice{}
-	buf.Preallocate((size + 1) * fields.CompressionFieldSize)
-
-	buf.AppendUint8(uint8(size))
-
-	for i, fields := range fieldss {
-		if i > MaxCompressionsPerOneHandshake {
-			break
-		}
-
-		fields.Encode(&buf)
+	for _, c := range compressions[:n] {
+		encoded = append(encoded, byte(c))
 	}
 
-	return buf.Bytes()
+	return encoded
 }
 
-func TestHandshake_New(t *testing.T) {
+func hashBytes(prefix ...byte) []byte {
+	var hash [HashFieldSize]byte
+	copy(hash[:], prefix)
+	return hash[:]
+}
+
+func TestHandshake(t *testing.T) {
+	user := []byte{0x00, 0x00, 0x00, 0x04, 0x75, 0x73, 0x65, 0x72}
+
 	tests := []struct {
-		h    Handshake
-		want Handshake
+		name    string
+		b       Handshake
+		want    []byte
+		wantErr bool
 	}{
 		{
-			NewHandshake("", [32]byte{}, nil),
-			Handshake{"", [32]byte{}, nil},
+			"empty",
+			Handshake{},
+			slices.Concat([]byte{0x00, 0x00, 0x00, 0x00}, hashBytes(), []byte{0x00}),
+			false,
 		},
 		{
+			"empty compressions",
+			Handshake{"", [32]byte{}, []fields.Compression{}},
+			slices.Concat([]byte{0x00, 0x00, 0x00, 0x00}, hashBytes(), []byte{0x00}),
+			false,
+		},
+		{
+			"ascii login",
+			Handshake{"user", [32]byte{0x01}, []fields.Compression{}},
+			slices.Concat(user, hashBytes(0x01), []byte{0x00}),
+			false,
+		},
+		{
+			"utf-8 login",
+			Handshake{"юзер", [32]byte{0x01, 0x02}, []fields.Compression{}},
+			slices.Concat(
+				[]byte{0x00, 0x00, 0x00, 0x08, 0xD1, 0x8E, 0xD0, 0xB7, 0xD0, 0xB5, 0xD1, 0x80},
+				hashBytes(0x01, 0x02),
+				[]byte{0x00},
+			),
+			false,
+		},
+		{
+			"none compression",
+			Handshake{"user", [32]byte{0x01, 0x02, 0x03}, []fields.Compression{fields.None}},
+			slices.Concat(user, hashBytes(0x01, 0x02, 0x03), []byte{0x01, 0x00}),
+			false,
+		},
+		{
+			"two compressions",
+			Handshake{"user", [32]byte{0x01, 0x02, 0x03, 0x04}, []fields.Compression{fields.None, fields.Zstd}},
+			slices.Concat(user, hashBytes(0x01, 0x02, 0x03, 0x04), []byte{0x02, 0x00, 0x01}),
+			false,
+		},
+		{
+			"repeated compressions",
+			Handshake{"user", [32]byte{0x01, 0x02, 0x03}, []fields.Compression{fields.None, fields.Zstd, fields.None}},
+			slices.Concat(user, hashBytes(0x01, 0x02, 0x03), []byte{0x03, 0x00, 0x01, 0x00}),
+			false,
+		},
+		{
+			"custom compression",
+			Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.Zstd, 0xFF}},
+			slices.Concat(user, hashBytes(), []byte{0x03, 0x00, 0x01, 0xFF}),
+			false,
+		},
+		{
+			"max compressions",
+			Handshake{"user", [32]byte{0x01}, generateManyCompressions(MaxCompressionsPerOneHandshake)},
+			slices.Concat(user, hashBytes(0x01), encodeCompressions(generateManyCompressions(MaxCompressionsPerOneHandshake))),
+			false,
+		},
+		{
+			"too many compressions",
+			Handshake{"user", [32]byte{0x01}, generateManyCompressions(1000)},
+			slices.Concat(user, hashBytes(0x01), encodeCompressions(generateManyCompressions(1000))),
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertBody(t, tt.b, fields.Handshake, tt.want, tt.wantErr)
+		})
+	}
+}
+
+func TestNewHandshake(t *testing.T) {
+	tests := []struct {
+		name string
+		got  Handshake
+		want Handshake
+	}{
+		{"nil compressions", NewHandshake("", [32]byte{}, nil), Handshake{}},
+		{
+			"drops none",
 			NewHandshake("user", [32]byte{0x01}, []fields.Compression{0x01, 0x00, 0x02}),
 			Handshake{"user", [32]byte{0x01}, []fields.Compression{0x01, 0x02}},
 		},
 		{
+			"drops none and duplicates",
 			NewHandshake("user", [32]byte{0x02}, []fields.Compression{0x01, 0x00, 0x02, 0x01, 0x03}),
 			Handshake{"user", [32]byte{0x02}, []fields.Compression{0x01, 0x02, 0x03}},
 		},
 		{
+			"drops duplicates",
 			NewHandshake("user", [32]byte{0x03}, []fields.Compression{0x01, 0x01}),
 			Handshake{"user", [32]byte{0x03}, []fields.Compression{0x01}},
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestHandshake_New %v", tt.h),
-			func(t *testing.T) {
-				if !strings.EqualFold(tt.h.Login, tt.want.Login) {
-					t.Errorf("login: got '%v', want '%v'", tt.h.Login, tt.want.Login)
-				}
-
-				if !bytes.Equal(tt.h.Hash[:], tt.want.Hash[:]) {
-					t.Errorf("handshake: got '%q', want '%q'", tt.h.Hash, tt.want.Hash)
-				}
-
-				if !slices.Equal(tt.h.Compressions, tt.want.Compressions) {
-					t.Errorf("fields: got '%v', want '%v'", tt.h.Compressions, tt.want.Compressions)
-				}
-			},
-		)
-	}
-}
-
-func TestHandshake_Size(t *testing.T) {
-	tests := []struct {
-		h    Handshake
-		want int
-	}{
-		{Handshake{}, 37},
-		{Handshake{"", [32]byte{}, []fields.Compression{}}, 37},
-		{Handshake{"user", [32]byte{0x01}, []fields.Compression{}}, 41},
-		{Handshake{"юзер", [32]byte{0x01, 0x02}, []fields.Compression{}}, 45},
-		{Handshake{"user", [32]byte{0x01, 0x02, 0x03}, []fields.Compression{0x00}}, 42},
-		{Handshake{"user", [32]byte{0x01, 0x02, 0x03, 0x04}, []fields.Compression{0x00, 0x01}}, 43},
-		{Handshake{"user", [32]byte{0x01, 0x02, 0x03}, []fields.Compression{0x00, 0x01, 0x00}}, 44},
-		{NewHandshake("user", [32]byte{0x01, 0x02}, []fields.Compression{0x00, 0x01, 0x00}), 42},
-		{Handshake{"user", [32]byte{0x01}, generateManyCompressions(1000)}, 296},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestHandshake_Size %v", tt.h),
-			func(t *testing.T) {
-				if got := tt.h.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestHandshake_Encode(t *testing.T) {
-	generated := generateManyCompressions(1000)
-	tests := []struct {
-		h    Handshake
-		want []byte
-	}{
 		{
-			Handshake{},
-			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-		{
-			Handshake{"", [32]byte{}, []fields.Compression{}},
-			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-		{
-			Handshake{"user", [32]byte{0x01}, []fields.Compression{}},
-			[]byte{0x00, 0x00, 0x00, 0x04, 0x75, 0x73, 0x65, 0x72, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-		{
-			Handshake{"юзер", [32]byte{0x01, 0x02}, []fields.Compression{}},
-			[]byte{0x00, 0x00, 0x00, 0x08, 0xD1, 0x8E, 0xD0, 0xB7, 0xD0, 0xB5, 0xD1, 0x80, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		},
-		{
-			Handshake{"user", [32]byte{0x01, 0x02, 0x03}, []fields.Compression{0x00}},
-			[]byte{0x00, 0x00, 0x00, 0x04, 0x75, 0x73, 0x65, 0x72, 0x01, 0x02, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00},
-		},
-		{
-			Handshake{"user", [32]byte{0x01, 0x02, 0x03, 0x04}, []fields.Compression{0x00, 0x01}},
-			[]byte{0x00, 0x00, 0x00, 0x04, 0x75, 0x73, 0x65, 0x72, 0x01, 0x02, 0x03, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01},
-		},
-		{
-			Handshake{"user", [32]byte{0x01, 0x02, 0x03}, []fields.Compression{0x00, 0x01, 0x00}},
-			[]byte{0x00, 0x00, 0x00, 0x04, 0x75, 0x73, 0x65, 0x72, 0x01, 0x02, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00},
-		},
-		{
+			"drops repeated none",
 			NewHandshake("user", [32]byte{0x01, 0x02}, []fields.Compression{0x00, 0x01, 0x00}),
-			[]byte{0x00, 0x00, 0x00, 0x04, 0x75, 0x73, 0x65, 0x72, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01},
+			Handshake{"user", [32]byte{0x01, 0x02}, []fields.Compression{0x01}},
 		},
 		{
-			Handshake{"user", [32]byte{0x01}, generated},
-			append(
-				[]byte{0x00, 0x00, 0x00, 0x04, 0x75, 0x73, 0x65, 0x72, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-				encodeCompressions(generated)...,
-			),
+			"drops duplicates beyond limit",
+			NewHandshake("user", [32]byte{}, generateManyCompressions(1000)),
+			Handshake{"user", [32]byte{}, generateManyCompressions(254)},
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestHandshake_Encode %v", tt.h),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.h.Size())
-
-				tt.h.Encode(&buf)
-
-				got := buf.Bytes()
-
-				if len(got) != len(tt.want) {
-					t.Fatalf("got %v want %v", len(got), len(tt.want))
-				}
-
-				if !bytes.Equal(got, tt.want) {
-					t.Fatalf("got %q, want %q", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestHandshake_Command(t *testing.T) {
-	tests := []struct {
-		h    Handshake
-		want fields.Command
-	}{
-		{Handshake{}, fields.Handshake},
-		{Handshake{"", [32]byte{}, []fields.Compression{}}, fields.Handshake},
-		{Handshake{"user", [32]byte{0x01}, []fields.Compression{}}, fields.Handshake},
-		{Handshake{"юзер", [32]byte{0x01, 0x02}, []fields.Compression{}}, fields.Handshake},
-		{Handshake{"user", [32]byte{0x01, 0x02, 0x03}, []fields.Compression{0x00}}, fields.Handshake},
-		{Handshake{"user", [32]byte{0x01, 0x02, 0x03, 0x04}, []fields.Compression{0x00, 0x01}}, fields.Handshake},
-		{Handshake{"user", [32]byte{0x01, 0x02, 0x03}, []fields.Compression{0x00, 0x01, 0x00}}, fields.Handshake},
-		{NewHandshake("user", [32]byte{0x01, 0x02}, []fields.Compression{0x00, 0x01, 0x00}), fields.Handshake},
-		{Handshake{"user", [32]byte{0x01}, generateManyCompressions(1000)}, fields.Handshake},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestHandshake_Command %v", tt.h),
-			func(t *testing.T) {
-				if got := tt.h.Command(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestHandshake_IsValid(t *testing.T) {
-	tests := []struct {
-		h    Handshake
-		want bool
-	}{
-		{Handshake{}, false},
-		{Handshake{"", [32]byte{}, []fields.Compression{}}, false},
-		{Handshake{"user", [32]byte{0x01}, []fields.Compression{}}, false},
-		{Handshake{"юзер", [32]byte{0x01, 0x02}, []fields.Compression{}}, false},
-		{Handshake{"user", [32]byte{0x01, 0x02, 0x03}, []fields.Compression{0x00}}, false},
-		{Handshake{"user", [32]byte{0x01, 0x02, 0x03, 0x04}, []fields.Compression{0x00, 0x01}}, false},
-		{Handshake{"user", [32]byte{0x01, 0x02, 0x03}, []fields.Compression{0x00, 0x01, 0x00}}, false},
-		{NewHandshake("user", [32]byte{0x01, 0x02}, []fields.Compression{0x00, 0x01, 0x00}), false},
-		{Handshake{"user", [32]byte{0x01}, generateManyCompressions(1000)}, true},
-		{NewHandshake("user", [32]byte{}, generateManyCompressions(1000)), false},
-		{Handshake{"user", [32]byte{}, []fields.Compression{0x00, 0x01, 0xFF}}, false},
-	}
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestHandshake_IsValid %v", tt.h),
-			func(t *testing.T) {
-				if got := tt.h.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			testutil.AssertSameEncoding(t, tt.got, tt.want)
+			testutil.AssertErr(t, tt.got.IsValid(), false)
+		})
 	}
 }

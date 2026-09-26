@@ -1,64 +1,26 @@
 package fields
 
 import (
-	"bytes"
-	"fmt"
 	"math"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
 )
 
-func TestRequestNumber_Size(t *testing.T) {
+func TestRequestNumber(t *testing.T) {
 	tests := []struct {
-		r    RequestNumber
-		want int
-	}{
-		{RequestNumber(0), 4},
-		{RequestNumber(3), 4},
-		{RequestNumber(math.MaxUint32), 4},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("%v", tt.r),
-			func(t *testing.T) {
-				if got := tt.r.Size(); got != tt.want {
-					t.Errorf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestRequestNumber_Encode(t *testing.T) {
-	tests := []struct {
+		name string
 		r    RequestNumber
 		want []byte
 	}{
-		{RequestNumber(0), []byte{0x00, 0x00, 0x00, 0x00}},
-		{RequestNumber(3), []byte{0x00, 0x00, 0x00, 0x03}},
-		{RequestNumber(math.MaxUint32), []byte{0xFF, 0xFF, 0xFF, 0xFF}},
+		{"zero", RequestNumber(0), []byte{0x00, 0x00, 0x00, 0x00}},
+		{"small", RequestNumber(3), []byte{0x00, 0x00, 0x00, 0x03}},
+		{"max", RequestNumber(math.MaxUint32), []byte{0xFF, 0xFF, 0xFF, 0xFF}},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("%v", tt.r),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.r.Size())
-
-				tt.r.Encode(&buf)
-				got := buf.Bytes()
-
-				if len(got) != tt.r.Size() {
-					t.Fatalf("expected %v bytes, got %v bytes", tt.r.Size(), len(got))
-				}
-
-				if !bytes.Equal(got, tt.want) {
-					t.Errorf("Encode() = %q, want %q", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			testutil.AssertEncoded(t, tt.r, tt.want)
+		})
 	}
 }

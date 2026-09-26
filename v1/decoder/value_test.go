@@ -1,7 +1,6 @@
 package decoder
 
 import (
-	"fmt"
 	"math"
 	"testing"
 
@@ -11,7 +10,9 @@ import (
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
-func encodeTypedValue(v value.V) []byte {
+func encodeTypedValue(t testing.TB, v value.V) []byte {
+	t.Helper()
+
 	buf := buffer.Slice{}
 	buf.Preallocate(fields.TypeFieldSize + v.Size())
 	v.Type().Encode(&buf)
@@ -19,44 +20,37 @@ func encodeTypedValue(v value.V) []byte {
 	return buf.Bytes()
 }
 
-func TestDecoder_decodeTypedValue_RoundTrip(t *testing.T) {
-	tests := []value.V{
-		values.Bytes{},
-		values.Bytes{0x00, 0xFF},
-		values.String(""),
-		values.String("hello"),
-		values.JSON(`{"a":1}`),
-		values.Int(math.MinInt64),
-		values.Int(-1),
-		values.Uint(math.MaxUint64),
-		values.Float(-2.5),
-		values.TypedArray{ElemType: fields.Uint, Elems: []value.V{}},
-		values.TypedArray{ElemType: fields.JSON, Elems: []value.V{values.JSON(`[]`), values.JSON(`{}`)}},
-		values.UntypedArray{},
-		values.UntypedArray{
+func TestDecoder_decodeTypedValue(t *testing.T) {
+	tests := []struct {
+		name string
+		want value.V
+	}{
+		{"empty bytes", values.Bytes{}},
+		{"bytes", values.Bytes{0x00, 0xFF}},
+		{"empty string", values.String("")},
+		{"string", values.String("hello")},
+		{"json", values.JSON(`{"a":1}`)},
+		{"min int", values.Int(math.MinInt64)},
+		{"negative int", values.Int(-1)},
+		{"max uint", values.Uint(math.MaxUint64)},
+		{"float", values.Float(-2.5)},
+		{"empty typed array", values.TypedArray{ElemType: fields.Uint}},
+		{"typed array", values.TypedArray{ElemType: fields.JSON, Elems: []value.V{values.JSON(`[]`), values.JSON(`{}`)}}},
+		{"empty untyped array", values.UntypedArray{}},
+		{"nested arrays", values.UntypedArray{
 			values.Uint(7),
 			values.JSON(`null`),
 			values.Bytes{0x01},
 			values.TypedArray{ElemType: fields.Float, Elems: []value.V{values.Float(1.5)}},
 			values.UntypedArray{values.String("nested")},
-		},
+		}},
 	}
 
-	for i, want := range tests {
-		t.Run(fmt.Sprintf("%v_%v", i, want.Type()), func(t *testing.T) {
-			d := NewDecoder(1024, nil)
-			c := newCursor(encodeTypedValue(want))
-
-			got, e := d.decodeTypedValue(c)
-			if e != nil {
-				t.Fatalf("decodeTypedValue: got err %v", e)
-			}
-
-			if e := c.expectEnd(); e != nil {
-				t.Fatalf("decodeTypedValue: %v", e)
-			}
-
-			compareValues(t, got, want)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newCursor(encodeTypedValue(t, tt.want))
+			got, e := NewDecoder(1024, nil).decodeTypedValue(c)
+			assertDecoded(t, got, e, c, tt.want)
 		})
 	}
 }
@@ -90,36 +84,37 @@ func TestDecoder_decodeTypedValue_Errs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDecoder(1024, nil)
-
-			_, e := d.decodeTypedValue(newCursor(tt.data))
+			_, e := NewDecoder(1024, nil).decodeTypedValue(newCursor(tt.data))
 			assertMalformed(t, e)
 		})
 	}
 }
 
 func TestDecoder_decodeValue_UnknownType(t *testing.T) {
-	d := NewDecoder(1024, nil)
-
-	_, e := d.decodeValue(newCursor(u64(0)), fields.Type(0xFF))
+	_, e := NewDecoder(1024, nil).decodeValue(newCursor(u64(0)), fields.Type(0xFF))
 	assertMalformed(t, e)
 }
 
 func TestDecoder_decodeScalarValues(t *testing.T) {
 	d := NewDecoder(1024, nil)
 
-	i, e := d.decodeIntValue(newCursor(u64(math.MaxUint64)))
-	if e != nil || i != values.Int(-1) {
-		t.Errorf("decodeIntValue: got %v, %v", i, e)
+	tests := []struct {
+		name string
+		data []byte
+		read func(*cursor) (value.V, error)
+		want value.V
+	}{
+		{"int", u64(math.MaxUint64), func(c *cursor) (value.V, error) { return d.decodeIntValue(c) }, values.Int(-1)},
+		{"float", u64(math.Float64bits(3.25)), func(c *cursor) (value.V, error) { return d.decodeFloatValue(c) }, values.Float(3.25)},
+		{"json", cat(u32(2), []byte("{}")), func(c *cursor) (value.V, error) { return d.decodeJSONValue(c) }, values.JSON("{}")},
+		{"uint", u64(1), func(c *cursor) (value.V, error) { return d.decodeUintValue(c) }, values.Uint(1)},
 	}
 
-	f, e := d.decodeFloatValue(newCursor(u64(math.Float64bits(3.25))))
-	if e != nil || f != values.Float(3.25) {
-		t.Errorf("decodeFloatValue: got %v, %v", f, e)
-	}
-
-	j, e := d.decodeJSONValue(newCursor(cat(u32(2), []byte("{}"))))
-	if e != nil || string(j) != "{}" {
-		t.Errorf("decodeJSONValue: got %s, %v", j, e)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newCursor(tt.data)
+			got, e := tt.read(c)
+			assertDecoded(t, got, e, c, tt.want)
+		})
 	}
 }

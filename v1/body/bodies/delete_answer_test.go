@@ -1,117 +1,24 @@
 package bodies
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
 )
 
-func TestDeleteAnswer_Size(t *testing.T) {
+func TestDeleteAnswer(t *testing.T) {
 	tests := []struct {
-		d    DeleteAnswer
-		want int
+		name    string
+		b       DeleteAnswer
+		want    []byte
+		wantErr bool
 	}{
-		{DeleteAnswer{}, 2},
+		{"empty", DeleteAnswer{}, []byte{0x01, 0x04}, false},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDeleteAnswer_Size %v", tt.d),
-			func(t *testing.T) {
-				if got := tt.d.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestDeleteAnswer_Encode(t *testing.T) {
-	tests := []struct {
-		d    DeleteAnswer
-		want []byte
-	}{
-		{DeleteAnswer{}, []byte{0x01, 0x04}},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDeleteAnswer_Encode %v", tt.d),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.d.Size())
-
-				tt.d.Encode(&buf)
-
-				got := buf.Bytes()
-
-				if !bytes.Equal(got, tt.want) {
-					t.Fatalf("got %q, want %q", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestDeleteAnswer_Command(t *testing.T) {
-	tests := []struct {
-		d    DeleteAnswer
-		want fields.Command
-	}{
-		{DeleteAnswer{}, fields.Answer},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDeleteAnswer_Command %v", tt.d),
-			func(t *testing.T) {
-				if got := tt.d.Command(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestDeleteAnswer_IsValid(t *testing.T) {
-	tests := []struct {
-		d    DeleteAnswer
-		want bool
-	}{
-		{DeleteAnswer{}, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDeleteAnswer_IsValid %v", tt.d),
-			func(t *testing.T) {
-				if got := tt.d.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestDeleteAnswer_IsResponseTo(t *testing.T) {
-	tests := []struct {
-		d    DeleteAnswer
-		want fields.Command
-	}{
-		{DeleteAnswer{}, fields.Delete},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestDeleteAnswer_IsResponseTo %v", tt.d),
-			func(t *testing.T) {
-				if got := tt.d.IsResponseTo(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			assertAnswer(t, tt.b, fields.Delete, tt.want, tt.wantErr)
+		})
 	}
 }

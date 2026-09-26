@@ -1,355 +1,159 @@
 package bodies
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
 	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
 )
 
-func TestBatchReques_Size(t *testing.T) {
+func TestRequest(t *testing.T) {
 	tests := []struct {
-		r    Request
-		want int
+		name    string
+		r       Request
+		want    []byte
+		wantErr bool
 	}{
-		{Request{}, 9},
-		{Request{0, nil}, 9},
-		{Request{1, Read{}}, 9},
-		{Request{2, Read("key")}, 12},
-		{Request{3, Delete("another-key")}, 20},
-		{Request{4, Write{fields.Key("key"), nil}}, 16},
-		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.S2}}}, 52},
-		{Request{6, Ping{}}, 9},
-		{Request{7, Batch{}}, 14},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestBatchReques_Size %v", tt.r),
-			func(t *testing.T) {
-				if got := tt.r.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestRequest_Encode(t *testing.T) {
-	tests := []struct {
-		r    Request
-		want []byte
-	}{
-		{Request{}, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 00}},
-		{Request{0, nil}, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
-		{Request{1, Read{}}, []byte{0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00}},
-		{Request{2, Read("key")}, []byte{0x00, 0x00, 0x00, 0x02, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79}},
-		{Request{3, Delete("another-key")}, []byte{0x00, 0x00, 0x00, 0x03, 0x04, 0x00, 0x00, 0x00, 0x0B, 0x61, 0x6E, 0x6F, 0x74, 0x68, 0x65, 0x72, 0x2D, 0x6B, 0x65, 0x79}},
-		{Request{4, Write{[]byte("key"), nil}}, []byte{0x00, 0x00, 0x00, 0x04, 0x03, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79}},
-		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.S2}}}, []byte{
-			0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x2B, 0x00, 0x00, 0x00, 0x04, 0x75, 0x73, 0x65,
-			0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		{"empty", Request{}, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, true},
+		{"nil body", Request{Number: 0, Body: nil}, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, true},
+		{"empty read", Request{Number: 1, Body: Read{}}, []byte{0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00}, true},
+		{"read", Request{Number: 2, Body: Read("key")}, []byte{0x00, 0x00, 0x00, 0x02, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79}, false},
+		{"delete", Request{Number: 3, Body: Delete("another-key")}, []byte{0x00, 0x00, 0x00, 0x03, 0x04, 0x00, 0x00, 0x00, 0x0B, 0x61, 0x6E, 0x6F, 0x74, 0x68, 0x65, 0x72, 0x2D, 0x6B, 0x65, 0x79}, false},
+		{"write nil value", Request{Number: 4, Body: Write{Key: fields.Key("key")}}, []byte{0x00, 0x00, 0x00, 0x04, 0x03, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79}, true},
+		{"write int", Request{Number: 8, Body: Write{Key: fields.Key("key"), Value: values.Int(1)}}, []byte{
+			0x00, 0x00, 0x00, 0x08, 0x03, 0x00, 0x00, 0x00, 0x10,
+			0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79,
+			0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		}, false},
+		{"write invalid json", Request{Number: 9, Body: Write{Key: fields.Key("key"), Value: values.JSON{0x00}}}, []byte{
+			0x00, 0x00, 0x00, 0x09, 0x03, 0x00, 0x00, 0x00, 0x0D,
+			0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79,
+			0x07, 0x00, 0x00, 0x00, 0x01, 0x00,
+		}, true},
+		{"handshake", Request{Number: 5, Body: Handshake{Login: "user", Compressions: []fields.Compression{fields.None, fields.S2}}}, []byte{
+			0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x2B,
+			0x00, 0x00, 0x00, 0x04, 0x75, 0x73, 0x65, 0x72,
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x02, 0x00, 0x02,
-		},
-		},
-		{Request{6, Ping{}}, []byte{0x00, 0x00, 0x00, 0x06, 0x06, 0x00, 0x00, 0x00, 0x00}},
-		{Request{7, Batch{}}, []byte{0x00, 0x00, 0x00, 0x07, 0x05, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00}},
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x02, 0x00, 0x02,
+		}, true},
+		{"ping", Request{Number: 6, Body: Ping{}}, []byte{0x00, 0x00, 0x00, 0x06, 0x06, 0x00, 0x00, 0x00, 0x00}, true},
+		{"nested batch", Request{Number: 7, Body: Batch{}}, []byte{0x00, 0x00, 0x00, 0x07, 0x05, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00}, true},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestRequest_Encode %v", tt.r),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.r.Size())
-
-				tt.r.Encode(&buf)
-
-				got := buf.Bytes()
-
-				if !bytes.Equal(got, tt.want) {
-					t.Fatalf("got %q, want %q", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			testutil.AssertEncoded(t, tt.r, tt.want)
+			testutil.AssertErr(t, tt.r.IsValid(), tt.wantErr)
+		})
 	}
 }
 
-func TestRequest_IsValid(t *testing.T) {
+func TestBatch(t *testing.T) {
 	tests := []struct {
-		r    Request
-		want bool
+		name    string
+		b       Batch
+		want    []byte
+		wantErr bool
 	}{
-		{Request{}, true},
-		{Request{0, nil}, true},
-		{Request{1, Read{}}, true},
-		{Request{2, Read("key")}, false},
-		{Request{3, Delete("another-key")}, false},
-		{Request{4, Write{[]byte("key"), nil}}, true},
-		{Request{5, Handshake{"user", [32]byte{}, []fields.Compression{fields.None, fields.S2}}}, true},
-		{Request{6, Ping{}}, true},
-		{Request{7, Batch{}}, true},
-		{Request{8, Write{[]byte("key"), values.Int(1)}}, false},
-		{Request{9, Write{[]byte("key"), values.JSON([]byte{0x00})}}, true},
+		{"empty", Batch{}, []byte{0x00, 0x00, 0x00, 0x00, 0x00}, true},
+		{"no flags", Batch{Requests: []Request{}}, []byte{0x00, 0x00, 0x00, 0x00, 0x00}, true},
+		{"sequential", Batch{IsSequentialExecution: true}, []byte{0x01, 0x00, 0x00, 0x00, 0x00}, true},
+		{"interrupt after error", Batch{InterruptAfterError: true}, []byte{0x02, 0x00, 0x00, 0x00, 0x00}, true},
+		{"one answer", Batch{IsOneAnswer: true}, []byte{0x04, 0x00, 0x00, 0x00, 0x00}, true},
+		{"nil request", Batch{IsOneAnswer: true, Requests: []Request{{}}}, []byte{
+			0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		}, true},
+		{"empty read", Batch{IsOneAnswer: true, Requests: []Request{{Body: Read{}}}}, []byte{
+			0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,
+		}, true},
+		{"one read", Batch{IsOneAnswer: true, Requests: []Request{{Body: Read("key")}}}, []byte{
+			0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79,
+		}, false},
+		{"duplicate numbers", Batch{IsOneAnswer: true, Requests: []Request{
+			{Number: 0, Body: Read("key")},
+			{Number: 0, Body: Read("yek")},
+		}}, []byte{
+			0x04, 0x00, 0x00, 0x00, 0x02,
+			0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79,
+			0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x79, 0x65, 0x6B,
+		}, true},
+		{"two reads", Batch{IsOneAnswer: true, Requests: []Request{
+			{Number: 0, Body: Read("key")},
+			{Number: 1, Body: Read("yek")},
+		}}, []byte{
+			0x04, 0x00, 0x00, 0x00, 0x02,
+			0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79,
+			0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x03, 0x79, 0x65, 0x6B,
+		}, false},
+		{"unexpected ping", Batch{IsOneAnswer: true, Requests: []Request{
+			{Number: 0, Body: Read("key")},
+			{Number: 1, Body: Read("yek")},
+			{Number: 2, Body: Ping{}},
+		}}, []byte{
+			0x04, 0x00, 0x00, 0x00, 0x03,
+			0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79,
+			0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x03, 0x79, 0x65, 0x6B,
+			0x00, 0x00, 0x00, 0x02, 0x06, 0x00, 0x00, 0x00, 0x00,
+		}, true},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestRequest_IsValid %v", tt.r),
-			func(t *testing.T) {
-				if got := tt.r.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestBatch_Size(t *testing.T) {
-	tests := []struct {
-		b    Batch
-		want int
-	}{
-		{Batch{}, 5},
-		{Batch{false, false, false, []Request{}}, 5},
-		{Batch{true, false, false, []Request{}}, 5},
-		{Batch{false, true, false, []Request{}}, 5},
-		{Batch{false, false, true, []Request{}}, 5},
-		{Batch{false, false, true, []Request{{}}}, 14},
-		{Batch{false, false, true, []Request{{0, nil}}}, 14},
-		{Batch{false, false, true, []Request{{0, nil}}}, 14},
-		{Batch{false, false, true, []Request{{0, Read{}}}}, 14},
-		{Batch{false, false, true, []Request{{0, Read("key")}}}, 17},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{0, Read("yek")},
-		}}, 29},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{1, Read("yek")},
-		}}, 29},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{1, Read("yek")},
-			{2, Ping{}},
-		}}, 38},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestBatch_Size %v", tt.b),
-			func(t *testing.T) {
-				if got := tt.b.Size(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestBatch_Encode(t *testing.T) {
-	tests := []struct {
-		b    Batch
-		want []byte
-	}{
-		{Batch{}, []byte{0x00, 0x00, 0x00, 0x00, 0x00}},
-		{Batch{false, false, false, []Request{}}, []byte{0x00, 0x00, 0x00, 0x00, 0x00}},
-		{Batch{true, false, false, []Request{}}, []byte{0x01, 0x00, 0x00, 0x00, 0x00}},
-		{Batch{false, true, false, []Request{}}, []byte{0x02, 0x00, 0x00, 0x00, 0x00}},
-		{Batch{false, false, true, []Request{}}, []byte{0x04, 0x00, 0x00, 0x00, 0x00}},
-		{Batch{false, false, true, []Request{{}}}, []byte{0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
-		{Batch{false, false, true, []Request{{0, nil}}}, []byte{0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
-		{Batch{false, false, true, []Request{{0, nil}}}, []byte{0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
-		{Batch{false, false, true, []Request{{0, Read{}}}}, []byte{0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00}},
-		{Batch{false, false, true, []Request{{0, Read("key")}}}, []byte{0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79}},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{0, Read("yek")},
-		}}, []byte{0x04, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x79, 0x65, 0x6B}},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{1, Read("yek")},
-		}}, []byte{0x04, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x03, 0x79, 0x65, 0x6B}},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{1, Read("yek")},
-			{2, Ping{}},
-		}},
-			[]byte{
-				0x04, 0x00, 0x00, 0x00, 0x03,
-				0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x6B, 0x65, 0x79,
-				0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x03, 0x79, 0x65, 0x6B,
-				0x00, 0x00, 0x00, 0x02, 0x06, 0x00, 0x00, 0x00, 0x00,
-			}},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestBatch_Encode %v", tt.b),
-			func(t *testing.T) {
-				buf := buffer.Slice{}
-				buf.Preallocate(tt.b.Size())
-
-				tt.b.Encode(&buf)
-
-				got := buf.Bytes()
-
-				if !bytes.Equal(got, tt.want) {
-					t.Fatalf("got %q, want %q", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestBatch_Command(t *testing.T) {
-	tests := []struct {
-		b    Batch
-		want fields.Command
-	}{
-		{Batch{}, fields.Batch},
-		{Batch{false, false, false, []Request{}}, fields.Batch},
-		{Batch{true, false, false, []Request{}}, fields.Batch},
-		{Batch{false, true, false, []Request{}}, fields.Batch},
-		{Batch{false, false, true, []Request{}}, fields.Batch},
-		{Batch{false, false, true, []Request{{}}}, fields.Batch},
-		{Batch{false, false, true, []Request{{0, nil}}}, fields.Batch},
-		{Batch{false, false, true, []Request{{0, nil}}}, fields.Batch},
-		{Batch{false, false, true, []Request{{0, Read{}}}}, fields.Batch},
-		{Batch{false, false, true, []Request{{0, Read("key")}}}, fields.Batch},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{0, Read("yek")},
-		}}, fields.Batch},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{1, Read("yek")},
-		}}, fields.Batch},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{1, Read("yek")},
-			{2, Ping{}},
-		}}, fields.Batch},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestBatch_Command %v", tt.b),
-			func(t *testing.T) {
-				if got := tt.b.Command(); got != tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
-	}
-}
-
-func TestBatch_IsValid(t *testing.T) {
-	tests := []struct {
-		b    Batch
-		want bool
-	}{
-		{Batch{}, true},
-		{Batch{false, false, false, []Request{}}, true},
-		{Batch{true, false, false, []Request{}}, true},
-		{Batch{false, true, false, []Request{}}, true},
-		{Batch{false, false, true, []Request{}}, true},
-		{Batch{false, false, true, []Request{{}}}, true},
-		{Batch{false, false, true, []Request{{0, nil}}}, true},
-		{Batch{false, false, true, []Request{{0, Read{}}}}, true},
-		{Batch{false, false, true, []Request{{0, Read("key")}}}, false},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{0, Read("yek")},
-		}}, true},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{1, Read("yek")},
-		}}, false},
-		{Batch{false, false, true, []Request{
-			{0, Read("key")},
-			{1, Read("yek")},
-			{2, Ping{}},
-		}}, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestBatch_IsValid %v", tt.b),
-			func(t *testing.T) {
-				if got := tt.b.IsValid(); got == nil == tt.want {
-					t.Fatalf("got %v, want %v", got, tt.want)
-				}
-			},
-		)
+		t.Run(tt.name, func(t *testing.T) {
+			assertBody(t, tt.b, fields.Batch, tt.want, tt.wantErr)
+		})
 	}
 }
 
 func TestBatch_Sort(t *testing.T) {
 	tests := []struct {
-		b    Batch
+		name string
+		got  []Request
 		want []Request
 	}{
-		{Batch{}, nil},
-		{Batch{Requests: []Request{}}, []Request{}},
-		{Batch{Requests: []Request{{0, nil}}}, []Request{{0, nil}}},
-		{Batch{Requests: []Request{{0, Read{}}}}, []Request{{0, Read{}}}},
-		{Batch{Requests: []Request{
-			{0, Read("key")},
-			{0, Read("yek")},
-		}}, []Request{
-			{0, Read("key")},
-			{0, Read("yek")},
+		{"nil", nil, nil},
+		{"empty", []Request{}, []Request{}},
+		{"one nil", []Request{{}}, []Request{{}}},
+		{"already sorted", []Request{
+			{Number: 0, Body: Read("key")},
+			{Number: 1, Body: Read("yek")},
+		}, []Request{
+			{Number: 0, Body: Read("key")},
+			{Number: 1, Body: Read("yek")},
 		}},
-		{Batch{Requests: []Request{
-			{0, Read("key")},
-			{1, Read("yek")},
-		}}, []Request{
-			{0, Read("key")},
-			{1, Read("yek")},
+		{"reversed", []Request{
+			{Number: 1, Body: Read("key")},
+			{Number: 0, Body: Read("yek")},
+		}, []Request{
+			{Number: 0, Body: Read("yek")},
+			{Number: 1, Body: Read("key")},
 		}},
-		{Batch{Requests: []Request{
-			{1, Read("key")},
-			{0, Read("yek")},
-		}}, []Request{
-			{0, Read("key")},
-			{1, Read("yek")},
+		{"same numbers", []Request{
+			{Number: 0, Body: Read("key")},
+			{Number: 0, Body: Read("yek")},
+		}, []Request{
+			{Number: 0, Body: Read("key")},
+			{Number: 0, Body: Read("yek")},
 		}},
 	}
 
 	for _, tt := range tests {
-		t.Run(
-			fmt.Sprintf("TestBatch_Sort %v", tt.b),
-			func(t *testing.T) {
-				tt.b.Sort()
+		t.Run(tt.name, func(t *testing.T) {
+			b := Batch{Requests: tt.got}
+			b.Sort()
 
-				if len(tt.b.Requests) != len(tt.want) {
-					t.Fatalf("Batch.Sort: got %v requests, want %v", len(tt.b.Requests), len(tt.want))
-					return
+			if len(b.Requests) != len(tt.want) {
+				t.Fatalf("len(Requests) = %v, want %v", len(b.Requests), len(tt.want))
+			}
+
+			for i := range tt.want {
+				if b.Requests[i].Number != tt.want[i].Number {
+					t.Errorf("Requests[%v].Number = %v, want %v", i, b.Requests[i].Number, tt.want[i].Number)
 				}
 
-				for i := range tt.b.Requests {
-					if tt.b.Requests[i].Number != tt.want[i].Number {
-						t.Errorf("Batch.Sort: got %v request number, want %v", tt.b.Requests[i].Number, tt.want[i].Number)
-					}
-
-					if tt.b.Requests[i].Body == nil && tt.want[i].Body == nil {
-						return
-					}
-
-					if tt.b.Requests[i].Size() != tt.want[i].Size() {
-						t.Errorf("Batch.Sort: got %v bytes, want %v", tt.b.Requests[i].Size(), tt.want[i].Size())
-					}
-
-					if tt.b.Requests[i].Body.Command() != tt.want[i].Body.Command() {
-						t.Errorf("Batch.Sort: got %v command, want %v", tt.b.Requests[i].Body.Command(), tt.want[i].Body.Command())
-					}
-				}
-			},
-		)
+				testutil.AssertSameEncoding(t, b.Requests[i], tt.want[i])
+			}
+		})
 	}
 }

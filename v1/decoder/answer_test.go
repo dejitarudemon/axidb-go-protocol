@@ -1,7 +1,6 @@
 package decoder
 
 import (
-	"bytes"
 	"errors"
 	"math"
 	"testing"
@@ -50,57 +49,36 @@ func TestDecoder_answerErr_AllCodes(t *testing.T) {
 
 	for _, pe := range protocolErrors {
 		t.Run(pe.Code().String(), func(t *testing.T) {
-			d := NewDecoder(1024, nil)
-			encoded := encodeBody(bodies.ErrorAnswer{Err: pe})
-			c := newCursor(encoded)
-
-			got, e := d.answer(c)
-			if e != nil {
-				t.Fatalf("answer: got err %v", e)
-			}
-
-			if e := c.expectEnd(); e != nil {
-				t.Fatalf("answer: %v", e)
-			}
-
-			ea, ok := got.(bodies.ErrorAnswer)
-			if !ok {
-				t.Fatalf("answer: got %T, want ErrorAnswer", got)
-			}
-
-			if ea.Err.Code() != pe.Code() {
-				t.Errorf("Code: got %v, want %v", ea.Err.Code(), pe.Code())
-			}
-
-			if ea.Err.TracebackID() != pe.TracebackID() {
-				t.Errorf("TracebackID: got %v, want %v", ea.Err.TracebackID(), pe.TracebackID())
-			}
-
-			if reencoded := encodeBody(ea); !bytes.Equal(reencoded, encoded) {
-				t.Errorf("re-encoded: got % X, want % X", reencoded, encoded)
-			}
+			want := bodies.ErrorAnswer{Err: pe}
+			c := newCursor(encodeBody(t, want))
+			got, e := NewDecoder(1024, nil).answer(c)
+			assertDecoded(t, got, e, c, want)
 		})
 	}
 }
 
 func TestDecoder_answerErr_MalformedValueMessage(t *testing.T) {
 	for _, msg := range []string{"", "some message"} {
-		t.Run(msg, func(t *testing.T) {
-			d := NewDecoder(1024, nil)
-			pe := errs.NewErrorMalformedValueWithTracebackID(msg, testTracebackID)
-			c := newCursor(encodeBody(bodies.ErrorAnswer{Err: pe}))
+		name := "empty"
+		if msg != "" {
+			name = "non-empty"
+		}
 
-			got, e := d.answer(c)
+		t.Run(name, func(t *testing.T) {
+			pe := errs.NewErrorMalformedValueWithTracebackID(msg, testTracebackID)
+			c := newCursor(encodeBody(t, bodies.ErrorAnswer{Err: pe}))
+
+			got, e := NewDecoder(1024, nil).answer(c)
 			if e != nil {
-				t.Fatalf("answer: got err %v", e)
+				t.Fatalf("answer() = %v", e)
 			}
 
 			if c.remaining() != 0 {
-				t.Fatalf("answer: %v bytes left unread", c.remaining())
+				t.Fatalf("answer() left %v bytes unread", c.remaining())
 			}
 
 			if got.(bodies.ErrorAnswer).Err.Error() != pe.Error() {
-				t.Errorf("Error: got %q, want %q", got.(bodies.ErrorAnswer).Err.Error(), pe.Error())
+				t.Errorf("Error() = %q, want %q", got.(bodies.ErrorAnswer).Err.Error(), pe.Error())
 			}
 		})
 	}
@@ -128,9 +106,7 @@ func TestDecoder_answerErr_Errs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDecoder(1024, nil)
-
-			_, e := d.answer(newCursor(tt.data))
+			_, e := NewDecoder(1024, nil).answer(newCursor(tt.data))
 			assertMalformed(t, e)
 		})
 	}
@@ -158,19 +134,9 @@ func TestDecoder_answer_OK(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDecoder(1024, nil)
-			c := newCursor(encodeBody(tt.want))
-
-			got, e := d.answer(c)
-			if e != nil {
-				t.Fatalf("answer: got err %v", e)
-			}
-
-			if e := c.expectEnd(); e != nil {
-				t.Fatalf("answer: %v", e)
-			}
-
-			compareBodies(t, got, tt.want)
+			c := newCursor(encodeBody(t, tt.want))
+			got, e := NewDecoder(1024, nil).answer(c)
+			assertDecoded(t, got, e, c, tt.want)
 		})
 	}
 }
@@ -186,6 +152,9 @@ func TestDecoder_answer_OKErrs(t *testing.T) {
 		data []byte
 	}{
 		{"empty", nil},
+		{"unknown result", []byte{0x02}},
+		{"answer for answer", ok(fields.Answer)},
+		{"unknown command", []byte{resultOK, 0xFF}},
 		{"handshake without compressions len", ok(fields.Handshake)},
 		{"handshake compressions shorter than len", cat(ok(fields.Handshake), []byte{2, 1})},
 		{"read without type", ok(fields.Read)},
@@ -203,9 +172,7 @@ func TestDecoder_answer_OKErrs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDecoder(1024, nil)
-
-			_, e := d.answer(newCursor(tt.data))
+			_, e := NewDecoder(1024, nil).answer(newCursor(tt.data))
 			assertMalformed(t, e)
 		})
 	}

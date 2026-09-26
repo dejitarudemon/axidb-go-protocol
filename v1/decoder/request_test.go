@@ -27,7 +27,7 @@ func TestDecoder_decodeBody_Requests(t *testing.T) {
 		{"read empty key", bodies.Read("")},
 		{"delete", bodies.Delete("key")},
 		{"handshake empty", bodies.NewHandshake("", [32]byte{}, nil)},
-		{"handshake", bodies.NewHandshake("user", fakeHash(), []fields.Compression{fields.Zstd, fields.S2})},
+		{"handshake", bodies.NewHandshake("user", testHash, []fields.Compression{fields.Zstd, fields.S2})},
 		{"write empty key", bodies.Write{Key: fields.Key{}, Value: values.Uint(1)}},
 		{"write json", bodies.Write{Key: fields.Key("k"), Value: values.JSON(`{"a":1}`)}},
 		{"write float", bodies.Write{Key: fields.Key("k"), Value: values.Float(0.5)}},
@@ -46,19 +46,9 @@ func TestDecoder_decodeBody_Requests(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDecoder(1024, nil)
-			c := newCursor(encodeBody(tt.want))
-
-			got, e := d.decodeBody(c, tt.want.Command())
-			if e != nil {
-				t.Fatalf("decodeBody: got err %v", e)
-			}
-
-			if e := c.expectEnd(); e != nil {
-				t.Fatalf("decodeBody: %v", e)
-			}
-
-			compareBodies(t, got, tt.want)
+			c := newCursor(encodeBody(t, tt.want))
+			got, e := NewDecoder(1024, nil).decodeBody(c, tt.want.Command())
+			assertDecoded(t, got, e, c, tt.want)
 		})
 	}
 }
@@ -77,13 +67,11 @@ func TestDecoder_decodeBody_RequestErrs(t *testing.T) {
 		{"handshake without hash", fields.Handshake, cat(u32(0), hash[:31])},
 		{"handshake without compressions len", fields.Handshake, cat(u32(0), hash)},
 		{"handshake compressions shorter than len", fields.Handshake, cat(u32(0), hash, []byte{2, 1})},
-
 		{"write empty", fields.Write, nil},
 		{"write key shorter than len", fields.Write, cat(u32(4), []byte("key"))},
 		{"write without type", fields.Write, cat(u32(1), []byte("k"))},
 		{"write unknown type", fields.Write, cat(u32(1), []byte("k"), []byte{0xFF})},
 		{"write short value", fields.Write, cat(u32(1), []byte("k"), []byte{byte(fields.Int)}, u32(0))},
-
 		{"batch empty", fields.Batch, nil},
 		{"batch without len", fields.Batch, []byte{0x00, 0x00}},
 		{"batch missing request", fields.Batch, cat([]byte{0x00}, u32(2), readReq)},
@@ -99,9 +87,7 @@ func TestDecoder_decodeBody_RequestErrs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDecoder(1024, nil)
-
-			_, e := d.decodeBody(newCursor(tt.data), tt.command)
+			_, e := NewDecoder(1024, nil).decodeBody(newCursor(tt.data), tt.command)
 			assertMalformed(t, e)
 		})
 	}
@@ -119,10 +105,8 @@ func TestDecoder_batch_UnexpectedCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDecoder(1024, nil)
 			data := cat([]byte{0x00}, u32(1), batchRequestBytes(3, tt.command, nil))
-
-			_, e := d.decodeBody(newCursor(data), fields.Batch)
+			_, e := NewDecoder(1024, nil).decodeBody(newCursor(data), fields.Batch)
 			if !errors.As(e, &tt.want) {
 				t.Fatalf("got %v, want %T", e, tt.want)
 			}
@@ -130,7 +114,6 @@ func TestDecoder_batch_UnexpectedCommand(t *testing.T) {
 	}
 }
 
-// allocatedBytes returns the number of heap bytes allocated while running f.
 func allocatedBytes(f func()) uint64 {
 	var before, after runtime.MemStats
 

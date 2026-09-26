@@ -69,7 +69,7 @@ func (h Handshake) Encode(buf buffer.Appender) {
 	buf.AppendUint8(uint8(min(len(h.Compressions), MaxCompressionsPerOneHandshake)))
 
 	for i, fields := range h.Compressions {
-		if i > MaxCompressionsPerOneHandshake {
+		if i >= MaxCompressionsPerOneHandshake {
 			break
 		}
 
