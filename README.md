@@ -1,7 +1,6 @@
 [![CI](https://github.com/dejitarudemon/axidb-go-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/dejitarudemon/axidb-go-protocol/actions/workflows/ci.yml)
 ![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dejitarudemon/d4908af19df5c45057d630931ab6b8a7/raw/coverage.json)
 [![Go Reference](https://pkg.go.dev/badge/github.com/dejitarudemon/axidb-go-protocol.svg)](https://pkg.go.dev/github.com/dejitarudemon/axidb-go-protocol)
-[![Go Report Card](https://goreportcard.com/badge/github.com/dejitarudemon/axidb-go-protocol)](https://goreportcard.com/report/github.com/dejitarudemon/axidb-go-protocol)
 [![Release](https://img.shields.io/github/v/tag/dejitarudemon/axidb-go-protocol?label=release)](https://github.com/dejitarudemon/axidb-go-protocol/releases)
 [![License: MIT](https://img.shields.io/github/license/dejitarudemon/axidb-go-protocol)](LICENSE)
 
