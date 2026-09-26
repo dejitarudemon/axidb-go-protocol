@@ -68,8 +68,8 @@ func (d Decoder) DecodeFrame(reader *bufio.Reader) (frame.Frame, error) {
 		return frame.Frame{}, err.NewDecodeError("got nil reader", nil)
 	}
 
-	headersBuf := make([]byte, PreambleLen+frame.HeadersLen)
-	if _, e := io.ReadFull(reader, headersBuf); e != nil {
+	var headersBuf [PreambleLen + frame.HeadersLen]byte
+	if _, e := io.ReadFull(reader, headersBuf[:]); e != nil {
 		return frame.Frame{}, d.handleReaderError(e)
 	}
 
@@ -92,7 +92,7 @@ func (d Decoder) DecodeFrame(reader *bufio.Reader) (frame.Frame, error) {
 	versionsBuf, checksumBuf := rest[:versionLen], rest[versionLen:]
 
 	checksumWanted := fields.Checksum(binary.BigEndian.Uint32(checksumBuf))
-	checksumReal := fields.NewChecksumWithParts(headersBuf, versionsBuf)
+	checksumReal := fields.NewChecksumWithParts(headersBuf[:], versionsBuf)
 
 	if !checksumReal.Equal(checksumWanted) {
 		return frame.Frame{}, err.NewMismatchedChecksum(checksumReal, checksumWanted)
