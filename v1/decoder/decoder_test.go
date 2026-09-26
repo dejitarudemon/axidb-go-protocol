@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"slices"
 	"strings"
@@ -1971,6 +1972,142 @@ func TestDecoder_WithNilReader(t *testing.T) {
 			}
 		},
 	)
+}
+
+func TestDecoder_answer_Errs(t *testing.T) {
+	tests := []struct {
+		d    []byte
+		want any
+	}{
+		{
+			[]byte{0x01},
+			errs.ErrorMalformedValue{},
+		},
+		{
+			[]byte{0x00},
+			errs.ErrorMalformedValue{},
+		},
+		{
+			[]byte{0x02},
+			errs.ErrorMalformedValue{},
+		},
+		{
+			[]byte{0x02, 0x00},
+			errs.ErrorMalformedValue{},
+		},
+		{
+			[]byte{0x01, 0xFF},
+			errs.ErrorMalformedValue{},
+		},
+		{
+			[]byte{0x01, 0x01},
+			errs.ErrorMalformedValue{},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_answer_Errs_%v", i),
+			func(t *testing.T) {
+				decoder := NewDecoder(1024, nil)
+
+				_, _, e := decoder.answer(tt.d)
+				if !errors.As(e, &tt.want) {
+					t.Errorf("decode.answer(): got %v want %v", e, tt.want)
+				}
+			},
+		)
+	}
+}
+
+func TestDecoder_decodeUintValue(t *testing.T) {
+	tests := []struct {
+		d       []byte
+		wantErr bool
+		want    uint32
+	}{
+		{
+			[]byte{},
+			true,
+			0,
+		},
+		{
+			[]byte{0x00, 0x00, 0x00, 0x00, 0x00},
+			true,
+			0,
+		},
+		{
+			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			false,
+			0,
+		},
+		{
+			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+			false,
+			1,
+		},
+		{
+			[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00},
+			false,
+			1,
+		},
+		{
+			[]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+			false,
+			math.MaxUint32,
+		},
+	}
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_decodeUintValue_%v", i),
+			func(t *testing.T) {
+				decoder := NewDecoder(1024, nil)
+
+				v, _, e := decoder.decodeUintValue(tt.d)
+				if e == nil == tt.wantErr {
+					t.Fatalf("decodeUintValue: expect error %v, got %v", tt.wantErr, e)
+					return
+				}
+				if tt.wantErr {
+					return
+				}
+
+				if uint32(v) != tt.want {
+					t.Errorf("uint32 comparing: got %v, expected %v", v, tt.want)
+				}
+			},
+		)
+	}
+}
+
+func TestDecoder_body_Errs(t *testing.T) {
+	tests := []struct {
+		c    fields.Command
+		want any
+	}{
+		{
+			fields.Command(8),
+			errs.ErrorUnsupportedCommand{},
+		},
+		{
+			fields.Command(255),
+			errs.ErrorUnsupportedCommand{},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(
+			fmt.Sprintf("TestDecoder_body_Errs_%v", i),
+			func(t *testing.T) {
+				decoder := NewDecoder(1024, nil)
+
+				_, _, e := decoder.decodeBody(nil, tt.c)
+				if !errors.As(e, &tt.want) {
+					t.Errorf("decoder.decodeBody(): got %v want %v", e, tt.want)
+				}
+			},
+		)
+	}
 }
 
 func FuzzDecoder_Preamble(f *testing.F) {
