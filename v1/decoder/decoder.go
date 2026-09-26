@@ -21,30 +21,47 @@ import (
 )
 
 const (
+	// MagicBytesLen is the size in bytes of the frame magic prefix.
 	MagicBytesLen = 2
-	PreambleLen   = MagicBytesLen + fields.VersionFieldSize
+	// PreambleLen is the size in bytes of the magic prefix and version.
+	PreambleLen = MagicBytesLen + fields.VersionFieldSize
 
-	CommandOffset     = 3
-	RequestIDOffest   = 4
+	// CommandOffset is the header index of the command byte.
+	CommandOffset = 3
+	// RequestIDOffest is the header index of the request ID.
+	RequestIDOffest = 4
+	// CompressionOffset is the header index of the compression code.
 	CompressionOffset = 8
-	BodyLenOffset     = 9
+	// BodyLenOffset is the header index of the body length.
+	BodyLenOffset = 9
 
-	HandshakeMinBodySize    = 37
-	WriteMinBodySize        = 5
-	AnswerMinBodySize       = 2
-	BatchMinBodySize        = 5
+	// HandshakeMinBodySize is the minimum decoded size in bytes of a handshake body.
+	HandshakeMinBodySize = 37
+	// WriteMinBodySize is the minimum decoded size in bytes of a write body.
+	WriteMinBodySize = 5
+	// AnswerMinBodySize is the minimum decoded size in bytes of an answer body.
+	AnswerMinBodySize = 2
+	// BatchMinBodySize is the minimum decoded size in bytes of a batch body.
+	BatchMinBodySize = 5
+	// BatchRequestMinBodySize is the minimum decoded size in bytes of one batch request.
 	BatchRequestMinBodySize = 9
-	BatchAnswerMinBodySize  = 4
-	BatchResultMinBodySize  = 8
+	// BatchAnswerMinBodySize is the minimum decoded size in bytes of a batch answer payload.
+	BatchAnswerMinBodySize = 4
+	// BatchResultMinBodySize is the minimum decoded size in bytes of one batch result.
+	BatchResultMinBodySize = 8
 
+	// BytesLenOffsetInValue is the offset of a length prefix inside a bytes value.
 	BytesLenOffsetInValue = 0
 )
 
+// Decoder reads protocol v1 frames and rejects bodies larger than a configured limit.
 type Decoder struct {
 	limit       fields.BodyLimit
 	compressors map[fields.Compression]compressor.Compressor
 }
 
+// NewDecoder returns a Decoder that rejects bodies larger than limit.
+// compressors are indexed by their protocol code; the first compressor for a code is kept.
 func NewDecoder(limit fields.BodyLimit, compressors []compressor.Compressor) Decoder {
 	c := make(map[fields.Compression]compressor.Compressor, len(compressors))
 
@@ -60,6 +77,7 @@ func NewDecoder(limit fields.BodyLimit, compressors []compressor.Compressor) Dec
 	}
 }
 
+// handleReaderError wraps a reader failure as a decode error.
 func (d Decoder) handleReaderError(e error) error {
 	switch e {
 	case io.EOF:
@@ -70,6 +88,8 @@ func (d Decoder) handleReaderError(e error) error {
 	return err.NewDecodeError("internal reader error", e)
 }
 
+// DecodePreamble peeks the magic bytes and version without consuming them.
+// It returns an error when reader is nil, the read fails, or the magic bytes do not match.
 func (d Decoder) DecodePreamble(reader *bufio.Reader) (fields.Version, error) {
 	if reader == nil {
 		return 0, err.NewDecodeError("got nil reader", nil)
@@ -87,6 +107,9 @@ func (d Decoder) DecodePreamble(reader *bufio.Reader) (fields.Version, error) {
 	return fields.Version(buf[MagicBytesLen]), nil
 }
 
+// DecodeFrame reads one frame from reader.
+// It checks the checksum and body limit, decompresses the body when needed, and decodes the command payload.
+// reader must be non-nil.
 func (d Decoder) DecodeFrame(reader *bufio.Reader) (frame.Frame, error) {
 	if reader == nil {
 		return frame.Frame{}, err.NewDecodeError("got nil reader", nil)
@@ -154,6 +177,7 @@ func (d Decoder) DecodeFrame(reader *bufio.Reader) (frame.Frame, error) {
 	return f, nil
 }
 
+// decodeBody decodes a command payload and returns the body and the number of bytes consumed.
 func (d Decoder) decodeBody(body []byte, command fields.Command) (body.Body, int, error) {
 	switch command {
 	case fields.Handshake:
@@ -175,6 +199,7 @@ func (d Decoder) decodeBody(body []byte, command fields.Command) (body.Body, int
 	return nil, 0, errs.NewErrorUnsupportedCommand(command)
 }
 
+// checkIfBodyLenIsTooSmall reports a malformed value when l is below bound.
 func (d Decoder) checkIfBodyLenIsTooSmall(l, bound int) error {
 	if l < bound {
 		return errs.NewErrorMalformedValue(
@@ -185,6 +210,7 @@ func (d Decoder) checkIfBodyLenIsTooSmall(l, bound int) error {
 	return nil
 }
 
+// checkIfBodyLenLowerThanExpected reports a malformed value when l is below expected.
 func (d Decoder) checkIfBodyLenLowerThanExpected(l, expected int) error {
 	if l < expected {
 		return errs.NewErrorMalformedValue(
@@ -194,6 +220,7 @@ func (d Decoder) checkIfBodyLenLowerThanExpected(l, expected int) error {
 	return nil
 }
 
+// answer decodes an answer payload and returns the answer and the number of bytes consumed.
 func (d Decoder) answer(body []byte) (body.Answer, int, error) {
 	cursor := 0
 	bodyLen := len(body)
@@ -245,6 +272,7 @@ func (d Decoder) answer(body []byte) (body.Answer, int, error) {
 	return nil, 0, errs.NewErrorMalformedValue(fmt.Sprintf("unknown command in answer: %v", originalCommand))
 }
 
+// answerHandshake decodes a handshake answer payload.
 func (d Decoder) answerHandshake(body []byte) (bodies.HandshakeAnswer, int, error) {
 	bodyLen := len(body)
 	cursor := 0
@@ -270,6 +298,7 @@ func (d Decoder) answerHandshake(body []byte) (bodies.HandshakeAnswer, int, erro
 	return bodies.NewHandshakeAnswer(compressions), cursor, nil
 }
 
+// answerRead decodes a read answer payload.
 func (d Decoder) answerRead(body []byte) (bodies.ReadAnswer, int, error) {
 	bodyLen := len(body)
 	cursor := 0
@@ -291,18 +320,22 @@ func (d Decoder) answerRead(body []byte) (bodies.ReadAnswer, int, error) {
 	return bodies.ReadAnswer{Value: value}, cursor, nil
 }
 
+// answerDelete returns an empty delete answer.
 func (d Decoder) answerDelete() (bodies.DeleteAnswer, int, error) {
 	return bodies.DeleteAnswer{}, 0, nil
 }
 
+// answerWrite returns an empty write answer.
 func (d Decoder) answerWrite() (bodies.WriteAnswer, int, error) {
 	return bodies.WriteAnswer{}, 0, nil
 }
 
+// answerPing returns an empty ping answer.
 func (d Decoder) answerPing() (bodies.PingAnswer, int, error) {
 	return bodies.PingAnswer{}, 0, nil
 }
 
+// answerErr decodes an error answer payload.
 func (d Decoder) answerErr(body []byte) (bodies.ErrorAnswer, int, error) {
 	cursor := 0
 	bodyLen := len(body)
@@ -385,6 +418,7 @@ func (d Decoder) answerErr(body []byte) (bodies.ErrorAnswer, int, error) {
 	return bodies.ErrorAnswer{Err: pe}, cursor, nil
 }
 
+// answerBatch decodes a batch answer payload.
 func (d Decoder) answerBatch(body []byte) (bodies.BatchAnswer, int, error) {
 	bodyLen := len(body)
 	cursor := 0
@@ -411,6 +445,7 @@ func (d Decoder) answerBatch(body []byte) (bodies.BatchAnswer, int, error) {
 	return bodies.BatchAnswer(results), cursor, nil
 }
 
+// batchResult decodes one numbered batch result.
 func (d Decoder) batchResult(body []byte) (bodies.Result, int, error) {
 	cursor := 0
 	bodyLen := len(body)
@@ -439,6 +474,7 @@ func (d Decoder) batchResult(body []byte) (bodies.Result, int, error) {
 
 }
 
+// batch decodes a batch body.
 func (d Decoder) batch(body []byte) (bodies.Batch, int, error) {
 	bodyLen := len(body)
 	cursor := 0
@@ -473,6 +509,7 @@ func (d Decoder) batch(body []byte) (bodies.Batch, int, error) {
 	}, cursor, nil
 }
 
+// batchRequest decodes one numbered batch request.
 func (d Decoder) batchRequest(body []byte) (bodies.Request, int, error) {
 	cursor := 0
 	bodyLen := len(body)
@@ -507,10 +544,12 @@ func (d Decoder) batchRequest(body []byte) (bodies.Request, int, error) {
 	}, cursor, nil
 }
 
+// ping returns an empty ping body.
 func (d Decoder) ping() (bodies.Ping, int, error) {
 	return bodies.Ping{}, 0, nil
 }
 
+// handshake decodes a handshake body.
 func (d Decoder) handshake(body []byte) (bodies.Handshake, int, error) {
 	cursor := 0
 	bodyLen := len(body)
@@ -564,14 +603,17 @@ func (d Decoder) handshake(body []byte) (bodies.Handshake, int, error) {
 	return bodies.NewHandshake(login, [32]byte(hash), compressions), cursor, nil
 }
 
+// read decodes a read body.
 func (d Decoder) read(body []byte) (bodies.Read, int, error) {
 	return bodies.Read(d.decodeBytes(body)), len(body), nil
 }
 
+// delete decodes a delete body.
 func (d Decoder) delete(body []byte) (bodies.Delete, int, error) {
 	return bodies.Delete(d.decodeBytes(body)), len(body), nil
 }
 
+// write decodes a write body.
 func (d Decoder) write(body []byte) (bodies.Write, int, error) {
 	cursor := 0
 	bodyLen := len(body)
@@ -644,6 +686,7 @@ func (d Decoder) write(body []byte) (bodies.Write, int, error) {
 	}, cursor, nil
 }
 
+// decodeBytesValue decodes a bytes value and returns the number of bytes consumed.
 func (d Decoder) decodeBytesValue(value []byte) (values.Bytes, int, error) {
 	cursor := 0
 	valueLen := len(value)
@@ -662,6 +705,7 @@ func (d Decoder) decodeBytesValue(value []byte) (values.Bytes, int, error) {
 	return values.Bytes(d.decodeBytes(value[cursor : cursor+bytesLen])), cursor + bytesLen, nil
 }
 
+// decodeIntValue decodes an int value.
 func (d Decoder) decodeIntValue(value []byte) (values.Int, int, error) {
 	if e := d.checkIfBodyLenLowerThanExpected(len(value), values.IntValueFieldSize); e != nil {
 		return values.Int(0), 0, e
@@ -670,6 +714,7 @@ func (d Decoder) decodeIntValue(value []byte) (values.Int, int, error) {
 	return values.Int(d.decodeInt64(value)), values.IntValueFieldSize, nil
 }
 
+// decodeUintValue decodes a uint value.
 func (d Decoder) decodeUintValue(value []byte) (values.Uint, int, error) {
 	if e := d.checkIfBodyLenLowerThanExpected(len(value), values.UintValueFieldSize); e != nil {
 		return values.Uint(0), 0, e
@@ -678,6 +723,7 @@ func (d Decoder) decodeUintValue(value []byte) (values.Uint, int, error) {
 	return values.Uint(d.decodeUint64(value)), values.UintValueFieldSize, nil
 }
 
+// decodeFloatValue decodes a float value.
 func (d Decoder) decodeFloatValue(value []byte) (values.Float, int, error) {
 	if e := d.checkIfBodyLenLowerThanExpected(len(value), values.FloatValueFieldSize); e != nil {
 		return values.Float(0), 0, e
@@ -686,6 +732,7 @@ func (d Decoder) decodeFloatValue(value []byte) (values.Float, int, error) {
 	return values.Float(d.decodeFloat64(value)), values.FloatValueFieldSize, nil
 }
 
+// decodeUntypedArray decodes an untyped array.
 func (d Decoder) decodeUntypedArray(data []byte) (values.UntypedArray, int, error) {
 	cursor := 0
 	lenValue := len(data)
@@ -720,6 +767,7 @@ func (d Decoder) decodeUntypedArray(data []byte) (values.UntypedArray, int, erro
 	return values.UntypedArray(elems), int(cursor), nil
 }
 
+// decodeTypedArray decodes a typed array.
 func (d Decoder) decodeTypedArray(data []byte) (values.TypedArray, int, error) {
 	cursor := 0
 	lenValue := len(data)
@@ -754,6 +802,7 @@ func (d Decoder) decodeTypedArray(data []byte) (values.TypedArray, int, error) {
 	return values.TypedArray{ElemType: elemType, Elems: elems}, int(cursor), nil
 }
 
+// decodeValue decodes a value of valueType.
 func (d Decoder) decodeValue(value []byte, valueType fields.Type) (value.V, int, error) {
 	switch valueType {
 	case fields.Bytes:
@@ -777,44 +826,54 @@ func (d Decoder) decodeValue(value []byte, valueType fields.Type) (value.V, int,
 	return nil, 0, err.NewDecodeError(fmt.Sprintf("unkown type: %v", valueType), nil)
 }
 
+// decodeStringValue decodes a string value.
 func (d Decoder) decodeStringValue(value []byte) (values.String, int, error) {
 	b, i, e := d.decodeBytesValue(value)
 	return values.String(b), i, e
 }
 
+// decodeJSONValue decodes a JSON value.
 func (d Decoder) decodeJSONValue(value []byte) (values.JSON, int, error) {
 	b, i, e := d.decodeBytesValue(value)
 	return values.JSON(b), i, e
 }
 
+// decodeFloat64 reads a big-endian float64.
 func (d Decoder) decodeFloat64(data []byte) float64 {
 	return math.Float64frombits(d.decodeUint64(data))
 }
 
+// decodeUint32 reads a big-endian uint32.
 func (d Decoder) decodeUint32(data []byte) uint32 {
 	return binary.BigEndian.Uint32(data)
 }
 
+// decodeString converts data to a string.
 func (d Decoder) decodeString(data []byte) string {
 	return string(data)
 }
 
+// decodeUint8 reads the first byte as a uint8.
 func (d Decoder) decodeUint8(data []byte) uint8 {
 	return uint8(data[0])
 }
 
+// decodeBytes returns body unchanged.
 func (d Decoder) decodeBytes(body []byte) []byte {
 	return body
 }
 
+// decodeUint64 reads a big-endian uint64.
 func (d Decoder) decodeUint64(data []byte) uint64 {
 	return binary.BigEndian.Uint64(data)
 }
 
+// decodeInt64 reads a big-endian int64.
 func (d Decoder) decodeInt64(data []byte) int64 {
 	return int64(d.decodeUint64(data))
 }
 
+// decodeUint16 reads a big-endian uint16.
 func (d Decoder) decodeUint16(data []byte) uint16 {
 	return binary.BigEndian.Uint16(data)
 }
