@@ -44,3 +44,31 @@ func (b *BatchResultsBuilder) AddError(number fields.RequestNumber, err err.Prot
 
 	return b
 }
+
+// Merge incorporates other's results and returns the builder.
+// A result whose number is already present is replaced when overwrite is true and left unchanged otherwise.
+// A result whose number is absent is appended.
+func (b *BatchResultsBuilder) Merge(other *BatchResultsBuilder, overwrite bool) *BatchResultsBuilder {
+	for _, result := range other.results {
+		if pos := b.find(result); pos != -1 {
+			if overwrite {
+				b.results[pos] = result
+			}
+		} else {
+			b.results = append(b.results, result)
+		}
+	}
+
+	return b
+}
+
+// find returns the index of the first result with the same number as result, or -1 if none exists.
+func (b *BatchResultsBuilder) find(result bodies.Result) int {
+	for i, r := range b.results {
+		if r.Number == result.Number {
+			return i
+		}
+	}
+
+	return -1
+}
