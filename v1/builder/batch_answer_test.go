@@ -60,3 +60,163 @@ func TestBatchResultsBuilder(t *testing.T) {
 		})
 	}
 }
+
+func TestBatchResultsBuilder_Merge(t *testing.T) {
+	internalErr := errs.NewErrorInternalErrorWithTracebackID(nil, fields.TracebackID{15: 0x01})
+
+	tests := []struct {
+		name  string
+		build func() *BatchResultsBuilder
+		want  bodies.BatchAnswer
+	}{
+		{
+			"overwrite matching number",
+			func() *BatchResultsBuilder {
+				return NewBatchResultsBuilder().
+					AddWrite(1).
+					AddRead(2, values.String("old")).
+					Merge(NewBatchResultsBuilder().AddRead(2, values.String("new")), true)
+			},
+			bodies.BatchAnswer{
+				{Number: 1, Body: bodies.WriteAnswer{}},
+				{Number: 2, Body: bodies.ReadAnswer{Value: values.String("new")}},
+			},
+		},
+		{
+			"keep original when overwrite is false",
+			func() *BatchResultsBuilder {
+				return NewBatchResultsBuilder().
+					AddRead(2, values.String("old")).
+					Merge(NewBatchResultsBuilder().AddRead(2, values.String("new")), false)
+			},
+			bodies.BatchAnswer{
+				{Number: 2, Body: bodies.ReadAnswer{Value: values.String("old")}},
+			},
+		},
+		{
+			"append number missing from receiver",
+			func() *BatchResultsBuilder {
+				return NewBatchResultsBuilder().
+					AddWrite(1).
+					Merge(NewBatchResultsBuilder().AddDelete(3), true)
+			},
+			bodies.BatchAnswer{
+				{Number: 1, Body: bodies.WriteAnswer{}},
+				{Number: 3, Body: bodies.DeleteAnswer{}},
+			},
+		},
+		{
+			"append missing number when overwrite is false",
+			func() *BatchResultsBuilder {
+				return NewBatchResultsBuilder().
+					AddWrite(1).
+					Merge(NewBatchResultsBuilder().AddDelete(3), false)
+			},
+			bodies.BatchAnswer{
+				{Number: 1, Body: bodies.WriteAnswer{}},
+				{Number: 3, Body: bodies.DeleteAnswer{}},
+			},
+		},
+		{
+			"empty other",
+			func() *BatchResultsBuilder {
+				return NewBatchResultsBuilder().
+					AddWrite(1).
+					Merge(NewBatchResultsBuilder(), true)
+			},
+			bodies.BatchAnswer{
+				{Number: 1, Body: bodies.WriteAnswer{}},
+			},
+		},
+		{
+			"into empty",
+			func() *BatchResultsBuilder {
+				return NewBatchResultsBuilder().Merge(
+					NewBatchResultsBuilder().AddDelete(3),
+					true,
+				)
+			},
+			bodies.BatchAnswer{
+				{Number: 3, Body: bodies.DeleteAnswer{}},
+			},
+		},
+		{
+			"replace matching body with another kind",
+			func() *BatchResultsBuilder {
+				return NewBatchResultsBuilder().
+					AddWrite(1).
+					Merge(NewBatchResultsBuilder().AddError(1, internalErr), true)
+			},
+			bodies.BatchAnswer{
+				{Number: 1, Body: bodies.ErrorAnswer{Err: internalErr}},
+			},
+		},
+		{
+			"overwrite matches and append missing",
+			func() *BatchResultsBuilder {
+				return NewBatchResultsBuilder().
+					AddWrite(1).
+					AddRead(2, values.String("old")).
+					AddDelete(4).
+					Merge(
+						NewBatchResultsBuilder().
+							AddRead(2, values.String("new")).
+							AddError(9, internalErr),
+						true,
+					)
+			},
+			bodies.BatchAnswer{
+				{Number: 1, Body: bodies.WriteAnswer{}},
+				{Number: 2, Body: bodies.ReadAnswer{Value: values.String("new")}},
+				{Number: 4, Body: bodies.DeleteAnswer{}},
+				{Number: 9, Body: bodies.ErrorAnswer{Err: internalErr}},
+			},
+		},
+		{
+			"keep matches and append missing when overwrite is false",
+			func() *BatchResultsBuilder {
+				return NewBatchResultsBuilder().
+					AddWrite(1).
+					AddRead(2, values.String("old")).
+					Merge(
+						NewBatchResultsBuilder().
+							AddRead(2, values.String("new")).
+							AddDelete(3),
+						false,
+					)
+			},
+			bodies.BatchAnswer{
+				{Number: 1, Body: bodies.WriteAnswer{}},
+				{Number: 2, Body: bodies.ReadAnswer{Value: values.String("old")}},
+				{Number: 3, Body: bodies.DeleteAnswer{}},
+			},
+		},
+		{
+			"overwrite several matching numbers",
+			func() *BatchResultsBuilder {
+				return NewBatchResultsBuilder().
+					AddWrite(1).
+					AddRead(2, values.String("old")).
+					AddDelete(3).
+					Merge(
+						NewBatchResultsBuilder().
+							AddError(1, internalErr).
+							AddRead(2, values.String("new")),
+						true,
+					)
+			},
+			bodies.BatchAnswer{
+				{Number: 1, Body: bodies.ErrorAnswer{Err: internalErr}},
+				{Number: 2, Body: bodies.ReadAnswer{Value: values.String("new")}},
+				{Number: 3, Body: bodies.DeleteAnswer{}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.build()
+			testutil.AssertSameEncoding(t, bodies.BatchAnswer(got.results), tt.want)
+		})
+	}
+}
