@@ -64,3 +64,16 @@ func (b *BatchRequestsBuilder) AddDelete(key fields.Key) *BatchRequestsBuilder {
 
 	return b
 }
+
+// Extend appends other's requests, numbering them from the receiver cursor, and returns the builder.
+// Receiver flags are kept; other's flags are ignored.
+func (b *BatchRequestsBuilder) Extend(other *BatchRequestsBuilder) *BatchRequestsBuilder {
+	for _, request := range other.requests {
+		r := bodies.Request{Number: b.cursor, Body: request.Body}
+		b.requests = append(b.requests, r)
+
+		b.cursor++
+	}
+
+	return b
+}
