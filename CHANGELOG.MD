@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0 - 2026-10-09
+
+Changed:
+
+- A frame with an unsupported protocol version closes the connection instead of returning an error
+- Error code 1 is Command Not Implemented: a valid protocol command that this node has not implemented (was Unsupported Version)
+
 ## 1.0.1 - 2026-10-02
 
 Added:

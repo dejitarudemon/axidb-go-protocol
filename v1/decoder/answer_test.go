@@ -20,7 +20,7 @@ func allProtocolErrors() []err.ProtocolError {
 
 	return []err.ProtocolError{
 		errs.NewErrorNoHelloWithTracebackID(id),
-		errs.NewErrorUnsupportedVersionWithTracebackID(2, id),
+		errs.NewErrorCommandNotImplementedWithTracebackID(id),
 		errs.NewErrorUnexpectedCommandWithTracebackID(fields.Batch, fields.Handshake, id),
 		errs.NewErrorUnsupportedCommandWithTracebackID(9, id),
 		errs.NewErrorRequestsConflictWithTracebackID(3, id),

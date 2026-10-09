@@ -90,7 +90,7 @@ A node reads exactly `8 + Version Len` bytes of a single Hello frame. If fewer v
 
 # Versions
 
-**Author's note**: version 0 is not a standalone working version and is used only for Hello requests.
+**Author's note**: version 0 is not a standalone working version and is used only for Hello requests. If the client sends a frame of a version the server does not support, the server must close the connection.
 
 ## 1
 
@@ -461,18 +461,18 @@ How to fix: after establishing the TCP connection, send a Hello request.
 
 Details structure: -
 
-#### Unsupported Version
+#### Command Not Implemented
 
 Code: 1
 
 Examples:
-1. The client sends a frame of a version the server does not support.
+1. The client sends a Delete request, but the server has not implemented handling of that command.
 
-Cause: the protocol version is not supported by the receiving node.
+Cause: the server has not implemented the logic to process a request for the specified command.
 
-Notes: this error must be sent using the last mutually agreed protocol version, if such a version was established. If the error occurs before Handshake, the node sends the message using the lowest version it supports itself.
+Notes: -
 
-How to fix: switch to a protocol version supported by the receiving node.
+How to fix: do not use this method to work with the server.
 
 Details structure: -
 

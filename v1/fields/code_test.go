@@ -15,7 +15,7 @@ func TestError(t *testing.T) {
 		wantValid bool
 	}{
 		{NoHello, []byte{0x00, 0x00}, "No Hello", true},
-		{UnsupportedVersion, []byte{0x00, 0x01}, "Unsupported Version", true},
+		{CommandNotImplemented, []byte{0x00, 0x01}, "Command Not Implemented", true},
 		{UnexpectedCommand, []byte{0x00, 0x02}, "Unexpected Command", true},
 		{UnsupportedCommand, []byte{0x00, 0x03}, "Unsupported Command", true},
 		{RequestsConflict, []byte{0x00, 0x04}, "Requests Conflict", true},

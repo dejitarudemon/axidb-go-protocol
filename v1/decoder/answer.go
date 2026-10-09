@@ -24,8 +24,8 @@ var errorDecoders = map[fields.Error]errorDecoder{
 	fields.NoHello: func(id fields.TracebackID, _ *cursor) (err.ProtocolError, error) {
 		return errs.NewErrorNoHelloWithTracebackID(id), nil
 	},
-	fields.UnsupportedVersion: func(id fields.TracebackID, _ *cursor) (err.ProtocolError, error) {
-		return errs.NewErrorUnsupportedVersionWithTracebackID(0, id), nil
+	fields.CommandNotImplemented: func(id fields.TracebackID, _ *cursor) (err.ProtocolError, error) {
+		return errs.NewErrorCommandNotImplementedWithTracebackID(id), nil
 	},
 	fields.UnexpectedCommand: func(id fields.TracebackID, c *cursor) (err.ProtocolError, error) {
 		expected, e := c.uint8()

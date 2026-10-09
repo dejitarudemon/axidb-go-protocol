@@ -55,7 +55,7 @@ func TestNewErrors_GenerateTracebackID(t *testing.T) {
 		e    err.ProtocolError
 	}{
 		{"NoHello", NewErrorNoHello()},
-		{"UnsupportedVersion", NewErrorUnsupportedVersion(2)},
+		{"CommandNotImplemented", NewErrorCommandNotImplemented()},
 		{"UnexpectedCommand", NewErrorUnexpectedCommand(fields.Read, fields.Handshake)},
 		{"UnsupportedCommand", NewErrorUnsupportedCommand(fields.Command(10))},
 		{"RequestsConflict", NewErrorRequestsConflict(1)},

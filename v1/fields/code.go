@@ -15,7 +15,7 @@ type Error uint16
 // Error codes defined by protocol v1.
 const (
 	NoHello Error = iota
-	UnsupportedVersion
+	CommandNotImplemented
 	UnexpectedCommand
 	UnsupportedCommand
 	RequestsConflict
@@ -44,8 +44,8 @@ func (e Error) String() string {
 	switch e {
 	case NoHello:
 		return "No Hello"
-	case UnsupportedVersion:
-		return "Unsupported Version"
+	case CommandNotImplemented:
+		return "Command Not Implemented"
 	case UnexpectedCommand:
 		return "Unexpected Command"
 	case UnsupportedCommand:
