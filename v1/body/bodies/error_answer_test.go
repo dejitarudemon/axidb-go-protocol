@@ -19,7 +19,7 @@ func TestErrorAnswer(t *testing.T) {
 	}{
 		{"nil error", nil},
 		{"no hello", errs.NewErrorNoHelloWithTracebackID(id)},
-		{"unsupported version", errs.NewErrorUnsupportedVersionWithTracebackID(3, id)},
+		{"command not implemented", errs.NewErrorCommandNotImplementedWithTracebackID(id)},
 		{"unexpected command", errs.NewErrorUnexpectedCommandWithTracebackID(fields.Handshake, fields.Read, id)},
 		{"unsupported command", errs.NewErrorUnsupportedCommandWithTracebackID(fields.Command(255), id)},
 		{"requests conflict", errs.NewErrorRequestsConflictWithTracebackID(0, id)},
