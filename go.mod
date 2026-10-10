@@ -1,4 +1,4 @@
-module github.com/dejitarudemon/axidb-go-protocol
+module github.com/dejitarudemon/ignicula-wire
 
 go 1.27.1
 

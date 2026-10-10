@@ -7,12 +7,12 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
+	"github.com/dejitarudemon/ignicula-wire/v1/body"
+	"github.com/dejitarudemon/ignicula-wire/v1/compressor"
+	"github.com/dejitarudemon/ignicula-wire/v1/err"
+	"github.com/dejitarudemon/ignicula-wire/v1/err/errs"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/frame"
 )
 
 const (

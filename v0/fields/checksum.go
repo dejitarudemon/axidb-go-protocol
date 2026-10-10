@@ -1,7 +1,7 @@
 package fields
 
 import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
 )
 
 // Checksum is a CRC-32/XFER frame checksum.

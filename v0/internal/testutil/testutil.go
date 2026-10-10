@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
 )
 
 // Encoder is a protocol value with a wire encoding.

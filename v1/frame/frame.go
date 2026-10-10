@@ -1,17 +1,17 @@
 package frame
 
 import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/body"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/compressor"
+	"github.com/dejitarudemon/ignicula-wire/v1/err"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
 )
 
 // Buffer is the buffer type used when compressing a frame body before encode.
 type Buffer = buffer.Slice
 
-// MagicBytes is the two-byte frame preamble that identifies an AxiDB protocol v1 frame.
+// MagicBytes is the two-byte frame preamble that identifies an Ignicula protocol v1 frame.
 var MagicBytes = []byte{0x0A, 0xDB}
 
 const (

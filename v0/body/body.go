@@ -1,7 +1,7 @@
 package body
 
 import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
 )
 
 // Body is a protocol v0 Hello payload that can be validated and encoded.

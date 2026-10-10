@@ -2,9 +2,9 @@
 package specs
 
 import (
-	"github.com/dejitarudemon/axidb-go-protocol/v0/body/bodies"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/frame"
+	"github.com/dejitarudemon/ignicula-wire/v0/body/bodies"
+	"github.com/dejitarudemon/ignicula-wire/v0/fields"
+	"github.com/dejitarudemon/ignicula-wire/v0/frame"
 )
 
 // Frame is an example frame together with its exact wire encoding.

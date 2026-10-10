@@ -18,7 +18,7 @@ Added:
 
 We fucking did it.
 
-First release of the Go codec for AxiDB.
+First release of the Go codec for Ignicula.
 
 - Hello (protocol version 0) and working version 1
 - Typed values on the wire

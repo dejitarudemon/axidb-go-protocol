@@ -20,7 +20,7 @@ A request may be:
 
 Where:
 
-- `Magic bytes` — a unique sequence indicating that this frame belongs to the AxiDB protocol (0A DB).
+- `Magic bytes` — a unique sequence indicating that this frame belongs to the Ignicula protocol (0A DB).
 - `Version` — the protocol version (from 0 to 255).
 - `Headers` — service data and flags defined by the protocol version (hereinafter also headers).
 - `Body` — the main message data.

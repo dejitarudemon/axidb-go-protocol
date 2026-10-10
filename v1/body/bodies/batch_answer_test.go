@@ -4,10 +4,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
+	"github.com/dejitarudemon/ignicula-wire/v1/err/errs"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/internal/testutil"
+	"github.com/dejitarudemon/ignicula-wire/v1/value/values"
 )
 
 func TestResult(t *testing.T) {

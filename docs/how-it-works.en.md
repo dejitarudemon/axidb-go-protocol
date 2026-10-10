@@ -2,7 +2,7 @@ Language: [Русский](how-it-works.md) · [English](how-it-works.en.md)
 
 # How it works
 
-AxiDB is a binary protocol on a byte stream (usually TCP, optionally TLS). This library encodes and decodes frames. The socket, storage, and access policy stay in the application.
+Ignicula is a binary protocol on a byte stream (usually TCP, optionally TLS). This library encodes and decodes frames. The socket, storage, and access policy stay in the application.
 
 The full rules are in the [specification](specs.en.md). API walkthroughs are in the [tutorials](tutorial.en.md).
 

@@ -3,9 +3,9 @@ package bodies
 import (
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/body"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
+	"github.com/dejitarudemon/ignicula-wire/v1/body"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/internal/testutil"
 )
 
 // assertBody checks the methods shared by every body.

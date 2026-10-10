@@ -18,11 +18,11 @@ import (
 	"bytes"
 	"fmt"
 
-	v0bodies "github.com/dejitarudemon/axidb-go-protocol/v0/body/bodies"
-	v0builder "github.com/dejitarudemon/axidb-go-protocol/v0/builder"
-	v0decoder "github.com/dejitarudemon/axidb-go-protocol/v0/decoder"
-	v0fields "github.com/dejitarudemon/axidb-go-protocol/v0/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	v0bodies "github.com/dejitarudemon/ignicula-wire/v0/body/bodies"
+	v0builder "github.com/dejitarudemon/ignicula-wire/v0/builder"
+	v0decoder "github.com/dejitarudemon/ignicula-wire/v0/decoder"
+	v0fields "github.com/dejitarudemon/ignicula-wire/v0/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
 )
 
 func main() {
@@ -106,9 +106,9 @@ v0fields.NewChecksum(out.Bytes()).Encode(&out)
 package main
 
 import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/builder"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
 )
 
 func main() {
@@ -161,11 +161,11 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/decoder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
+	"github.com/dejitarudemon/ignicula-wire/v1/builder"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/decoder"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/value/values"
 )
 
 func main() {
@@ -256,9 +256,9 @@ import (
 	"bufio"
 	"io"
 
-	v0decoder "github.com/dejitarudemon/axidb-go-protocol/v0/decoder"
-	v1decoder "github.com/dejitarudemon/axidb-go-protocol/v1/decoder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	v0decoder "github.com/dejitarudemon/ignicula-wire/v0/decoder"
+	v1decoder "github.com/dejitarudemon/ignicula-wire/v1/decoder"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
 )
 
 func readFrame(r *bufio.Reader) error {
@@ -294,13 +294,13 @@ import (
 	"bufio"
 	"bytes"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/compressor/compressors"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/decoder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
+	"github.com/dejitarudemon/ignicula-wire/v1/builder"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/compressor"
+	"github.com/dejitarudemon/ignicula-wire/v1/compressor/compressors"
+	"github.com/dejitarudemon/ignicula-wire/v1/decoder"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/value/values"
 )
 
 func main() {
@@ -336,9 +336,9 @@ func main() {
 package main
 
 import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
+	"github.com/dejitarudemon/ignicula-wire/v1/builder"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/value/values"
 )
 
 func main() {

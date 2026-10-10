@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
 )
 
 func TestUint(t *testing.T) {

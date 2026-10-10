@@ -3,7 +3,7 @@ package err
 import (
 	"fmt"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v0/fields"
+	"github.com/dejitarudemon/ignicula-wire/v0/fields"
 )
 
 // MismatchedChecksum reports that a Hello frame checksum did not match the computed value.

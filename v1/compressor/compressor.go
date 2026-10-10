@@ -1,6 +1,6 @@
 package compressor
 
-import "github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+import "github.com/dejitarudemon/ignicula-wire/v1/fields"
 
 // Compressor compresses and decompresses frame bodies for a protocol compression code.
 type Compressor interface {

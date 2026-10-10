@@ -3,10 +3,10 @@ package builder
 import (
 	"fmt"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v0/body/bodies"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/err"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/frame"
+	"github.com/dejitarudemon/ignicula-wire/v0/body/bodies"
+	"github.com/dejitarudemon/ignicula-wire/v0/err"
+	"github.com/dejitarudemon/ignicula-wire/v0/fields"
+	"github.com/dejitarudemon/ignicula-wire/v0/frame"
 )
 
 // FrameBuilder builds Hello frames and rejects those larger than a size limit.
