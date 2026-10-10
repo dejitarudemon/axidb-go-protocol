@@ -1,7 +1,7 @@
 package fields
 
 import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
 )
 
 // Version is a protocol version number written in the Hello body or frame preamble.

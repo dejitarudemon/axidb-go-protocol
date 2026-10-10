@@ -9,13 +9,13 @@ import (
 	"testing"
 	"testing/iotest"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v0/body/bodies"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/err"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/frame"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/internal/specs"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/internal/testutil"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v0/body/bodies"
+	"github.com/dejitarudemon/ignicula-wire/v0/err"
+	"github.com/dejitarudemon/ignicula-wire/v0/fields"
+	"github.com/dejitarudemon/ignicula-wire/v0/frame"
+	"github.com/dejitarudemon/ignicula-wire/v0/internal/specs"
+	"github.com/dejitarudemon/ignicula-wire/v0/internal/testutil"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
 )
 
 var roundTripFrames = []struct {

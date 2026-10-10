@@ -3,7 +3,7 @@ package fields
 import (
 	"fmt"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
 )
 
 // ErrorFieldSize is the encoded size in bytes of an [Error] code.

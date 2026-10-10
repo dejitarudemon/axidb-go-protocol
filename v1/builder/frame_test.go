@@ -5,12 +5,12 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/body/bodies"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value/values"
+	"github.com/dejitarudemon/ignicula-wire/v1/body/bodies"
+	"github.com/dejitarudemon/ignicula-wire/v1/err/errs"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/frame"
+	"github.com/dejitarudemon/ignicula-wire/v1/internal/testutil"
+	"github.com/dejitarudemon/ignicula-wire/v1/value/values"
 )
 
 func TestFrameBuilder(t *testing.T) {

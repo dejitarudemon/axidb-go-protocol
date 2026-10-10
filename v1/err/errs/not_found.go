@@ -3,9 +3,9 @@ package errs
 import (
 	"fmt"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/err"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
 )
 
 var _ err.ProtocolError = ErrorNotFound{}

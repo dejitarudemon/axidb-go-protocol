@@ -1,7 +1,7 @@
 package bodies
 
 import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
 )
 
 // ResultFieldSize is the encoded size in bytes of the success or failure flag in an answer.

@@ -1,8 +1,8 @@
 package body
 
 import (
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
 )
 
 // BodyLenFieldSize is the encoded size in bytes of the body length prefix in a frame header.

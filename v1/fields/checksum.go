@@ -2,7 +2,7 @@ package fields
 
 import (
 	"bursavich.dev/crc/crc32"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
 )
 
 // Checksum is a Castagnoli CRC-32 frame checksum.

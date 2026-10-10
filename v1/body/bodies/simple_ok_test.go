@@ -3,7 +3,7 @@ package bodies
 import (
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/internal/testutil"
+	"github.com/dejitarudemon/ignicula-wire/v1/internal/testutil"
 )
 
 func TestSimpleOK(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v0/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/internal/testutil"
+	"github.com/dejitarudemon/ignicula-wire/v0/fields"
+	"github.com/dejitarudemon/ignicula-wire/v0/internal/testutil"
 )
 
 func versions(n int, first fields.Version) []fields.Version {

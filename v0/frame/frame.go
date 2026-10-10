@@ -1,13 +1,13 @@
 package frame
 
 import (
-	"github.com/dejitarudemon/axidb-go-protocol/v0/body"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/err"
-	"github.com/dejitarudemon/axidb-go-protocol/v0/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v0/body"
+	"github.com/dejitarudemon/ignicula-wire/v0/err"
+	"github.com/dejitarudemon/ignicula-wire/v0/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
 )
 
-// MagicBytes is the two-byte frame preamble that identifies an AxiDB protocol frame.
+// MagicBytes is the two-byte frame preamble that identifies an Ignicula protocol frame.
 var MagicBytes = []byte{0x0A, 0xDB}
 
 const (

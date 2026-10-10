@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
+	"github.com/dejitarudemon/ignicula-wire/v1/err/errs"
 )
 
 // cursor reads big-endian fields from a byte slice and reports a malformed value

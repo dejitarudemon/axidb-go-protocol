@@ -3,7 +3,7 @@ package values
 import (
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
 )
 
 func TestBytes(t *testing.T) {

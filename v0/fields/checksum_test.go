@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dejitarudemon/axidb-go-protocol/v0/internal/testutil"
+	"github.com/dejitarudemon/ignicula-wire/v0/internal/testutil"
 )
 
 func TestChecksum(t *testing.T) {
