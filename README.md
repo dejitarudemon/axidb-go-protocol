@@ -1,12 +1,12 @@
-[![CI](https://github.com/dejitarudemon/axidb-go-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/dejitarudemon/axidb-go-protocol/actions/workflows/ci.yml)
+[![CI](https://github.com/dejitarudemon/ignicula-wire/actions/workflows/ci.yml/badge.svg)](https://github.com/dejitarudemon/ignicula-wire/actions/workflows/ci.yml)
 ![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dejitarudemon/d4908af19df5c45057d630931ab6b8a7/raw/coverage.json)
-[![Go Reference](https://pkg.go.dev/badge/github.com/dejitarudemon/axidb-go-protocol.svg)](https://pkg.go.dev/github.com/dejitarudemon/axidb-go-protocol)
-[![Release](https://img.shields.io/github/v/tag/dejitarudemon/axidb-go-protocol?label=release)](https://github.com/dejitarudemon/axidb-go-protocol/releases)
-[![License: MIT](https://img.shields.io/github/license/dejitarudemon/axidb-go-protocol)](LICENSE)
+[![Go Reference](https://pkg.go.dev/badge/github.com/dejitarudemon/ignicula-wire.svg)](https://pkg.go.dev/github.com/dejitarudemon/ignicula-wire)
+[![Release](https://img.shields.io/github/v/tag/dejitarudemon/ignicula-wire?label=release)](https://github.com/dejitarudemon/ignicula-wire/releases)
+[![License: MIT](https://img.shields.io/github/license/dejitarudemon/ignicula-wire)](LICENSE)
 
-# axidb-go-protocol
+# ignicula-wire
 
-A Go library for AxiDB protocol frames: Hello (version 0) and working version 1.
+A Go library for Ignicula protocol frames: Hello (version 0) and working version 1.
 
 [English](#english) · [Русский](#русский)
 
@@ -14,7 +14,7 @@ A Go library for AxiDB protocol frames: Hello (version 0) and working version 1.
 
 ## English
 
-A Go library for AxiDB protocol frames: Hello (version 0) and working version 1.
+A Go library for Ignicula protocol frames: Hello (version 0) and working version 1.
 
 After Hello the connection is not pinned to one version: each later frame may use any version both sides advertised.
 
@@ -31,7 +31,7 @@ Values on the wire carry a type: bytes, int, uint, float64, string, JSON, and a 
 Go 1.27 or newer is required.
 
 ```bash
-go get github.com/dejitarudemon/axidb-go-protocol@latest
+go get github.com/dejitarudemon/ignicula-wire@latest
 ```
 
 ### Example: TCP server
@@ -47,19 +47,19 @@ import (
 	"net"
 	"sync"
 
-	v0bodies "github.com/dejitarudemon/axidb-go-protocol/v0/body/bodies"
-	v0builder "github.com/dejitarudemon/axidb-go-protocol/v0/builder"
-	v0decoder "github.com/dejitarudemon/axidb-go-protocol/v0/decoder"
-	v0fields "github.com/dejitarudemon/axidb-go-protocol/v0/fields"
-	v0frame "github.com/dejitarudemon/axidb-go-protocol/v0/frame"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/body/bodies"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/decoder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
+	v0bodies "github.com/dejitarudemon/ignicula-wire/v0/body/bodies"
+	v0builder "github.com/dejitarudemon/ignicula-wire/v0/builder"
+	v0decoder "github.com/dejitarudemon/ignicula-wire/v0/decoder"
+	v0fields "github.com/dejitarudemon/ignicula-wire/v0/fields"
+	v0frame "github.com/dejitarudemon/ignicula-wire/v0/frame"
+	"github.com/dejitarudemon/ignicula-wire/v1/body/bodies"
+	"github.com/dejitarudemon/ignicula-wire/v1/builder"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/decoder"
+	"github.com/dejitarudemon/ignicula-wire/v1/err/errs"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/frame"
+	"github.com/dejitarudemon/ignicula-wire/v1/value"
 )
 
 func main() {
@@ -203,7 +203,7 @@ go test -bench=. -benchmem ./v0/... ./v1/...
 
 ## Русский
 
-Go-библиотека кадров протокола AxiDB: Hello (версия 0) и рабочая версия 1.
+Go-библиотека кадров протокола Ignicula: Hello (версия 0) и рабочая версия 1.
 
 После Hello соединение не привязано к одной версии: каждый следующий кадр может использовать любую версию из пересечения списков.
 
@@ -220,7 +220,7 @@ Go-библиотека кадров протокола AxiDB: Hello (верси
 Нужен Go 1.27 или новее.
 
 ```bash
-go get github.com/dejitarudemon/axidb-go-protocol@latest
+go get github.com/dejitarudemon/ignicula-wire@latest
 ```
 
 ### Пример: TCP-сервер
@@ -236,19 +236,19 @@ import (
 	"net"
 	"sync"
 
-	v0bodies "github.com/dejitarudemon/axidb-go-protocol/v0/body/bodies"
-	v0builder "github.com/dejitarudemon/axidb-go-protocol/v0/builder"
-	v0decoder "github.com/dejitarudemon/axidb-go-protocol/v0/decoder"
-	v0fields "github.com/dejitarudemon/axidb-go-protocol/v0/fields"
-	v0frame "github.com/dejitarudemon/axidb-go-protocol/v0/frame"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/body/bodies"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/builder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/buffer"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/decoder"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/err/errs"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/fields"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/frame"
-	"github.com/dejitarudemon/axidb-go-protocol/v1/value"
+	v0bodies "github.com/dejitarudemon/ignicula-wire/v0/body/bodies"
+	v0builder "github.com/dejitarudemon/ignicula-wire/v0/builder"
+	v0decoder "github.com/dejitarudemon/ignicula-wire/v0/decoder"
+	v0fields "github.com/dejitarudemon/ignicula-wire/v0/fields"
+	v0frame "github.com/dejitarudemon/ignicula-wire/v0/frame"
+	"github.com/dejitarudemon/ignicula-wire/v1/body/bodies"
+	"github.com/dejitarudemon/ignicula-wire/v1/builder"
+	"github.com/dejitarudemon/ignicula-wire/v1/buffer"
+	"github.com/dejitarudemon/ignicula-wire/v1/decoder"
+	"github.com/dejitarudemon/ignicula-wire/v1/err/errs"
+	"github.com/dejitarudemon/ignicula-wire/v1/fields"
+	"github.com/dejitarudemon/ignicula-wire/v1/frame"
+	"github.com/dejitarudemon/ignicula-wire/v1/value"
 )
 
 func main() {
